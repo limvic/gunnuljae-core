@@ -32,6 +32,8 @@ BASE_URL = (
     else "https://openapi.koreainvestment.com:9443"
 )
 
+TOKEN_PATH = "/oauth2/tokenP" if KIS_MODE == "mock" else "/oauth2/token"
+
 _token_cache = {"token": None, "expires_at": 0}
 _cache: dict = {}
 _last_good: dict = {}
@@ -44,7 +46,7 @@ async def get_token() -> str:
         return _token_cache["token"]
     async with httpx.AsyncClient(timeout=10) as client:
         res = await client.post(
-            f"{BASE_URL}/oauth2/tokenP",
+            f"{BASE_URL}{TOKEN_PATH}",
             json={"grant_type": "client_credentials", "appkey": KIS_APP_KEY, "appsecret": KIS_APP_SECRET},
         )
         data = res.json()
