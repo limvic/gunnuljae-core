@@ -80,10 +80,17 @@ async def fetch_price(code: str, token: str) -> dict:
         "price":      int(o.get("stck_prpr", 0)),
         "volume":     int(o.get("acml_vol", 0)),
         "high":       int(o.get("stck_hgpr", 0)),
+        "low":        int(o.get("stck_lwpr", 0)),
         "open":       int(o.get("stck_oprc", 0)),
         "name":       o.get("hts_kor_isnm", code),
         "change_pct": float(o.get("prdy_ctrt", 0)),
-    }
+        "is_bullish":int(o.get("stck_prpr",0)) > int(o.get("stck_oprc", 0)),
+        "pullback_pct": round(
+            (int(o.get("stck_hgpr", 0)) - int(o.get("stck_prpr", 0)))
+            / int(o.get("stck_hgpr", 1)) * 100, 2
+        ),
+  }
+
 
 
 async def fetch_volume_avg(code: str, token: str) -> int:
