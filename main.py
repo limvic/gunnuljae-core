@@ -89,3 +89,33 @@ async def fetch_price(code: str, token: str) -> dict:
         "is_bullish": price > open_,
         "pullback_pct": round((high - price) / high * 100, 2) if high > 0 else 0,
     }
+
+
+@app.get("/health")
+async def health():
+    try:
+        token = await get_token()
+        return {"status": "ok", "token": "valid", "mode": KIS_MODE, "cache_size": len(_cache), "kis_key_set": bool(KIS_APP_KEY)}
+    except:
+        return {"status": "error", "token": "invalid"}
+
+
+@app.get("/stock/{code}")
+async def get_stock(code: str):
+    now = time.time()
+    if code in _cache and now - _cache[code]["ts"] < CACHE_TTL:
+        return _cache[code]["data"]
+    try:
+        token = await get_token()
+        await asyncio.sleep(0.3)
+        price_data = await fetch_price(code, token)
+        result = {**price_data, "code": code, "mode": KIS_MODE, "cached_at": int(now), "status": "ok"}
+        _cache[code] = {"ts": now, "data": result}
+        _last_good[code] = result
+        return result
+    except Exception as e:
+        if code in _last_good:
+            fb = dict(_last_good[code])
+            fb["status"] = "fallback"
+            return fb
+        raise HTTPException(status_code=503, detail={"status": "error", "error": str(e), "code": code})
