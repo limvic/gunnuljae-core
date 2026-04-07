@@ -414,3 +414,349 @@ async def root():
         if fpath.exists():
             return FileResponse(str(fpath))
     return {"status": "ok", "message": "Trinity API v5.1"}
+# ── Trinity v1.1 자동주문 ──────────────────────────────
+import json, hashlib, secrets
+from datetime import datetime, date
+from pathlib import Path
+
+TG_TOKEN    = os.environ.get("TG_TOKEN", "")
+TG_CHAT_ID  = os.environ.get("TG_CHAT_ID", "")
+KIS_ACCOUNT_NO   = os.environ.get("KIS_ACCOUNT_NO", "")
+KIS_ACCOUNT_TYPE = os.environ.get("KIS_ACCOUNT_TYPE", "01")
+
+ORDER_LOG_PATH = Path("/tmp/order_log.json")
+MAX_DAILY_ORDERS = 3  # 1일 최대 주문 수
+PRICE_GAP_LIMIT  = 1.0  # 신호가 대비 현재가 괴리 한도(%)
+BUTTON_EXPIRE_SEC = 300  # 버튼 만료 5분
+
+# 메모리 저장소
+_pending_orders: dict = {}   # token → 주문 대기 정보
+_daily_order_count: dict = {}  # date → count
+
+
+# ── 유틸 ──────────────────────────────────────────────
+def today_str() -> str:
+    return date.today().isoformat()
+
+def is_market_open() -> dict:
+    """장 시간 체크 (KST 기준)"""
+    now = datetime.now()
+    weekday = now.weekday()  # 0=월 ~ 4=금
+    hour, minute = now.hour, now.minute
+    total_min = hour * 60 + minute
+
+    if weekday >= 5:
+        return {"open": False, "type": "휴장", "reason": "주말"}
+    if 540 <= total_min < 930:   # 09:00~15:30
+        return {"open": True,  "type": "정규장", "reason": ""}
+    if 480 <= total_min < 540:   # 08:00~09:00
+        return {"open": False, "type": "시간외", "reason": "장전 시간외"}
+    if 930 <= total_min < 960:   # 15:30~16:00
+        return {"open": False, "type": "시간외", "reason": "장후 시간외"}
+    return {"open": False, "type": "휴장", "reason": "장외 시간"}
+
+def get_daily_count() -> int:
+    return _daily_order_count.get(today_str(), 0)
+
+def increment_daily_count():
+    key = today_str()
+    _daily_order_count[key] = _daily_order_count.get(key, 0) + 1
+
+def save_order_log(entry: dict):
+    logs = []
+    if ORDER_LOG_PATH.exists():
+        try:
+            logs = json.loads(ORDER_LOG_PATH.read_text())
+        except:
+            logs = []
+    logs.append(entry)
+    ORDER_LOG_PATH.write_text(json.dumps(logs, ensure_ascii=False, indent=2))
+
+async def send_telegram_button(message: str, order_token: str):
+    """확인 버튼 포함 텔레그램 메시지"""
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    callback_data = f"buy_{order_token}"
+    payload = {
+        "chat_id": TG_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML",
+        "reply_markup": {
+            "inline_keyboard": [[
+                {"text": "✅ 매수 확인", "callback_data": callback_data},
+                {"text": "❌ 취소",      "callback_data": f"cancel_{order_token}"}
+            ]]
+        }
+    }
+    async with httpx.AsyncClient(timeout=10) as c:
+        await c.post(url, json=payload)
+
+async def send_telegram_simple(message: str):
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    async with httpx.AsyncClient(timeout=10) as c:
+        await c.post(url, json={
+            "chat_id": TG_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML",
+        })
+
+
+# ── KIS 주문 ──────────────────────────────────────────
+async def kis_order_market_buy(code: str, qty: int = 1) -> dict:
+    """KIS mock 시장가 매수"""
+    token = await get_token()
+    tr_id = "VTTC0802U" if KIS_MODE == "mock" else "TTTC0802U"
+    headers = {
+        "content-type": "application/json",
+        "authorization": f"Bearer {token}",
+        "appkey": KIS_APP_KEY,
+        "appsecret": KIS_APP_SECRET,
+        "tr_id": tr_id,
+        "custtype": "P",
+    }
+    body = {
+        "CANO": KIS_ACCOUNT_NO,
+        "ACNT_PRDT_CD": KIS_ACCOUNT_TYPE,
+        "PDNO": code,
+        "ORD_DVSN": "01",   # 시장가
+        "ORD_QTY": str(qty),
+        "ORD_UNPR": "0",    # 시장가는 0
+    }
+    async with httpx.AsyncClient(timeout=10) as c:
+        res = await c.post(
+            f"{BASE_URL}/uapi/domestic-stock/v1/trading/order-cash",
+            headers=headers,
+            json=body,
+        )
+    data = res.json()
+    if data.get("rt_cd") != "0":
+        raise Exception(data.get("msg1", "주문 실패"))
+    return {
+        "order_no": data.get("output", {}).get("ODNO", ""),
+        "msg": data.get("msg1", ""),
+    }
+
+async def kis_get_balance() -> int:
+    """매수 가능 금액 조회"""
+    token = await get_token()
+    tr_id = "VTTC8908R" if KIS_MODE == "mock" else "TTTC8908R"
+    headers = {
+        "content-type": "application/json",
+        "authorization": f"Bearer {token}",
+        "appkey": KIS_APP_KEY,
+        "appsecret": KIS_APP_SECRET,
+        "tr_id": tr_id,
+        "custtype": "P",
+    }
+    async with httpx.AsyncClient(timeout=10) as c:
+        res = await c.get(
+            f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-psbl-order",
+            params={
+                "CANO": KIS_ACCOUNT_NO,
+                "ACNT_PRDT_CD": KIS_ACCOUNT_TYPE,
+                "PDNO": "005930",
+                "ORD_UNPR": "0",
+                "ORD_DVSN": "01",
+                "CMA_EVLU_AMT_ICLD_YN": "N",
+                "OVRS_ICLD_YN": "N",
+            },
+            headers=headers,
+        )
+    data = res.json()
+    if data.get("rt_cd") != "0":
+        return 0
+    return int(data.get("output", {}).get("ord_psbl_cash", 0))
+
+
+# ══ 주문 엔드포인트 ════════════════════════════════════
+
+@app.get("/signal")
+async def signal_and_alert(code: str, score: int, signal_price: int, summary: str = ""):
+    """
+    Trinity 신호 발생 → 텔레그램 확인 버튼 전송
+    index.html 또는 /notify에서 호출
+    """
+    if not TG_TOKEN or not TG_CHAT_ID:
+        return {"ok": False, "reason": "TG 설정 없음"}
+
+    # 장 시간 체크
+    mkt = is_market_open()
+    if not mkt["open"]:
+        return {"ok": False, "reason": f"장외: {mkt['reason']}"}
+
+    # 1일 한도
+    if get_daily_count() >= MAX_DAILY_ORDERS:
+        return {"ok": False, "reason": f"일일 한도 초과 ({MAX_DAILY_ORDERS}회)"}
+
+    # 고유 토큰 생성
+    order_token = secrets.token_hex(8)
+    _pending_orders[order_token] = {
+        "code": code,
+        "score": score,
+        "signal_price": signal_price,
+        "summary": summary,
+        "created_at": time.time(),
+    }
+
+    # 종목명 조회 시도
+    try:
+        token = await get_token()
+        p = await fetch_price(code, token)
+        name = p.get("name", code)
+        cur_price = p.get("price", signal_price)
+    except:
+        name = code
+        cur_price = signal_price
+
+    msg = (
+        f"🔥 <b>Trinity 진입 신호</b>\n\n"
+        f"종목: <b>{name}</b> ({code})\n"
+        f"점수: <b>{score}점</b>\n"
+        f"신호가: {signal_price:,}원 | 현재가: {cur_price:,}원\n"
+        f"조건: {summary}\n\n"
+        f"⏰ <b>5분 내 확인하지 않으면 자동 만료</b>"
+    )
+    await send_telegram_button(msg, order_token)
+    return {"ok": True, "token": order_token}
+
+
+@app.post("/callback")
+async def telegram_callback(update: dict):
+    """
+    텔레그램 버튼 콜백 처리
+    → Webhook으로 수신 (별도 설정 필요)
+    """
+    try:
+        cq = update.get("callback_query", {})
+        callback_data = cq.get("data", "")
+        callback_id   = cq.get("id", "")
+
+        # 콜백 응답 (버튼 로딩 해제)
+        async with httpx.AsyncClient(timeout=5) as c:
+            await c.post(
+                f"https://api.telegram.org/bot{TG_TOKEN}/answerCallbackQuery",
+                json={"callback_query_id": callback_id}
+            )
+
+        if callback_data.startswith("cancel_"):
+            order_token = callback_data.replace("cancel_", "")
+            _pending_orders.pop(order_token, None)
+            await send_telegram_simple("❌ 주문 취소되었습니다.")
+            return {"ok": True}
+
+        if not callback_data.startswith("buy_"):
+            return {"ok": False}
+
+        order_token = callback_data.replace("buy_", "")
+        order_info  = _pending_orders.get(order_token)
+
+        # ① 토큰 검증
+        if not order_info:
+            await send_telegram_simple("⚠️ 유효하지 않은 주문입니다. (이미 처리됨)")
+            return {"ok": False, "reason": "토큰 없음"}
+
+        # ② 만료 체크 (5분)
+        if time.time() - order_info["created_at"] > BUTTON_EXPIRE_SEC:
+            _pending_orders.pop(order_token, None)
+            await send_telegram_simple("⏰ 주문 만료되었습니다. (5분 초과)")
+            return {"ok": False, "reason": "만료"}
+
+        # ③ 중복 주문 방지 (즉시 제거)
+        _pending_orders.pop(order_token, None)
+
+        code         = order_info["code"]
+        signal_price = order_info["signal_price"]
+        score        = order_info["score"]
+
+        # ④ 1일 한도
+        if get_daily_count() >= MAX_DAILY_ORDERS:
+            await send_telegram_simple(f"🚫 오늘 주문 한도 초과 ({MAX_DAILY_ORDERS}회)")
+            return {"ok": False, "reason": "한도 초과"}
+
+        # ⑤ 장 시간
+        mkt = is_market_open()
+        if not mkt["open"]:
+            await send_telegram_simple(f"🚫 장외 시간: {mkt['reason']}")
+            return {"ok": False, "reason": "장외"}
+
+        # ⑥ 잔고 확인
+        token = await get_token()
+        p = await fetch_price(code, token)
+        cur_price = p.get("price", 0)
+        balance   = await kis_get_balance()
+
+        if balance < cur_price:
+            await send_telegram_simple(
+                f"💸 잔고 부족\n필요: {cur_price:,}원 | 가용: {balance:,}원"
+            )
+            return {"ok": False, "reason": "잔고 부족"}
+
+        # ⑦ 가격 괴리 체크 (+1% 이탈 시 취소)
+        if signal_price > 0:
+            gap_pct = (cur_price - signal_price) / signal_price * 100
+            if gap_pct > PRICE_GAP_LIMIT:
+                await send_telegram_simple(
+                    f"📈 가격 괴리 초과\n"
+                    f"신호가: {signal_price:,}원 → 현재가: {cur_price:,}원 "
+                    f"(+{gap_pct:.1f}%)\n기준: +{PRICE_GAP_LIMIT}%"
+                )
+                return {"ok": False, "reason": f"괴리 {gap_pct:.1f}%"}
+
+        # ⑧ KIS 주문 실행
+        click_time = datetime.now().isoformat()
+        try:
+            order_result = await kis_order_market_buy(code, qty=1)
+            order_no = order_result.get("order_no", "")
+            success  = True
+            result_msg = f"✅ 체결 완료!\n주문번호: {order_no}"
+        except Exception as e:
+            success  = False
+            order_no = ""
+            result_msg = f"❌ 주문 실패: {str(e)}"
+
+        # ⑨ 결과 텔레그램 회신
+        name = p.get("name", code)
+        final_msg = (
+            f"{'✅' if success else '❌'} <b>Trinity 주문 결과</b>\n\n"
+            f"종목: {name} ({code})\n"
+            f"점수: {score}점\n"
+            f"신호가: {signal_price:,}원\n"
+            f"체결가: {cur_price:,}원\n"
+            f"수량: 1주\n"
+            f"{result_msg}\n"
+            f"모드: {'모의' if KIS_MODE == 'mock' else '실전'}"
+        )
+        await send_telegram_simple(final_msg)
+        increment_daily_count()
+
+        # ⑩ 주문 로그 저장
+        save_order_log({
+            "date": today_str(),
+            "click_time": click_time,
+            "code": code,
+            "name": name,
+            "score": score,
+            "signal_price": signal_price,
+            "exec_price": cur_price,
+            "order_no": order_no,
+            "success": success,
+            "mode": KIS_MODE,
+            "summary": order_info.get("summary", ""),
+        })
+
+        return {"ok": success}
+
+    except Exception as e:
+        await send_telegram_simple(f"⚠️ 서버 오류: {str(e)}")
+        return {"ok": False, "reason": str(e)}
+
+
+@app.get("/order/logs")
+async def get_order_logs():
+    """주문 로그 조회"""
+    if not ORDER_LOG_PATH.exists():
+        return {"logs": [], "count": 0}
+    try:
+        logs = json.loads(ORDER_LOG_PATH.read_text())
+        return {"logs": logs, "count": len(logs), "today": get_daily_count()}
+    except:
+        return {"logs": [], "count": 0}
