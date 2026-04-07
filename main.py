@@ -1,5 +1,5 @@
 """
-건눌재 Core Engine v5
+Trinity Core Engine v5.1
 KIS API → 실데이터 + 건눌재 점수 + 다중 타임프레임
 """
 
@@ -7,7 +7,7 @@ import os, time, asyncio, httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="건눌재 Core Engine", version="5.0.0")
+app = FastAPI(title="건눌재 Core Engine", version="5.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
 KIS_APP_KEY    = os.environ.get("KIS_APP_KEY", "")
@@ -297,34 +297,58 @@ async def get_score(code: str, tf: str = "D"):
         raise HTTPException(status_code=503, detail=str(e))
 
 
-@app.get("/scan")
-async def scan_multi(codes: str, tf: str = "D"):
-    """
-    복수 종목 일괄 스캔
-    ?codes=005930,000660,042700&tf=5
-    """
+async def _scan_logic(codes: str, tf: str = "D"):
+    """공통 스캔 로직"""
     code_list = [c.strip() for c in codes.split(",") if c.strip()]
     if len(code_list) > 10:
         raise HTTPException(status_code=400, detail="최대 10종목")
+    token = await get_token()
+    results = []
+    for code in code_list:
+        try:
+            p   = await fetch_price(code, token)
+            pat = classify_pattern(p)
+            if tf == "D":
+                s = score_daily(p)
+            elif tf == "60":
+                m = await fetch_minute(code, token, "60")
+                s = score_60min(p, m)
+            else:
+                m = await fetch_minute(code, token, "5")
+                s = score_5min(p, m)
+            results.append({**p, **pat, **s, "code": code, "status": "ok"})
+            await asyncio.sleep(0.3)  # KIS API 안정성 (채피 권장 0.3s)
+        except Exception as e:
+            results.append({"code": code, "status": "error", "detail": str(e)})
+    return results
+
+
+@app.get("/stocks")
+async def stocks_multi(codes: str, tf: str = "D"):
+    """
+    채피 설계 — 복수 종목 일괄 스캔 (배열 직접 반환)
+    ?codes=005930,000660,042700&tf=5
+    응답: [{code, price, score, grade, signal, ...}, ...]
+    """
     try:
-        token = await get_token()
-        results = []
-        for code in code_list:
-            try:
-                p   = await fetch_price(code, token)
-                pat = classify_pattern(p)
-                if tf == "D":
-                    s = score_daily(p)
-                elif tf == "60":
-                    m = await fetch_minute(code, token, "60")
-                    s = score_60min(p, m)
-                else:
-                    m = await fetch_minute(code, token, "5")
-                    s = score_5min(p, m)
-                results.append({**p, **pat, **s, "code": code, "status": "ok"})
-                await asyncio.sleep(0.1)  # API 부하 방지
-            except Exception as e:
-                results.append({"code": code, "status": "error", "detail": str(e)})
+        results = await _scan_logic(codes, tf)
+        return results  # 배열 직접 반환 (채피 응답 구조)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/scan")
+async def scan_multi(codes: str, tf: str = "D"):
+    """
+    기존 호환 유지 — 래퍼 형태로 반환
+    ?codes=005930,000660,042700&tf=5
+    """
+    try:
+        results = await _scan_logic(codes, tf)
         return {"status": "ok", "tf": tf, "count": len(results), "results": results}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
