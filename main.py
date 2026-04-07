@@ -6,6 +6,8 @@ KIS API → 실데이터 + 건눌재 점수 + 다중 타임프레임
 import os, time, asyncio, httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI(title="건눌재 Core Engine", version="5.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
