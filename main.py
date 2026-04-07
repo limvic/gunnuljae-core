@@ -421,7 +421,7 @@ from pathlib import Path
 
 TG_TOKEN    = os.environ.get("TG_TOKEN", "")
 TG_CHAT_ID  = os.environ.get("TG_CHAT_ID", "")
-KIS_ACCOUNT_NO   = os.environ.get("KIS_ACCOUNT_NO", "")
+KIS_ACCOUNT_NO = os.environ.get("KIS_ACCOUNT", "")
 KIS_ACCOUNT_TYPE = os.environ.get("KIS_ACCOUNT_TYPE", "01")
 
 ORDER_LOG_PATH = Path("/tmp/order_log.json")
