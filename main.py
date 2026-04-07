@@ -354,7 +354,56 @@ async def scan_multi(codes: str, tf: str = "D"):
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+# ── 텔레그램 알람 ──────────────────────────────────────
+_alerted: set = set()  # 중복 방지
 
+async def send_telegram(token: str, chat_id: str, message: str):
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    async with httpx.AsyncClient(timeout=10) as c:
+        await c.post(url, json={
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        })
+
+@app.get("/notify")
+async def notify(codes: str, tf: str = "5",
+                 tg_token: str = "", chat_id: str = "",
+                 min_score: int = 85):
+    """
+    🔥 Trinity 텔레그램 알람
+    index.html에서 주기적으로 호출
+    """
+    global _alerted
+    if not tg_token or not chat_id:
+        return {"sent": 0, "reason": "토큰/ChatID 없음"}
+
+    results = await _scan_logic(codes, tf)
+    sent = []
+
+    for item in results:
+        code  = item.get("code", "")
+        score = item.get("score", 0)
+        grade = item.get("grade", "")
+        name  = item.get("name", code)
+        signal = item.get("signal", "")
+
+        alert_key = f"{code}_{grade}"
+
+        if score >= min_score and alert_key not in _alerted:
+            msg = (
+                f"🔥 <b>Trinity 진입 신호</b>\n\n"
+                f"종목: {name} ({code})\n"
+                f"점수: {score}점 ({grade}급)\n"
+                f"조건: {item.get('summary', '')}\n\n"
+                f"👉 <a href='https://finance.naver.com/item/main.nhn?code={code}'>네이버 현재가 바로가기</a>"
+            )
+            await send_telegram(tg_token, chat_id, msg)
+            _alerted.add(alert_key)
+            sent.append(code)
+
+    return {"sent": len(sent), "codes": sent}
 @app.get("/")
 async def root():
     """Trinity HTML 서빙"""
