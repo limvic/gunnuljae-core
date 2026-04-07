@@ -354,3 +354,14 @@ async def scan_multi(codes: str, tf: str = "D"):
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+@app.get("/")
+async def root():
+    """Trinity HTML 서빙"""
+    import pathlib
+    base = pathlib.Path(__file__).parent
+    for fname in ["index.html", "Trinity-v1.0.html"]:
+        fpath = base / fname
+        if fpath.exists():
+            return FileResponse(str(fpath))
+    return {"status": "ok", "message": "Trinity API v5.1"}
