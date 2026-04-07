@@ -1709,11 +1709,19 @@ function loadHist(h){
 function clearHist(){ if(!confirm('복기 기록을 모두 삭제할까요?'))return; S.history=[]; save(); renderHist(); }
 
 // ══ 텔레그램 ══════════════════════════════════════
+
 async function sendTG(t,r){
-  const{token,chatId}=S.cfg; if(!token||!chatId)return;
-  const msg=`🔥 Trinity 알림 [${TF_LBL[r.tf||S.tf]}]\n\n종목: ${t.name} (${t.code})\n등급: ${r.grade} | 점수: ${r.score}점\n구간: ${r.zone_text||'—'}\n눌림: ${r.pullback_pct}%\n시그널: ${r.signal}\n\n✅ 진입 조건:\n${r.entry_cond||'—'}\n\n🛑 손절 조건:\n${r.stop_cond||'—'}\n\n📝 ${r.summary}`;
-  try{ await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text:msg})}); }catch(e){}
-}
+  const{token,chatId,minAlert}=S.cfg;
+  if(!token||!chatId) return;
+  try{
+    await fetch(
+      `${RAIL}/notify?codes=${t.code}&tf=${S.tf}`
+      +`&tg_token=${encodeURIComponent(token)}`
+      +`&chat_id=${encodeURIComponent(chatId)}`
+      +`&min_score=${minAlert||85}`
+    );
+  }catch(e){}
+}  
 
 // ══ 자동 모드 ══════════════════════════════════════
 function toggleAuto(){
