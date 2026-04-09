@@ -399,6 +399,27 @@ a{text-decoration:none;color:inherit;}
 .ag-N{background:rgba(255,255,255,.05);color:var(--text3);border:1px solid var(--border);padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--mono);}
 .ag-row{display:flex;gap:5px;align-items:center;margin-top:5px;flex-wrap:wrap;}
 .ag-val{font-size:10px;color:var(--text3);font-family:var(--mono);}
+/* ── 림빅 필터 ── */
+.lf-box{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.2);border-radius:7px;padding:9px 11px;margin-bottom:8px;}
+.lf-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.lf-ttl{font-size:10px;color:var(--purple);font-weight:700;letter-spacing:.5px;}
+.lf-total{font-size:11px;font-weight:700;font-family:var(--mono);}
+.lf-items{display:flex;flex-direction:column;gap:3px;}
+.lf-item{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:5px;cursor:pointer;transition:all .15s;}
+.lf-item:active{background:rgba(167,139,250,.08);}
+.lf-check{width:16px;height:16px;border-radius:3px;border:1px solid rgba(167,139,250,.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all .2s;}
+.lf-item.done .lf-check{background:var(--purple);border-color:var(--purple);color:#fff;}
+.lf-item-txt{font-size:11px;color:var(--text3);flex:1;transition:color .2s;}
+.lf-item.done .lf-item-txt{color:var(--purple);opacity:.8;}
+.lf-score{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.lf-item.done .lf-score{color:var(--purple);}
+.lf-status{margin-top:7px;padding:7px 10px;border-radius:6px;text-align:center;font-size:12px;font-weight:700;}
+.lf-go{background:linear-gradient(135deg,rgba(167,139,250,.25),rgba(139,92,246,.2));color:var(--purple);border:1px solid rgba(167,139,250,.4);}
+.lf-wait{background:rgba(255,159,28,.1);color:var(--orange);border:1px solid rgba(255,159,28,.25);}
+.lf-pass{background:rgba(255,255,255,.03);color:var(--text3);border:1px solid var(--border);}
+.lf-integrated{margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.lf-int-lbl{font-size:10px;color:var(--text3);}
+.lf-int-score{font-size:14px;font-weight:700;font-family:var(--mono);}
 </style>
 </head>
 <body>
@@ -1305,6 +1326,7 @@ body += `<div id="pattern-${t.code}" style="font-size:10px;color:var(--text2);ma
     ${r ? exitHTML(r) : ''}
     ${r ? newsHTML(t.code,'pf'+t.code) : ''}
     ${r ? verifyBoxHTML(t.code, S.tf) : ''}
+    ${limbikFilterHTML(t.code, r.score)}
     ${naverLinks(t.code)}
   </div>`;
 }
@@ -1597,6 +1619,120 @@ function toggleVerify(id){
   if(el) el.classList.toggle('done');
 }
 
+// ══ 림빅 필터 ══════════════════════════════════════
+const LF_ITEMS = [
+  { key: 'sector', txt: '섹터 OK — 시장 흐름과 일치', pts: 10 },
+  { key: 'leader', txt: '대장주 OK — 섹터 대장 또는 연동', pts: 10 },
+  { key: 'struct', txt: '구조 OK — VWAP/5선/저점 구조 확인', pts: 10 },
+  { key: 'feel',   txt: '감각 OK — 편하게 들어갈 수 있다', pts: 10 },
+];
+
+function limbikFilterHTML(code, trinityScore) {
+  const safeCode = code.replace(/[^0-9a-zA-Z]/g, '');
+  const storeKey = 'lf_' + safeCode;
+  const saved = JSON.parse(localStorage.getItem(storeKey) || '{}');
+  const checkedCount = LF_ITEMS.filter(it => saved[it.key]).length;
+  const limbikScore = checkedCount * 10;
+  const totalScore = trinityScore + limbikScore;
+
+  const statusHTML = (() => {
+    if (trinityScore >= 80 && checkedCount >= 3)
+      return `<div class="lf-status lf-go">🟢 진입 가능 — Trinity ${trinityScore} + 림빅 ${limbikScore} = ${totalScore}점</div>`;
+    if (trinityScore >= 70 && checkedCount >= 2)
+      return `<div class="lf-status lf-wait">🟡 대기 — 조건 ${checkedCount}/4개 충족</div>`;
+    return `<div class="lf-status lf-pass">🔴 패스 — Trinity ${trinityScore}점 / 림빅 ${checkedCount}/4</div>`;
+  })();
+
+  const items = LF_ITEMS.map(it => {
+    const done = saved[it.key] ? 'done' : '';
+    return `<div class="lf-item ${done}" id="lfi-${safeCode}-${it.key}"
+      onclick="event.stopPropagation();toggleLF('${safeCode}','${it.key}','${storeKey}','${trinityScore}')">
+      <div class="lf-check">✓</div>
+      <span class="lf-item-txt">${it.txt}</span>
+      <span class="lf-score">+${it.pts}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="lf-box">
+    <div class="lf-title">
+      <span class="lf-ttl">👁 림빅 필터 <span style="font-size:9px;opacity:.6;">채피⚡</span></span>
+      <span class="lf-total" style="color:var(--purple)">${checkedCount}/4 · +${limbikScore}점</span>
+    </div>
+    <div class="lf-items">${items}</div>
+    ${statusHTML}
+    <div class="lf-integrated">
+      <span class="lf-int-lbl">통합 점수</span>
+      <span class="lf-int-score" style="color:${totalScore>=100?'var(--purple)':totalScore>=80?'var(--orange)':'var(--text3)'}">
+        ${totalScore}점 <span style="font-size:9px;opacity:.6;">/ Trinity${trinityScore}+림빅${limbikScore}</span>
+      </span>
+    </div>
+  </div>`;
+}
+
+function toggleLF(safeCode, key, storeKey, trinityScore) {
+  const saved = JSON.parse(localStorage.getItem(storeKey) || '{}');
+  saved[key] = !saved[key];
+  localStorage.setItem(storeKey, JSON.stringify(saved));
+
+  // UI 즉시 업데이트
+  const itemEl = document.getElementById('lfi-' + safeCode + '-' + key);
+  if (itemEl) itemEl.classList.toggle('done', saved[key]);
+
+  // 상태/점수 재계산 후 박스 전체 갱신
+  const boxEl = itemEl?.closest('.lf-box');
+  if (!boxEl) return;
+  const checkedCount = LF_ITEMS.filter(it => saved[it.key]).length;
+  const limbikScore = checkedCount * 10;
+  const ts = parseInt(trinityScore) || 0;
+  const totalScore = ts + limbikScore;
+
+  // 카운트 업데이트
+  const totalEl = boxEl.querySelector('.lf-total');
+  if (totalEl) totalEl.textContent = `${checkedCount}/4 · +${limbikScore}점`;
+
+  // 통합 점수 업데이트
+  const intEl = boxEl.querySelector('.lf-int-score');
+  if (intEl) {
+    intEl.style.color = totalScore >= 100 ? 'var(--purple)' : totalScore >= 80 ? 'var(--orange)' : 'var(--text3)';
+    intEl.innerHTML = `${totalScore}점 <span style="font-size:9px;opacity:.6;">/ Trinity${ts}+림빅${limbikScore}</span>`;
+  }
+
+  // 상태 배지 업데이트
+  const statusEl = boxEl.querySelector('.lf-status');
+  if (statusEl) {
+    if (ts >= 80 && checkedCount >= 3) {
+      statusEl.className = 'lf-status lf-go';
+      statusEl.textContent = `🟢 진입 가능 — Trinity ${ts} + 림빅 ${limbikScore} = ${totalScore}점`;
+    } else if (ts >= 70 && checkedCount >= 2) {
+      statusEl.className = 'lf-status lf-wait';
+      statusEl.textContent = `🟡 대기 — 조건 ${checkedCount}/4개 충족`;
+    } else {
+      statusEl.className = 'lf-status lf-pass';
+      statusEl.textContent = `🔴 패스 — Trinity ${ts}점 / 림빅 ${checkedCount}/4`;
+    }
+  }
+
+  // 텔레그램 알림 조건 충족 시 자동 발송
+  if (ts >= 80 && checkedCount >= 3) {
+    const code = safeCode;
+    const t = S.portfolio.concat(S.extra).find(x => x.code === code) || { code, name: code };
+    const r = S.results[code]?.[S.tf];
+    if (r) sendTGLimbik(t, r, checkedCount, limbikScore, totalScore);
+  }
+}
+
+async function sendTGLimbik(t, r, checkedCount, limbikScore, totalScore) {
+  const { token, chatId } = S.cfg;
+  if (!token || !chatId) return;
+  try {
+    const msg = `🟢 Trinity + 림빅 진입 가능\n\n종목: ${t.name} (${t.code})\nTrinity: ${r.score}점\n림빅 필터: ${checkedCount}/4\n통합: ${totalScore}점\n\n${r.summary || ''}`;
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: msg })
+    });
+  } catch (e) {}
+}  
 // ══ 시계 + 장 상태 + 5분봉 카운트다운 ══════════════
 const DAYS=['일','월','화','수','목','금','토'];
 function updateClock(){
