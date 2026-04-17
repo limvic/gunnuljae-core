@@ -57,6 +57,108 @@ ALERT_COOLDOWN_SECONDS = 600  # 10분
 MAX_ALERTS_PER_STOCK_DAILY = 3
 
 # ═══════════════════════════════════════════════
+# 🛡️ v1.1-A.1 안정성 레이어 (채피 지시사항)
+# ═══════════════════════════════════════════════
+DEBUG_MODE = os.environ.get("DEBUG", "false").lower() == "true"
+
+
+class ErrorType:
+    """에러 타입 분류 (채피 P4)"""
+    TOKEN_ERROR = "token_error"
+    API_ERROR = "api_error"
+    DATA_ERROR = "data_error"
+    UNKNOWN_ERROR = "unknown_error"
+
+
+# Mock 데이터 템플릿 (채피 P2)
+MOCK_STOCK_DATA = {
+    "price": 0,
+    "is_bullish": False,
+    "pullback_pct": 0.0,
+    "low": 0,
+}
+
+MOCK_TOP_TRADE_ROW = {
+    "mksc_shrn_iscd": "000000",
+    "hts_kor_isnm": "MOCK",
+    "stck_prpr": "0",
+    "prdy_ctrt": "0",
+    "acml_vol": "0",
+    "prdy_vol": "0",
+    "acml_tr_pbmn": "0",
+}
+
+
+async def safe_get_token(get_token_fn) -> Optional[str]:
+    """
+    토큰 발급 안전 래퍼 (채피 P1)
+    실패 시 예외 대신 None 반환 → 서버 죽지 않음
+    """
+    try:
+        token = await get_token_fn()
+        return token if token else None
+    except HTTPException as e:
+        if DEBUG_MODE:
+            print(f"[TOKEN_ERROR] HTTPException: {e.detail}")
+        return None
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"[TOKEN_ERROR] {type(e).__name__}: {e}")
+        return None
+
+
+def build_error_response(
+    error_type: str,
+    message: str,
+    hint: Optional[str] = None,
+) -> dict:
+    """채피 P4: 구조화된 에러 응답"""
+    payload = {
+        "status": "error",
+        "error_type": error_type,
+        "message": message,
+        "timestamp": now_kst().isoformat() if _time_helpers_ready() else None,
+    }
+    if hint:
+        payload["hint"] = hint
+    if DEBUG_MODE:
+        payload["debug"] = True
+    return payload
+
+
+def _time_helpers_ready() -> bool:
+    """now_kst가 정의됐는지 체크 (순환 import 방지)"""
+    return "now_kst" in globals()
+
+
+def build_empty_scan_response(reason: str, error_type: str) -> dict:
+    """
+    채피 P2 + P5: scan 실패 시에도 '항상 응답하는 API'
+    구조 유지 + 빈 결과 + 에러 메타
+    """
+    n = datetime.now(KST)
+    return {
+        "scanned_at": n.isoformat(),
+        "total_scanned": 0,
+        "excluded_count": 0,
+        "diffusion": {
+            "timestamp": n.isoformat(),
+            "top10_trade_value": 0,
+            "total_trade_value": 0,
+            "concentration": 0.0,
+            "diffusion": 0.0,
+            "interpretation": f"[mock] {reason}",
+            "bonus_applied": 0,
+            "active": False,
+        },
+        "time_multiplier": time_multiplier(n),
+        "candidates": [],
+        "status": "fallback",
+        "error_type": error_type,
+        "message": reason,
+    }
+
+# ═══════════════════════════════════════════════
 # 데이터 모델
 # ═══════════════════════════════════════════════
 class ScoreBreakdown(BaseModel):
@@ -413,8 +515,14 @@ async def fetch_top_trade_value(
     KIS TR ID: FHPST01710000 (거래대금순위)
 
     Returns: [{code, name, trade_value, ...}, ...]
+    v1.1-A.1: 토큰/API 실패 시 빈 리스트 반환 (죽지 않음)
     """
-    token = await get_token_fn()
+    token = await safe_get_token(get_token_fn)
+    if not token:
+        if DEBUG_MODE:
+            print("[fetch_top_trade_value] token unavailable → [] fallback")
+        return []
+
     headers = {
         "authorization": f"Bearer {token}",
         "appkey": os.environ.get("KIS_APP_KEY", ""),
@@ -439,19 +547,23 @@ async def fetch_top_trade_value(
         "FID_INPUT_DATE_1": "",
     }
 
-    async with httpx.AsyncClient(timeout=15) as client:
-        res = await client.get(
-            f"{base_url}/uapi/domestic-stock/v1/quotations/volume-rank",
-            headers=headers,
-            params=params,
-        )
-        data = res.json()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.get(
+                f"{base_url}/uapi/domestic-stock/v1/quotations/volume-rank",
+                headers=headers,
+                params=params,
+            )
+            data = res.json()
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"[fetch_top_trade_value] API exception: {e}")
+        return []
 
     if data.get("rt_cd") != "0":
-        raise HTTPException(
-            status_code=502,
-            detail=f"거래대금 상위 조회 실패: {data.get('msg1','')}",
-        )
+        if DEBUG_MODE:
+            print(f"[fetch_top_trade_value] API rt_cd={data.get('rt_cd')}: {data.get('msg1','')}")
+        return []
 
     output = data.get("output", [])[:top_n]
     return output
@@ -462,8 +574,14 @@ async def fetch_stock_detail(
     base_url: str,
     code: str,
 ) -> dict:
-    """종목 현재가/거래량/등락률 등 상세"""
-    token = await get_token_fn()
+    """
+    종목 현재가/거래량/등락률 등 상세
+    v1.1-A.1: 실패 시 빈 dict 반환
+    """
+    token = await safe_get_token(get_token_fn)
+    if not token:
+        return {}
+
     headers = {
         "authorization": f"Bearer {token}",
         "appkey": os.environ.get("KIS_APP_KEY", ""),
@@ -474,19 +592,25 @@ async def fetch_stock_detail(
         "FID_COND_MRKT_DIV_CODE": "J",
         "FID_INPUT_ISCD": code,
     }
-    async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(
-            f"{base_url}/uapi/domestic-stock/v1/quotations/inquire-price",
-            headers=headers,
-            params=params,
-        )
-        data = res.json()
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.get(
+                f"{base_url}/uapi/domestic-stock/v1/quotations/inquire-price",
+                headers=headers,
+                params=params,
+            )
+            data = res.json()
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"[fetch_stock_detail({code})] API exception: {e}")
+        return {}
 
     if data.get("rt_cd") != "0":
-        raise HTTPException(
-            status_code=502,
-            detail=f"종목 상세 조회 실패({code}): {data.get('msg1','')}",
-        )
+        if DEBUG_MODE:
+            print(f"[fetch_stock_detail({code})] rt_cd={data.get('rt_cd')}: {data.get('msg1','')}")
+        return {}
+
     return data.get("output", {})
 
 
@@ -496,8 +620,14 @@ async def fetch_min5_candles(
     code: str,
     count: int = 30,
 ) -> list[dict]:
-    """5분봉 OHLC (VWAP/눌림 분석용)"""
-    token = await get_token_fn()
+    """
+    5분봉 OHLC (VWAP/눌림 분석용)
+    v1.1-A.1: 토큰/API 실패 시 빈 리스트 반환
+    """
+    token = await safe_get_token(get_token_fn)
+    if not token:
+        return []
+
     headers = {
         "authorization": f"Bearer {token}",
         "appkey": os.environ.get("KIS_APP_KEY", ""),
@@ -512,13 +642,19 @@ async def fetch_min5_candles(
         "FID_INPUT_HOUR_1": now.strftime("%H%M%S"),
         "FID_PW_DATA_INCU_YN": "Y",
     }
-    async with httpx.AsyncClient(timeout=10) as client:
-        res = await client.get(
-            f"{base_url}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice",
-            headers=headers,
-            params=params,
-        )
-        data = res.json()
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            res = await client.get(
+                f"{base_url}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice",
+                headers=headers,
+                params=params,
+            )
+            data = res.json()
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"[fetch_min5_candles({code})] API exception: {e}")
+        return []
 
     if data.get("rt_cd") != "0":
         return []
@@ -642,13 +778,34 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
     """
     router = APIRouter(prefix="/api/sangjeonjo", tags=["상전조"])
 
-    @router.get("/diffusion", response_model=MarketDiffusion)
+    @router.get("/diffusion")
     async def get_diffusion():
-        """시장 주의력 분산도 조회"""
+        """
+        시장 주의력 분산도 조회
+        v1.1-A.1: 토큰/API 실패 시 fallback mock 응답
+        """
         try:
             rows = await fetch_top_trade_value(get_token_fn, base_url, "ALL", 200)
         except Exception as e:
-            raise HTTPException(status_code=502, detail=str(e))
+            if DEBUG_MODE:
+                print(f"[/diffusion] unexpected: {e}")
+            rows = []
+
+        if not rows:
+            # Fallback: 구조 유지된 mock 응답
+            n = now_kst()
+            return {
+                "timestamp": n.isoformat(),
+                "top10_trade_value": 0,
+                "total_trade_value": 0,
+                "concentration": 0.0,
+                "diffusion": 0.0,
+                "interpretation": "[fallback] 거래대금 데이터 없음 (토큰/API 점검 필요)",
+                "bonus_applied": 0,
+                "active": False,
+                "status": "fallback",
+                "error_type": ErrorType.TOKEN_ERROR,
+            }
 
         # 거래대금 필드 파싱 (KIS 필드명: acml_tr_pbmn)
         def tv(r):
@@ -661,12 +818,15 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
         total = sum(tv(r) for r in rows)
         return compute_market_diffusion(top10, total)
 
-    @router.get("/scan", response_model=ScanResult)
+    @router.get("/scan")
     async def scan_market(
         min_score: int = Query(80, ge=0, le=100),
         force_refresh: bool = Query(False),
     ):
-        """전체 유니버스 스캔"""
+        """
+        전체 유니버스 스캔
+        v1.1-A.1: 어떤 실패에도 구조화된 응답 보장 (죽지 않는 API)
+        """
         now = time.time()
 
         # 캐시 확인
@@ -675,13 +835,28 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
             and now - _scan_cache["ts"] < SCAN_CACHE_TTL):
             return _scan_cache["data"]
 
-        # 1. 거래대금 상위 200 조회
-        rows = await fetch_top_trade_value(get_token_fn, base_url, "ALL", UNIVERSE_TOP_N)
+        # 1. 거래대금 상위 200 조회 (실패 시 빈 리스트 반환)
+        try:
+            rows = await fetch_top_trade_value(get_token_fn, base_url, "ALL", UNIVERSE_TOP_N)
+        except Exception as e:
+            if DEBUG_MODE:
+                print(f"[/scan] fetch_top_trade_value unexpected: {e}")
+            rows = []
+
+        # 🛡️ Fallback: 거래대금 데이터가 없으면 구조만 유지한 응답
+        if not rows:
+            fallback = build_empty_scan_response(
+                reason="거래대금 상위 조회 실패 (토큰/API 점검 필요)",
+                error_type=ErrorType.TOKEN_ERROR,
+            )
+            return fallback
 
         # 2. 주의력 분산도 먼저 계산
         def tv(r):
-            try: return int(r.get("acml_tr_pbmn", 0))
-            except: return 0
+            try:
+                return int(r.get("acml_tr_pbmn", 0))
+            except:
+                return 0
 
         top10_values = [tv(r) for r in rows[:10]]
         total_value = sum(tv(r) for r in rows)
@@ -693,62 +868,79 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
 
         candidates: list[StockCandidate] = []
         excluded_count = 0
+        process_errors = 0  # 개별 종목 실패 카운트 (디버깅용)
 
         # API 부하 방지 → 세마포어로 동시 10개 제한
         sem = asyncio.Semaphore(10)
 
         async def process(row: dict, rank: int):
-            nonlocal excluded_count
-            code = row.get("mksc_shrn_iscd", "")
-            name = row.get("hts_kor_isnm", "")
-            if not code:
-                return None
-
-            async with sem:
-                try:
-                    # 5분봉으로 VWAP/눌림 파생
-                    candles = await fetch_min5_candles(get_token_fn, base_url, code, 10)
-                    derived = derive_from_candles(candles)
-                except Exception:
-                    derived = {
-                        "vwap": 0.0, "min5_low_holding": False,
-                        "min5_wiggle": False, "upper_tail_count": 0,
-                        "volume_declining": False,
-                    }
-
+            """
+            개별 종목 처리
+            v1.1-A.1 P3: 어떤 실패에도 None 반환, 예외 전파 금지
+            """
+            nonlocal excluded_count, process_errors
             try:
-                current_price = int(row.get("stck_prpr", 0))
-                change_rate = float(row.get("prdy_ctrt", 0))
-                volume = int(row.get("acml_vol", 0))
-                trade_value = tv(row)
-                # 전일 대비 거래량 배수 추정
-                prev_vol = int(row.get("prdy_vol", 0) or 0)
-                volume_ratio = (volume / prev_vol) if prev_vol > 0 else 1.0
-            except (ValueError, TypeError):
-                return None
+                code = row.get("mksc_shrn_iscd", "")
+                name = row.get("hts_kor_isnm", "")
+                if not code:
+                    return None
 
-            raw = StockRawData(
-                code=code,
-                name=name,
-                current_price=current_price,
-                change_rate=change_rate,
-                volume=volume,
-                volume_ratio=volume_ratio,
-                vwap=derived["vwap"],
-                trade_value=trade_value,
-                market_cap_rank=rank + 1,  # 거래대금 기준 순위 (근사)
-                market_type="KOSPI",        # TODO: 실제 구분 필요
-                min5_low_holding=derived["min5_low_holding"],
-                min5_wiggle=derived["min5_wiggle"],
-                volume_declining=derived["volume_declining"],
-                upper_tail_count=derived["upper_tail_count"],
-            )
+                # 5분봉 조회 (실패해도 기본값 사용)
+                async with sem:
+                    try:
+                        candles = await fetch_min5_candles(get_token_fn, base_url, code, 10)
+                        derived = derive_from_candles(candles)
+                    except Exception as e:
+                        if DEBUG_MODE:
+                            print(f"[process({code})] candles failed: {e}")
+                        derived = {
+                            "vwap": 0.0, "min5_low_holding": False,
+                            "min5_wiggle": False, "upper_tail_count": 0,
+                            "volume_declining": False,
+                        }
 
-            candidate = score_stock(raw, diffusion.bonus_applied, n)
-            if candidate.tier == "제외":
-                excluded_count += 1
+                # 숫자 파싱 (실패 시 종목 스킵)
+                try:
+                    current_price = int(row.get("stck_prpr", 0))
+                    change_rate = float(row.get("prdy_ctrt", 0))
+                    volume = int(row.get("acml_vol", 0))
+                    trade_value = tv(row)
+                    prev_vol = int(row.get("prdy_vol", 0) or 0)
+                    volume_ratio = (volume / prev_vol) if prev_vol > 0 else 1.0
+                except (ValueError, TypeError) as e:
+                    if DEBUG_MODE:
+                        print(f"[process({code})] parse failed: {e}")
+                    return None
+
+                raw = StockRawData(
+                    code=code,
+                    name=name,
+                    current_price=current_price,
+                    change_rate=change_rate,
+                    volume=volume,
+                    volume_ratio=volume_ratio,
+                    vwap=derived["vwap"],
+                    trade_value=trade_value,
+                    market_cap_rank=rank + 1,
+                    market_type="KOSPI",  # v1.1-A.1에서는 아직 KOSPI 고정
+                    min5_low_holding=derived["min5_low_holding"],
+                    min5_wiggle=derived["min5_wiggle"],
+                    volume_declining=derived["volume_declining"],
+                    upper_tail_count=derived["upper_tail_count"],
+                )
+
+                candidate = score_stock(raw, diffusion.bonus_applied, n)
+                if candidate.tier == "제외":
+                    excluded_count += 1
+                    return None
+                return candidate
+
+            except Exception as e:
+                # 🛡️ 최종 방어선: 어떤 에러든 None 반환
+                process_errors += 1
+                if DEBUG_MODE:
+                    print(f"[process] unexpected exception: {type(e).__name__}: {e}")
                 return None
-            return candidate
 
         tasks = [process(row, i) for i, row in enumerate(rows)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -760,27 +952,51 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
         # 점수 내림차순 정렬
         candidates.sort(key=lambda c: c.final_score, reverse=True)
 
-        result = ScanResult(
-            scanned_at=n.isoformat(),
-            total_scanned=len(rows),
-            excluded_count=excluded_count,
-            diffusion=diffusion,
-            time_multiplier=t_mult,
-            candidates=candidates[:50],  # 상위 50개만
-        )
+        # ⚠️ dict로 반환 (response_model 제거 → 유연한 응답)
+        result = {
+            "scanned_at": n.isoformat(),
+            "total_scanned": len(rows),
+            "excluded_count": excluded_count,
+            "diffusion": diffusion.dict() if hasattr(diffusion, 'dict') else diffusion.model_dump(),
+            "time_multiplier": t_mult,
+            "candidates": [
+                c.dict() if hasattr(c, 'dict') else c.model_dump()
+                for c in candidates[:50]
+            ],
+            "status": "ok",
+        }
+
+        if DEBUG_MODE and process_errors > 0:
+            result["debug_process_errors"] = process_errors
 
         _scan_cache["data"] = result
         _scan_cache["ts"] = now
         return result
 
-    @router.get("/score/{code}", response_model=StockCandidate)
+    @router.get("/score/{code}")
     async def get_single_score(code: str):
-        """개별 종목 점수 상세"""
+        """
+        개별 종목 점수 상세
+        v1.1-A.1: 토큰/파싱 실패 시 fallback 응답
+        """
         try:
             detail = await fetch_stock_detail(get_token_fn, base_url, code)
             candles = await fetch_min5_candles(get_token_fn, base_url, code, 10)
         except Exception as e:
-            raise HTTPException(status_code=502, detail=str(e))
+            if DEBUG_MODE:
+                print(f"[/score/{code}] fetch failed: {e}")
+            detail, candles = {}, []
+
+        if not detail:
+            # Fallback: token 실패 or 존재하지 않는 종목
+            return {
+                "code": code,
+                "name": code,
+                "status": "fallback",
+                "error_type": ErrorType.TOKEN_ERROR,
+                "message": "종목 데이터 조회 실패 (토큰/API 점검 필요)",
+                "mock_data": MOCK_STOCK_DATA,
+            }
 
         derived = derive_from_candles(candles)
 
@@ -791,8 +1007,14 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
             trade_value = int(detail.get("acml_tr_pbmn", 0))
             prev_vol = int(detail.get("prdy_vol", 0) or 0)
             volume_ratio = (volume / prev_vol) if prev_vol > 0 else 1.0
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=500, detail="종목 데이터 파싱 실패")
+        except (ValueError, TypeError) as e:
+            return {
+                "code": code,
+                "status": "fallback",
+                "error_type": ErrorType.DATA_ERROR,
+                "message": f"종목 데이터 파싱 실패: {str(e) if DEBUG_MODE else ''}",
+                "mock_data": MOCK_STOCK_DATA,
+            }
 
         raw = StockRawData(
             code=code,
@@ -809,11 +1031,80 @@ def create_router(get_token_fn, base_url: str) -> APIRouter:
             upper_tail_count=derived["upper_tail_count"],
         )
 
-        # 개별 조회 시에는 주의력 분산도 0으로 간주 (속도 위해)
-        return score_stock(raw, 0, now_kst())
+        candidate = score_stock(raw, 0, now_kst())
+        result = candidate.dict() if hasattr(candidate, 'dict') else candidate.model_dump()
+        result["status"] = "ok"
+        return result
 
     @router.get("/health")
     async def health():
-        return {"status": "ok", "module": "sangjeonjo", "version": "1.1-A"}
+        return {
+            "status": "ok",
+            "module": "sangjeonjo",
+            "version": "1.1-A.1",
+            "debug_mode": DEBUG_MODE,
+            "kis_mode": os.environ.get("KIS_MODE", "unknown"),
+            "timestamp": now_kst().isoformat(),
+        }
+
+    @router.get("/diagnostic")
+    async def diagnostic():
+        """
+        v1.1-A.1 신규: KIS 연결 진단
+        토큰 발급 시도 → 어디서 막히는지 구체적으로 리턴
+        """
+        n = now_kst()
+        result = {
+            "timestamp": n.isoformat(),
+            "version": "1.1-A.1",
+            "checks": {},
+        }
+
+        # 1. 환경변수 체크
+        result["checks"]["env"] = {
+            "KIS_APP_KEY": bool(os.environ.get("KIS_APP_KEY")),
+            "KIS_APP_SECRET": bool(os.environ.get("KIS_APP_SECRET")),
+            "KIS_ACCOUNT": bool(os.environ.get("KIS_ACCOUNT")),
+            "KIS_MODE": os.environ.get("KIS_MODE", "NOT_SET"),
+        }
+
+        # 2. 토큰 발급 시도
+        token = await safe_get_token(get_token_fn)
+        result["checks"]["token"] = {
+            "obtained": bool(token),
+            "base_url": base_url,
+        }
+
+        # 3. 토큰 있으면 최소 API 호출 1번 (삼성전자 현재가)
+        if token:
+            try:
+                test_detail = await fetch_stock_detail(get_token_fn, base_url, "005930")
+                result["checks"]["api_call"] = {
+                    "success": bool(test_detail),
+                    "sample_price": test_detail.get("stck_prpr", None) if test_detail else None,
+                }
+            except Exception as e:
+                result["checks"]["api_call"] = {
+                    "success": False,
+                    "error": str(e) if DEBUG_MODE else "api_error",
+                }
+        else:
+            result["checks"]["api_call"] = {"success": False, "skipped": "no_token"}
+
+        # 종합 판정
+        if not all(result["checks"]["env"].values()):
+            result["overall"] = "환경변수 누락"
+            result["error_type"] = ErrorType.TOKEN_ERROR
+        elif not token:
+            result["overall"] = "토큰 발급 실패 (KIS API 키/시크릿 확인 필요)"
+            result["error_type"] = ErrorType.TOKEN_ERROR
+        elif not result["checks"]["api_call"].get("success"):
+            result["overall"] = "토큰 OK, API 호출 실패"
+            result["error_type"] = ErrorType.API_ERROR
+        else:
+            result["overall"] = "전체 정상"
+            result["error_type"] = None
+
+        return result
 
     return router
