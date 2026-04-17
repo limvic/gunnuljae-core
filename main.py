@@ -414,6 +414,7 @@ async def root():
         if fpath.exists():
             return FileResponse(str(fpath))
     return {"status": "ok", "message": "Trinity API v5.1"}
+<<<<<<< HEAD
 # ── Trinity v1.1 자동주문 ──────────────────────────────
 import json, hashlib, secrets
 from datetime import datetime, date
@@ -760,3 +761,8 @@ async def get_order_logs():
         return {"logs": logs, "count": len(logs), "today": get_daily_count()}
     except:
         return {"logs": [], "count": 0}
+=======
+
+from sangjeonjo import create_router
+app.include_router(create_router(get_token, BASE_URL))
+>>>>>>> 01b964c (feat: 상전조 v1.1-A)
