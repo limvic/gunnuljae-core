@@ -833,7 +833,7 @@ app.include_router(create_router(get_token, BASE_URL))
 # ── 거래량 TOP 30 v2 (네이버 크롤링) ──
 import re as _re_top30
 
-@app.get("/top30_v2")
+@app.get("/top30_v2_OLD")
 async def get_top30_v2():
     """네이버 증권 거래량 순위 TOP 30 (코스피+코스닥)"""
     now = time.time()
@@ -880,3 +880,64 @@ async def get_top30_v2():
         return response
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"TOP30 실패: {str(e)}")
+       # ── 거래량 TOP 30 v3 (BeautifulSoup 방식) ──
+@app.get("/top30_v2")
+async def get_top30_v3():
+    """네이버 증권 거래량 순위 TOP 30 (코스피+코스닥)"""
+    from bs4 import BeautifulSoup
+    now = time.time()
+    if "top30_v3" in _cache and now - _cache["top30_v3"]["ts"] < 60:
+        return _cache["top30_v3"]["data"]
+    try:
+        all_items = []
+        async with httpx.AsyncClient(timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+        }) as c:
+            for mkt, sosok in [("kospi", "0"), ("kosdaq", "1")]:
+                url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={sosok}"
+                res = await c.get(url)
+                res.encoding = "euc-kr"
+                soup = BeautifulSoup(res.text, "html.parser")
+                table = soup.find("table", class_="type_2")
+                if not table:
+                    continue
+                for row in table.find_all("tr"):
+                    tds = row.find_all("td")
+                    if len(tds) < 10:
+                        continue
+                    link = tds[1].find("a")
+                    if not link:
+                        continue
+                    href = link.get("href", "")
+                    code_match = _re_top30.search(r"code=(\d{6})", href)
+                    if not code_match:
+                        continue
+                    try:
+                        name = link.get_text(strip=True)
+                        price = int(tds[2].get_text(strip=True).replace(",", ""))
+                        change_txt = tds[4].get_text(strip=True).replace("%", "").replace(",", "")
+                        change_pct = float(change_txt)
+                        volume = int(tds[5].get_text(strip=True).replace(",", ""))
+                        all_items.append({
+                            "code": code_match.group(1),
+                            "name": name,
+                            "price": price,
+                            "change_pct": change_pct,
+                            "volume": volume,
+                            "high": 0,
+                            "market": mkt,
+                        })
+                    except:
+                        continue
+        all_items.sort(key=lambda x: x["volume"], reverse=True)
+        result = []
+        for idx, item in enumerate(all_items[:30]):
+            item["rank"] = idx + 1
+            result.append(item)
+        if not result:
+            raise Exception(f"파싱 실패 - all_items={len(all_items)}")
+        response = {"status": "ok", "items": result}
+        _cache["top30_v3"] = {"ts": now, "data": response}
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"TOP30 실패: {str(e)}") 
