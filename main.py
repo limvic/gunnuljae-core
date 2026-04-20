@@ -760,6 +760,72 @@ async def get_order_logs():
         return {"logs": logs, "count": len(logs), "today": get_daily_count()}
     except:
         return {"logs": [], "count": 0}
+# ── 거래량 TOP 30 ──────────────────────────────────────
+@app.get("/top30")
+async def get_top30():
+    """
+    KIS 거래량 순위 TOP 30
+    TR: FHPST01710000
+    """
+    now = time.time()
+    cache_key = "top30"
+    if cache_key in _cache and now - _cache[cache_key]["ts"] < 60:  # 1분 캐시
+        return _cache[cache_key]["data"]
+    try:
+        token = await get_token()
+        headers = {
+            "content-type": "application/json",
+            "authorization": f"Bearer {token}",
+            "appkey": KIS_APP_KEY,
+            "appsecret": KIS_APP_SECRET,
+            "tr_id": "FHPST01710000",
+            "custtype": "P",
+        }
+        async with httpx.AsyncClient(timeout=10) as c:
+            res = await c.get(
+                f"{BASE_URL}/uapi/domestic-stock/v1/ranking/volume",
+                params={
+                    "fid_cond_mrkt_div_code": "J",
+                    "fid_cond_scr_div_code": "20171",
+                    "fid_input_iscd": "0000",
+                    "fid_div_cls_code": "0",
+                    "fid_blng_cls_code": "0",
+                    "fid_trgt_cls_code": "111111111",
+                    "fid_trgt_exls_cls_code": "000000",
+                    "fid_input_price_1": "",
+                    "fid_input_price_2": "",
+                    "fid_vol_cnt": "",
+                    "fid_input_date_1": "",
+                },
+                headers=headers,
+            )
+        data = res.json()
+        if data.get("rt_cd") != "0" or not data.get("output"):
+            raise Exception(data.get("msg1", "TOP30 조회 실패"))
 
+        result = []
+        for item in data["output"][:30]:
+            code = item.get("mksc_shrn_iscd", "")
+            name = item.get("hts_kor_isnm", "")
+            price = int(item.get("stck_prpr", 0))
+            change_pct = float(item.get("prdy_ctrt", 0))
+            volume = int(item.get("acml_vol", 0))
+            high = int(item.get("stck_hgpr", 0))
+            if code and name:
+                result.append({
+                    "rank": len(result) + 1,
+                    "code": code,
+                    "name": name,
+                    "price": price,
+                    "change_pct": change_pct,
+                    "volume": volume,
+                    "high": high,
+                })
+
+        _cache[cache_key] = {"ts": now, "data": {"status": "ok", "items": result}}
+        return {"status": "ok", "items": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
 from sangjeonjo import create_router
 app.include_router(create_router(get_token, BASE_URL))
