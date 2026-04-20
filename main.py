@@ -842,7 +842,7 @@ async def get_top30_v2():
     try:
         all_items = []
         async with httpx.AsyncClient(timeout=10, headers={
-            "User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+            "User-Agent": "Mozilla/5.0 (Linux; Windows NT 10.0) AppleWebKit/537.36",
         }) as c:
             for mkt, sosok in [("kospi", "0"), ("kosdaq", "1")]:
                 url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={sosok}"
