@@ -17,7 +17,7 @@ KIS_APP_SECRET = os.environ.get("KIS_APP_SECRET", "")
 KIS_MODE       = os.environ.get("KIS_MODE", "mock")
 
 BASE_URL   = "https://openapivts.koreainvestment.com:29443" if KIS_MODE == "mock" else "https://openapi.koreainvestment.com:9443"
-TOKEN_PATH = "/oauth2/tokenP" if KIS_MODE == "mock" else "/oauth2/token"
+TOKEN_PATH = "/oauth2/tokenP"
 
 _token_cache = {"token": None, "expires_at": 0}
 _cache: dict = {}
