@@ -829,3 +829,54 @@ async def get_top30():
         raise HTTPException(status_code=503, detail=str(e))
 from sangjeonjo import create_router
 app.include_router(create_router(get_token, BASE_URL))
+
+# ── 거래량 TOP 30 v2 (네이버 크롤링) ──
+import re as _re_top30
+
+@app.get("/top30_v2")
+async def get_top30_v2():
+    """네이버 증권 거래량 순위 TOP 30 (코스피+코스닥)"""
+    now = time.time()
+    if "top30_v2" in _cache and now - _cache["top30_v2"]["ts"] < 60:
+        return _cache["top30_v2"]["data"]
+    try:
+        all_items = []
+        async with httpx.AsyncClient(timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+        }) as c:
+            for mkt, sosok in [("kospi", "0"), ("kosdaq", "1")]:
+                url = f"https://finance.naver.com/sise/sise_quant.naver?sosok={sosok}"
+                res = await c.get(url)
+                html = res.text
+                pattern = _re_top30.compile(
+                    r'<a href="/item/main\.naver\?code=(\d{6})"[^>]*>([^<]+)</a>.*?'
+                    r'<td class="number">([\d,]+)</td>.*?'
+                    r'<td[^>]*>.*?([+\-]?[\d\.]+)%.*?</td>.*?'
+                    r'<td class="number">([\d,]+)</td>',
+                    _re_top30.DOTALL
+                )
+                for m in pattern.finditer(html):
+                    try:
+                        all_items.append({
+                            "code": m.group(1),
+                            "name": m.group(2).strip(),
+                            "price": int(m.group(3).replace(",", "")),
+                            "change_pct": float(m.group(4).replace(",", "")),
+                            "volume": int(m.group(5).replace(",", "")),
+                            "high": 0,
+                            "market": mkt,
+                        })
+                    except:
+                        continue
+        all_items.sort(key=lambda x: x["volume"], reverse=True)
+        result = []
+        for idx, item in enumerate(all_items[:30]):
+            item["rank"] = idx + 1
+            result.append(item)
+        if not result:
+            raise Exception("파싱 실패")
+        response = {"status": "ok", "items": result}
+        _cache["top30_v2"] = {"ts": now, "data": response}
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"TOP30 실패: {str(e)}")
