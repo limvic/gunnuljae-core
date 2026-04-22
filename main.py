@@ -4,7 +4,7 @@ KIS API → 실데이터 + 건눌재 점수 + 다중 타임프레임
 """
 
 import os, time, asyncio, httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -765,3 +765,545 @@ async def get_top30_v3():
         return response
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"TOP30 실패: {str(e)}")
+"""
+╔══════════════════════════════════════════════════════════════════════╗
+║  TRINITY STATE MACHINE  v1.0  —  Phase 1                            ║
+║  채피(GPT) 설계  ×  써니(Claude) 구현  ×  림빅 최종결정              ║
+║                                                                      ║
+║  ⚡ 신경계 레이어 — 눈(👁)과 뇌(🧠) 사이의 상태 관리               ║
+║                                                                      ║
+║  원칙:                                                               ║
+║  - 기존 Trinity 점수 로직 변경 금지                                  ║
+║  - 기존 Candidate 점수 로직 변경 금지                                ║
+║  - 이 파일은 "상태 관리 레이어"로만 동작                             ║
+║                                                                      ║
+║  상태 흐름:                                                          ║
+║  IDLE → WATCH → ARMED → FIRE                                        ║
+║                                                                      ║
+║  핵심 원칙:                                                          ║
+║  상태 없으면 트리거 무시                                              ║
+║  트리거 없으면 진입 금지                                              ║
+║                                                                      ║
+║  📌 main.py 맨 아래에 통째로 붙여넣기                                ║
+╚══════════════════════════════════════════════════════════════════════╝
+"""
+
+import datetime
+from collections import deque
+from enum import Enum
+from typing import Optional
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 1.  상태 Enum 정의
+# ═══════════════════════════════════════════════════════════════════════
+
+class StockState(str, Enum):
+    IDLE  = "IDLE"    # 기본 상태 / 관심 없음
+    WATCH = "WATCH"   # 후보군 통과 / 차트 확인 필요
+    ARMED = "ARMED"   # 진입 준비 완료 / 돌파 트리거만 기다리는 상태
+    FIRE  = "FIRE"    # 돌파 트리거 발생 / 실제 진입 검토 상태
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 2.  상태 저장소 (메모리 — 최대 200종목)
+#        { code: StateEntry }
+# ═══════════════════════════════════════════════════════════════════════
+
+class StateEntry:
+    def __init__(self, code: str, name: str):
+        self.code       = code
+        self.name       = name
+        self.state      = StockState.IDLE
+        self.prev_state = StockState.IDLE
+        self.armed_at:  Optional[str] = None
+        self.fire_at:   Optional[str] = None
+        self.armed_reasons: list[str] = []
+        self.fire_reasons:  list[str] = []
+        self.updated_at: str = _now()
+
+    def to_dict(self) -> dict:
+        return {
+            "code":          self.code,
+            "name":          self.name,
+            "state":         self.state.value,
+            "prev_state":    self.prev_state.value,
+            "armed_at":      self.armed_at,
+            "fire_at":       self.fire_at,
+            "armed_reasons": self.armed_reasons,
+            "fire_reasons":  self.fire_reasons,
+            "updated_at":    self.updated_at,
+        }
+
+
+# 전역 상태 저장소
+_state_store: dict[str, StateEntry] = {}
+
+# 상태 변경 로그 (최대 100건)
+_state_log: deque = deque(maxlen=100)
+
+
+def _now() -> str:
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _get_or_create(code: str, name: str) -> StateEntry:
+    if code not in _state_store:
+        _state_store[code] = StateEntry(code, name)
+    else:
+        _state_store[code].name = name  # 이름 최신화
+    return _state_store[code]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 3.  상태 전이 함수 — 점수 로직과 완전 분리
+# ═══════════════════════════════════════════════════════════════════════
+
+def _transition(entry: StateEntry, new_state: StockState, reasons: list[str]) -> bool:
+    """
+    상태 전이 실행. 변경이 있을 때만 True 반환 + 로그 기록.
+    상위 상태로만 전이 (역행 없음, FIRE→IDLE 리셋 제외).
+    """
+    if entry.state == new_state:
+        return False
+
+    # 상태 순서: IDLE < WATCH < ARMED < FIRE
+    order = {StockState.IDLE: 0, StockState.WATCH: 1,
+             StockState.ARMED: 2, StockState.FIRE: 3}
+
+    # 강제 리셋이 아니면 역행 금지
+    if new_state != StockState.IDLE and order[new_state] < order[entry.state]:
+        return False
+
+    prev = entry.state
+    entry.prev_state = prev
+    entry.state      = new_state
+    entry.updated_at = _now()
+
+    if new_state == StockState.ARMED:
+        entry.armed_at      = _now()
+        entry.armed_reasons = reasons
+    elif new_state == StockState.FIRE:
+        entry.fire_at      = _now()
+        entry.fire_reasons = reasons
+
+    # 로그 기록
+    log_entry = {
+        "code":          entry.code,
+        "name":          entry.name,
+        "state_before":  prev.value,
+        "state_after":   new_state.value,
+        "reason":        reasons,
+        "time":          _now(),
+    }
+    _state_log.append(log_entry)
+    return True
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 4.  WATCH 판정 — Candidate score 기반
+#        Candidate Engine 점수를 받아 WATCH 여부 결정
+# ═══════════════════════════════════════════════════════════════════════
+
+def evaluate_watch(
+    code: str,
+    name: str,
+    candidate_score: int,          # Candidate Engine 총점
+    candidate_status: str,         # "돌파 직전" 등
+) -> dict:
+    """
+    Candidate score >= 70 이면 WATCH 승격.
+    (Candidate 필터 통과 = 이미 기준 충족)
+    """
+    entry = _get_or_create(code, name)
+    reasons = []
+
+    if candidate_score >= 70:
+        reasons.append(f"Candidate {candidate_score}점 통과")
+        if candidate_status in ("돌파 직전", "돌파 중"):
+            reasons.append(f"상태: {candidate_status}")
+        _transition(entry, StockState.WATCH, reasons)
+
+    return entry.to_dict()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 5.  ARMED 판정 — Trinity 점수 기반 (채피 설계 그대로)
+#        기존 Trinity 점수 로직에 손대지 않고
+#        그 결과값만 받아서 상태 판정
+# ═══════════════════════════════════════════════════════════════════════
+
+def evaluate_armed(
+    code: str,
+    name: str,
+    # Trinity 점수 (기존 calcKN / calcAN / finalDecision 결과를 그대로 받음)
+    total_score: int,
+    score_5m:    int,
+    score_60m:   int,
+    # 보조 조건
+    price_above_vwap: bool,
+    above_ma5:        bool,
+    pullback_pct:     float,        # 당일 눌림 % (음수)
+    # 우대 조건 (선택)
+    candidate_score:  int  = 0,
+    candidate_status: str  = "",
+    volume_ratio:     float = 0.0,
+    is_sector_leader: bool  = False,
+) -> dict:
+    """
+    채피 설계 ARMED 조건 판정.
+    Trinity 점수 결과를 받아서만 판단 — 점수 계산 자체는 건드리지 않음.
+
+    [필수 조건]
+    total_score >= 80
+    score_5m    >= 85
+    score_60m   >= 75
+    price_above_vwap == True
+    above_ma5 == True
+
+    [우대 조건] (충족 시 reasons에 추가)
+    candidate_score >= 90
+    candidate_status == "돌파 직전"
+    volume_ratio >= 1.5
+    is_sector_leader == True
+    """
+    entry = _get_or_create(code, name)
+    reasons = []
+    bonus   = []
+
+    # ── 필수 조건 체크 ──────────────────────────────────
+    mandatory_ok = (
+        total_score >= 80
+        and score_5m    >= 85
+        and score_60m   >= 75
+        and price_above_vwap
+        and above_ma5
+    )
+
+    if not mandatory_ok:
+        # 필수 미충족 — 최소 WATCH는 유지
+        if entry.state == StockState.IDLE:
+            _transition(entry, StockState.WATCH, ["Trinity 평가 진행 중"])
+        return {**entry.to_dict(), "armed": False, "missing": _armed_missing(
+            total_score, score_5m, score_60m, price_above_vwap, above_ma5
+        )}
+
+    # ── 필수 조건 통과 ──────────────────────────────────
+    reasons.append(f"5분 {score_5m}점")
+    reasons.append(f"60분 {score_60m}점")
+    if price_above_vwap:  reasons.append("VWAP 위")
+    if above_ma5:         reasons.append("5선 위")
+    if -4.0 <= pullback_pct <= -1.0:
+        reasons.append(f"당일 눌림 {pullback_pct:.1f}% (적정)")
+
+    # ── 우대 조건 ────────────────────────────────────────
+    if candidate_score >= 90:         bonus.append(f"Candidate {candidate_score}pt")
+    if candidate_status == "돌파 직전": bonus.append("돌파 직전")
+    if volume_ratio >= 1.5:            bonus.append(f"거래량비 {volume_ratio:.1f}x")
+    if is_sector_leader:               bonus.append("섹터 선도주")
+
+    if bonus:
+        reasons.append("우대: " + " · ".join(bonus))
+
+    changed = _transition(entry, StockState.ARMED, reasons)
+    return {**entry.to_dict(), "armed": True, "just_armed": changed}
+
+
+def _armed_missing(total, s5m, s60m, vwap, ma5) -> list[str]:
+    """ARMED 미충족 이유 반환."""
+    m = []
+    if total < 80:   m.append(f"총점 {total}/80 미달")
+    if s5m   < 85:   m.append(f"5분 {s5m}/85 미달")
+    if s60m  < 75:   m.append(f"60분 {s60m}/75 미달")
+    if not vwap:     m.append("VWAP 하회")
+    if not ma5:      m.append("5선 하회")
+    return m
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 6.  FIRE 트리거 — ARMED 종목에서만 발동
+#        채피 핵심 원칙: "ARMED 아니면 FIRE 없음"
+# ═══════════════════════════════════════════════════════════════════════
+
+def evaluate_fire(
+    code: str,
+    name: str,
+    # 돌파 레이더 입력값
+    breakout_high:  bool,          # 직전 고점 돌파 여부
+    volume_surge:   bool,          # 돌파 시 거래량 증가
+    # 공격형/보수형 토글
+    aggressive: bool = True,       # True=돌파 순간 FIRE / False=1봉 종가 확인 후 FIRE
+    # 무효 조건
+    price_above_vwap: bool = True, # VWAP 하회 시 FIRE 무효
+) -> dict:
+    """
+    채피 설계 FIRE 조건.
+
+    ⚡ 핵심: ARMED 상태가 아니면 절대 FIRE 불가.
+    상태 없으면 트리거 무시.
+
+    aggressive=True  → 돌파 순간 FIRE (공격형)
+    aggressive=False → 1봉 종가 확인 후 FIRE (보수형)
+    """
+    entry = _get_or_create(code, name)
+
+    # ── ARMED 아니면 완전 무시 ──────────────────────────
+    if entry.state != StockState.ARMED:
+        return {
+            **entry.to_dict(),
+            "fired": False,
+            "blocked_reason": f"ARMED 아님 (현재: {entry.state.value})",
+        }
+
+    # ── VWAP 하회 즉시 무효 ─────────────────────────────
+    if not price_above_vwap:
+        return {
+            **entry.to_dict(),
+            "fired": False,
+            "blocked_reason": "VWAP 하회 — FIRE 무효",
+        }
+
+    # ── 돌파 조건 체크 ───────────────────────────────────
+    reasons = []
+
+    if aggressive:
+        # 공격형: 돌파 + 거래량 동시 확인
+        if breakout_high:   reasons.append("전고 돌파")
+        if volume_surge:    reasons.append("거래량 급증")
+        fire_ok = breakout_high and volume_surge
+    else:
+        # 보수형: 돌파 확인 (1봉 종가 확인은 호출 시점에 이미 처리된 것으로 간주)
+        if breakout_high:   reasons.append("전고 돌파 (종가 확인)")
+        if volume_surge:    reasons.append("거래량 급증")
+        fire_ok = breakout_high
+
+    if not fire_ok:
+        return {
+            **entry.to_dict(),
+            "fired": False,
+            "blocked_reason": "돌파 조건 미충족",
+        }
+
+    reasons.append("공격형" if aggressive else "보수형")
+    changed = _transition(entry, StockState.FIRE, reasons)
+
+    return {
+        **entry.to_dict(),
+        "fired": True,
+        "just_fired": changed,
+        "mode": "공격형" if aggressive else "보수형",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 7.  상태 리셋
+# ═══════════════════════════════════════════════════════════════════════
+
+def reset_state(code: str, name: str = "") -> dict:
+    """종목 상태를 IDLE로 리셋 (장 마감 후 / 수동 리셋)."""
+    if code in _state_store:
+        entry = _state_store[code]
+        _transition(entry, StockState.IDLE, ["수동 리셋"])
+        entry.armed_at = None
+        entry.fire_at  = None
+        entry.armed_reasons = []
+        entry.fire_reasons  = []
+        return entry.to_dict()
+    return {"code": code, "state": "IDLE", "message": "새 항목"}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 8.  조회 헬퍼
+# ═══════════════════════════════════════════════════════════════════════
+
+def get_state(code: str) -> Optional[dict]:
+    if code in _state_store:
+        return _state_store[code].to_dict()
+    return None
+
+def get_all_states() -> list[dict]:
+    return [e.to_dict() for e in _state_store.values()]
+
+def get_armed_list() -> list[dict]:
+    return [e.to_dict() for e in _state_store.values()
+            if e.state == StockState.ARMED]
+
+def get_fire_list() -> list[dict]:
+    return [e.to_dict() for e in _state_store.values()
+            if e.state == StockState.FIRE]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# § 9.  FastAPI 엔드포인트
+# ═══════════════════════════════════════════════════════════════════════
+
+
+# ── 9-1. 상태 전체 조회 ──────────────────────────────────────────────
+@app.get("/state")
+async def api_get_all_states():
+    """
+    전체 종목 상태 조회.
+    Response: { states: [...], armed_count: N, fire_count: N }
+    """
+    states = get_all_states()
+    return {
+        "total":       len(states),
+        "armed_count": sum(1 for s in states if s["state"] == "ARMED"),
+        "fire_count":  sum(1 for s in states if s["state"] == "FIRE"),
+        "states":      states,
+    }
+
+
+# ── 9-2. ARMED 목록 ──────────────────────────────────────────────────
+@app.get("/state/armed")
+async def api_get_armed():
+    """
+    ARMED 상태 종목 목록.
+    돌파 트리거 대기 중인 종목들.
+    """
+    armed = get_armed_list()
+    return {
+        "count":  len(armed),
+        "armed":  armed,
+        "note":   "이 종목들에서만 FIRE 트리거 발동 가능",
+    }
+
+
+# ── 9-3. FIRE 목록 ───────────────────────────────────────────────────
+@app.get("/state/fire")
+async def api_get_fire():
+    """
+    FIRE 상태 종목 목록.
+    진입 검토 대상.
+    """
+    fire = get_fire_list()
+    return {
+        "count": len(fire),
+        "fire":  fire,
+        "note":  "진입 검토 구간 — 림빅 최종 결정",
+    }
+
+
+# ── 9-4. ARMED 평가 요청 ─────────────────────────────────────────────
+@app.post("/state/evaluate/armed")
+async def api_evaluate_armed(payload: dict = Body(...)):
+    """
+    Trinity 점수 결과를 받아 ARMED 판정.
+    기존 점수 로직과 완전 분리 — 결과값만 받음.
+
+    Body:
+    {
+      "code": "336260",
+      "name": "이수페타시스",
+      "total_score": 95,
+      "score_5m": 95,
+      "score_60m": 80,
+      "price_above_vwap": true,
+      "above_ma5": true,
+      "pullback_pct": -2.6,
+      "candidate_score": 100,
+      "candidate_status": "돌파 직전",
+      "volume_ratio": 2.0,
+      "is_sector_leader": true
+    }
+    """
+    result = evaluate_armed(
+        code              = payload["code"],
+        name              = payload.get("name", ""),
+        total_score       = payload.get("total_score", 0),
+        score_5m          = payload.get("score_5m", 0),
+        score_60m         = payload.get("score_60m", 0),
+        price_above_vwap  = payload.get("price_above_vwap", False),
+        above_ma5         = payload.get("above_ma5", False),
+        pullback_pct      = payload.get("pullback_pct", 0.0),
+        candidate_score   = payload.get("candidate_score", 0),
+        candidate_status  = payload.get("candidate_status", ""),
+        volume_ratio      = payload.get("volume_ratio", 0.0),
+        is_sector_leader  = payload.get("is_sector_leader", False),
+    )
+    return result
+
+
+# ── 9-5. FIRE 트리거 요청 ────────────────────────────────────────────
+@app.post("/state/evaluate/fire")
+async def api_evaluate_fire(payload: dict = Body(...)):
+    """
+    돌파 레이더 결과를 받아 FIRE 판정.
+    ARMED 상태 종목에서만 발동.
+
+    Body:
+    {
+      "code": "336260",
+      "name": "이수페타시스",
+      "breakout_high": true,
+      "volume_surge": true,
+      "aggressive": true,
+      "price_above_vwap": true
+    }
+    """
+    result = evaluate_fire(
+        code             = payload["code"],
+        name             = payload.get("name", ""),
+        breakout_high    = payload.get("breakout_high", False),
+        volume_surge     = payload.get("volume_surge", False),
+        aggressive       = payload.get("aggressive", True),
+        price_above_vwap = payload.get("price_above_vwap", True),
+    )
+    return result
+
+
+# ── 9-6. WATCH 평가 요청 ─────────────────────────────────────────────
+@app.post("/state/evaluate/watch")
+async def api_evaluate_watch(payload: dict = Body(...)):
+    """
+    Candidate 결과를 받아 WATCH 판정.
+
+    Body:
+    {
+      "code": "336260",
+      "name": "이수페타시스",
+      "candidate_score": 100,
+      "candidate_status": "돌파 직전"
+    }
+    """
+    result = evaluate_watch(
+        code             = payload["code"],
+        name             = payload.get("name", ""),
+        candidate_score  = payload.get("candidate_score", 0),
+        candidate_status = payload.get("candidate_status", ""),
+    )
+    return result
+
+
+# ── 9-7. 단일 종목 상태 조회 ─────────────────────────────────────────
+@app.get("/state/{code}")
+async def api_get_state(code: str):
+    """단일 종목 상태 조회."""
+    s = get_state(code)
+    if s is None:
+        return {"code": code, "state": "IDLE", "message": "등록된 상태 없음"}
+    return s
+
+
+# ── 9-8. 상태 리셋 ───────────────────────────────────────────────────
+@app.post("/state/{code}/reset")
+async def api_reset_state(code: str, payload: dict = Body(default={})):
+    """종목 상태 IDLE 리셋."""
+    name = payload.get("name", "")
+    return reset_state(code, name)
+
+
+# ── 9-9. 상태 변경 로그 ──────────────────────────────────────────────
+@app.get("/state/log/all")
+async def api_state_log(last: int = 20):
+    """
+    상태 변경 로그 조회.
+    채피 설계 로그 포맷 그대로 반환.
+
+    Query: last=N (최근 N건, 기본 20)
+    """
+    last = max(1, min(last, 100))
+    logs = list(_state_log)[-last:]
+    return {
+        "count": len(logs),
+        "logs":  list(reversed(logs)),   # 최신 순
+    }
