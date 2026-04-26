@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>🧨 Block Reset Engine v2.6</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0B0F14;
+    --surface: #131820;
+    --surface2: #1a212c;
+    --border: #232b38;
+    --border-soft: #1c2330;
+    --neon-red: #ff3a3a;
+    --neon-blue: #00d4ff;
+    --neon-orange: #ff8a00;
+    --neon-green: #00ff88;
+    --neon-yellow: #ffd000;
+    --neon-purple: #b884ff;
+    --text: #ffffff;
+    --text-dim: #b8c2d0;
+    --muted: #5a6478;
+    --shock: #ff1744;
+    --absorb: #ff8a00;
+    --recovery: #ffd000;
+    --break: #00ff88;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 배경 그리드 효과 */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(255,58,58,0.06) 0%, transparent 40%),
+      radial-gradient(ellipse at 80% 100%, rgba(0,212,255,0.05) 0%, transparent 40%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ━━━━ HEADER ━━━━ */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(11,15,20,0.95); backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border);
+    padding: 11px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 8px; }
+  .logo-icon {
+    font-size: 22px; filter: drop-shadow(0 0 8px rgba(255,58,58,0.5));
+  }
+  .logo-txt { line-height: 1.05; }
+  .logo {
+    font-family: 'Teko', sans-serif; font-size: 21px; font-weight: 700;
+    letter-spacing: 1.5px;
+    background: linear-gradient(135deg, #ff3a3a 0%, #ff8a00 50%, #ffd000 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2.5px; font-weight: 300; }
+
+  /* ━━━━ v2.3 FIRE TRIGGER STYLES ━━━━ */
+  .fire-trigger-panel {
+    background: linear-gradient(135deg, rgba(255,138,0,0.06), rgba(0,255,136,0.04));
+    border: 1px solid rgba(255,138,0,0.3);
+    border-radius: 10px; padding: 10px 12px; margin-top: 10px;
+  }
+  .ftp-title {
+    font-size: 9px; color: var(--neon-orange); letter-spacing: 2px;
+    font-weight: 700; margin-bottom: 8px; text-transform: uppercase;
+  }
+  .ftp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .ftp-item { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 7px; padding: 7px 9px; }
+  .ftp-item.full { grid-column: 1 / -1; }
+  .ftp-name { font-size: 9px; color: var(--muted); margin-bottom: 3px; font-weight: 500; }
+  .ftp-val { font-size: 11px; font-weight: 700; }
+  .ftp-val.confirmed { color: var(--neon-green); }
+  .ftp-val.pending { color: var(--neon-yellow); }
+  .ftp-val.missing { color: var(--muted); }
+  .ftp-val.na { color: var(--muted); font-weight: 400; }
+
+  /* 5분봉 입력 섹션 */
+  .m5-input-section {
+    background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 9px; padding: 9px 11px; margin-top: 8px;
+  }
+  .m5-title { font-size: 9px; color: var(--neon-green); letter-spacing: 1.5px; font-weight: 700; margin-bottom: 7px; }
+  .m5-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 7px; }
+  .uf-input.green:focus { border-color: var(--neon-green); box-shadow: 0 0 0 2px rgba(0,255,136,.15); }
+  .m5-btn {
+    width: 100%; padding: 9px; background: rgba(0,255,136,.12);
+    border: 1px solid rgba(0,255,136,.4); border-radius: 8px;
+    color: var(--neon-green); font-size: 11px; font-weight: 700;
+    cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+  }
+  .m5-btn:hover { background: rgba(0,255,136,.2); }
+
+  /* FIRE 확정 vs 준비 배너 */
+  .fire-confirmed-banner {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,255,136,0.08));
+    border: 1px solid rgba(0,255,136,0.6); border-radius: 9px;
+    text-align: center; font-family: 'Teko', sans-serif;
+    font-size: 20px; font-weight: 700; color: var(--neon-green);
+    letter-spacing: 2px; animation: firePulse 1s infinite;
+  }
+  .fire-armed-banner {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, rgba(255,138,0,0.2), rgba(255,208,0,0.08));
+    border: 1px solid rgba(255,138,0,0.5); border-radius: 9px;
+    text-align: center; font-family: 'Teko', sans-serif;
+    font-size: 18px; font-weight: 700; color: var(--neon-orange);
+    letter-spacing: 2px;
+  }
+  .fire-wait-banner {
+    width: 100%; padding: 12px;
+    background: rgba(255,208,0,0.08); border: 1px solid rgba(255,208,0,0.3);
+    border-radius: 9px; text-align: center; font-family: 'Teko', sans-serif;
+    font-size: 16px; font-weight: 600; color: var(--neon-yellow);
+    letter-spacing: 1.5px;
+  }
+
+  /* 반등폭 배지 */
+  .bounce-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bounce-badge.strong { background: rgba(0,255,136,0.15); color: var(--neon-green); border: 1px solid rgba(0,255,136,0.3); }
+  .bounce-badge.mid { background: rgba(255,208,0,0.15); color: var(--neon-yellow); border: 1px solid rgba(255,208,0,0.3); }
+  .bounce-badge.weak { background: rgba(255,138,0,0.12); color: var(--neon-orange); border: 1px solid rgba(255,138,0,0.3); }
+  .bounce-badge.none { background: rgba(90,100,120,0.15); color: var(--muted); border: 1px solid var(--border); }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .live-pill {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 20px; padding: 3px 9px;
+    font-size: 10px; color: var(--neon-green); font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .live-dot { width: 5px; height: 5px; background: var(--neon-green); border-radius: 50%; animation: liveBlink 1.5s infinite; box-shadow: 0 0 8px var(--neon-green); }
+  @keyframes liveBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .time-d { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); font-weight: 500; }
+
+  /* ━━━━ TAB ━━━━ */
+  .tab-nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 53px; z-index: 99; }
+  .tab-btn {
+    flex: 1; padding: 11px 4px; background: none; border: none;
+    color: var(--muted); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all .25s;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .tab-btn.active { color: var(--neon-red); border-bottom-color: var(--neon-red); }
+  .tab-btn.active.b { color: var(--neon-blue); border-bottom-color: var(--neon-blue); }
+  .tab-btn.active.o { color: var(--neon-orange); border-bottom-color: var(--neon-orange); }
+  .tab-icon { font-size: 14px; }
+  .tab-count {
+    background: var(--neon-red); color: #fff; border-radius: 10px;
+    padding: 1px 6px; font-size: 9px; font-weight: 700;
+    min-width: 18px; text-align: center;
+    box-shadow: 0 0 8px rgba(255,58,58,0.4);
+  }
+  .tab-count.w { background: var(--neon-blue); box-shadow: 0 0 8px rgba(0,212,255,0.4); }
+  .tab-count.f { background: var(--neon-orange); box-shadow: 0 0 8px rgba(255,138,0,0.5); animation: fireGlow 1s infinite; }
+  @keyframes fireGlow { 0%,100%{box-shadow:0 0 8px rgba(255,138,0,.4)} 50%{box-shadow:0 0 14px rgba(255,138,0,.8)} }
+
+  .page { display: none; padding: 14px; }
+  .page.active { display: block; }
+
+  /* ━━━━ MISSION CONTROL DASHBOARD ━━━━ */
+  .mc-dashboard {
+    background: linear-gradient(135deg, rgba(255,58,58,0.04), rgba(0,212,255,0.04));
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px;
+    margin-bottom: 14px; position: relative;
+    overflow: hidden;
+  }
+  .mc-dashboard::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-blue) 50%, transparent);
+    animation: scanLine 3s linear infinite;
+  }
+  @keyframes scanLine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+  .mc-title {
+    font-family: 'Teko', sans-serif; font-size: 13px; letter-spacing: 3px;
+    color: var(--text-dim); text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mc-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  .mc-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .mc-stat {
+    background: rgba(11,15,20,0.6); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 8px; text-align: center;
+    position: relative; transition: all .2s;
+  }
+  .mc-stat.shock { border-color: rgba(255,23,68,0.3); }
+  .mc-stat.shock .mc-num { color: var(--neon-red); text-shadow: 0 0 12px rgba(255,58,58,.4); }
+  .mc-stat.watch { border-color: rgba(0,212,255,0.3); }
+  .mc-stat.watch .mc-num { color: var(--neon-blue); text-shadow: 0 0 12px rgba(0,212,255,.4); }
+  .mc-stat.fire { border-color: rgba(255,138,0,0.4); }
+  .mc-stat.fire .mc-num { color: var(--neon-orange); text-shadow: 0 0 12px rgba(255,138,0,.5); animation: firePulse 1.5s infinite; }
+  @keyframes firePulse { 0%,100%{text-shadow:0 0 12px rgba(255,138,0,.5)} 50%{text-shadow:0 0 20px rgba(255,138,0,.8)} }
+
+  .mc-num { font-family: 'Teko', sans-serif; font-size: 32px; font-weight: 700; line-height: 1; }
+  .mc-lbl { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; font-weight: 600; }
+
+  /* ━━━━ TOP CANDIDATE CARD (강조) ━━━━ */
+  .top-candidate {
+    background: linear-gradient(135deg, rgba(255,138,0,0.08), rgba(255,208,0,0.04));
+    border: 1px solid rgba(255,138,0,0.4);
+    border-radius: 12px; padding: 12px;
+    margin-bottom: 14px; position: relative; overflow: hidden;
+  }
+  .top-candidate::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #ff3a3a, #ff8a00, #ffd000);
+    background-size: 200% 100%; animation: shimmer 3s infinite;
+  }
+  @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+  .tc-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .tc-tag {
+    font-size: 9px; color: var(--neon-orange); letter-spacing: 2px;
+    font-weight: 700;
+  }
+  .tc-name { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .tc-sector { font-size: 11px; color: var(--neon-blue); font-weight: 600; }
+  .tc-score-big {
+    font-family: 'Teko', sans-serif; font-size: 38px; font-weight: 700;
+    color: var(--neon-orange); line-height: 1;
+    text-shadow: 0 0 16px rgba(255,138,0,.4);
+  }
+  .tc-score-lbl { font-size: 9px; color: var(--muted); }
+
+  /* ━━━━ SECTION TITLE ━━━━ */
+  .section-title {
+    font-family: 'Teko', sans-serif; font-size: 13px; letter-spacing: 2px;
+    color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ━━━━ SECTOR PANEL ━━━━ */
+  .sector-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; margin-bottom: 12px;
+  }
+  .sp-title {
+    font-size: 10px; color: var(--muted); letter-spacing: 1.5px;
+    margin-bottom: 9px; text-transform: uppercase; font-weight: 600;
+  }
+  .sector-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .sector-chip {
+    padding: 6px 11px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: all .2s; border: 1px solid var(--border);
+    background: none; color: var(--muted); font-family: 'Noto Sans KR', sans-serif;
+    white-space: nowrap;
+  }
+  .sector-chip.active.s1 { background: rgba(0,212,255,0.15); border-color: var(--neon-blue); color: var(--neon-blue); box-shadow: 0 0 10px rgba(0,212,255,0.2); }
+  .sector-chip.active.s2 { background: rgba(255,208,0,0.15); border-color: var(--neon-yellow); color: var(--neon-yellow); box-shadow: 0 0 10px rgba(255,208,0,0.2); }
+  .sector-chip.active.s3 { background: rgba(0,255,136,0.12); border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+  .sector-chip.active.s4 { background: rgba(184,132,255,0.15); border-color: var(--neon-purple); color: var(--neon-purple); box-shadow: 0 0 10px rgba(184,132,255,0.2); }
+  .sector-chip.active.s5 { background: rgba(255,138,0,0.15); border-color: var(--neon-orange); color: var(--neon-orange); box-shadow: 0 0 10px rgba(255,138,0,0.2); }
+  .sector-chip.active.s6 { background: rgba(255,82,182,0.15); border-color: #ff52b6; color: #ff52b6; box-shadow: 0 0 10px rgba(255,82,182,0.2); }
+  .sector-chip.active.s7 { background: rgba(255,235,59,0.15); border-color: #ffeb3b; color: #ffeb3b; box-shadow: 0 0 10px rgba(255,235,59,0.2); }
+  .sector-chip.active.s8 { background: rgba(0,229,200,0.15); border-color: #00e5c8; color: #00e5c8; box-shadow: 0 0 10px rgba(0,229,200,0.2); }
+  .sector-chip.active.s9 { background: rgba(255,58,58,0.15); border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 10px rgba(255,58,58,0.25); }
+
+  .sp-info { font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .sp-count {
+    color: var(--neon-blue); font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ━━━━ SCAN BUTTON ━━━━ */
+  .scan-area {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; margin-bottom: 14px;
+  }
+  .scan-meta {
+    font-size: 10px; color: var(--muted); margin-bottom: 10px; line-height: 1.7;
+  }
+  .scan-meta .arrow { color: var(--neon-blue); margin: 0 4px; }
+  .scan-meta .key { color: var(--text-dim); font-weight: 600; }
+
+  .scan-btn {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #ff3a3a, #cc1111);
+    border: none; border-radius: 10px; color: #fff;
+    font-family: 'Teko', sans-serif; font-size: 18px; font-weight: 600;
+    letter-spacing: 2.5px; cursor: pointer; transition: all .25s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 16px rgba(255,58,58,0.2);
+    position: relative; overflow: hidden;
+  }
+  .scan-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transform: translateX(-100%); transition: transform .6s;
+  }
+  .scan-btn:hover::before { transform: translateX(100%); }
+  .scan-btn:hover { box-shadow: 0 6px 28px rgba(255,58,58,.4); transform: translateY(-1px); }
+  .scan-btn:active { transform: translateY(0); }
+  .scan-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* ━━━━ WARMUP BUTTON ━━━━ */
+  .warmup-btn {
+    width: 100%; padding: 10px; margin-bottom: 8px;
+    background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.25);
+    color: var(--neon-blue); border-radius: 10px; font-size: 11px; font-weight: 700;
+    cursor: pointer; font-family: inherit; letter-spacing: 0.5px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all .2s;
+  }
+  .warmup-btn:hover { background: rgba(0,212,255,0.12); border-color: var(--neon-blue); }
+  .warmup-btn.loading { opacity: .7; cursor: not-allowed; animation: warmPulse 1s infinite; }
+  .warmup-btn.done { background: rgba(0,255,136,0.08); border-color: rgba(0,255,136,0.4); color: var(--neon-green); }
+  .warmup-btn.fail { background: rgba(255,58,58,0.08); border-color: rgba(255,58,58,0.4); color: var(--neon-red); }
+  @keyframes warmPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+  /* ━━━━ PROGRESS ━━━━ */
+  .progress-box { display: none; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+  .progress-box.active { display: block; animation: slideIn .3s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+  .prog-bar-bg { height: 5px; background: rgba(11,15,20,0.5); border-radius: 3px; overflow: hidden; margin: 7px 0; }
+  .prog-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #ff3a3a, #ff8a00, #ffd000);
+    transition: width .3s; box-shadow: 0 0 8px rgba(255,138,0,0.4);
+  }
+  .prog-text { font-size: 11px; color: var(--text-dim); }
+  .prog-pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--neon-blue); font-weight: 600; }
+  .prog-step { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .prog-step::-webkit-scrollbar { display: none; }
+  .step-badge { flex-shrink: 0; padding: 4px 9px; border-radius: 6px; font-size: 10px; font-weight: 600; opacity: .25; transition: all .3s; white-space: nowrap; }
+  .step-badge.active { opacity: 1; transform: scale(1.05); }
+  .step-badge.done { opacity: .6; }
+  .step-badge.s1 { background: rgba(0,212,255,.15); color: var(--neon-blue); }
+  .step-badge.s2 { background: rgba(255,208,0,.15); color: var(--neon-yellow); }
+  .step-badge.s3 { background: rgba(0,255,136,.15); color: var(--neon-green); }
+  .step-badge.s4 { background: rgba(255,58,58,.15); color: var(--neon-red); }
+
+  /* ━━━━ FUNNEL ━━━━ */
+  .funnel-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; margin-bottom: 12px;
+  }
+  .funnel-title { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 10px; text-transform: uppercase; font-weight: 600; }
+  .funnel-steps { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .funnel-steps::-webkit-scrollbar { display: none; }
+  .funnel-step { flex-shrink: 0; text-align: center; min-width: 50px; }
+  .fs-num { font-family: 'Teko', sans-serif; font-size: 24px; font-weight: 700; line-height: 1; }
+  .fs-lbl { font-size: 9px; color: var(--muted); white-space: nowrap; margin-top: 2px; font-weight: 500; }
+  .fs-arrow { color: var(--muted); font-size: 13px; flex-shrink: 0; opacity: .4; }
+  .fs-num.n0 { color: var(--text-dim); }
+  .fs-num.n1 { color: var(--neon-blue); }
+  .fs-num.n2 { color: var(--neon-green); }
+  .fs-num.n3 { color: var(--neon-red); text-shadow: 0 0 8px rgba(255,58,58,.3); }
+  .fs-num.n4 { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255,138,0,.3); }
+
+  /* ━━━━ FILTER BAR ━━━━ */
+  .filter-bar { display: flex; gap: 5px; margin-bottom: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-btn { flex-shrink: 0; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: none; color: var(--muted); font-size: 11px; font-weight: 500; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all .2s; white-space: nowrap; }
+  .filter-btn.active { background: rgba(255,58,58,.1); border-color: var(--neon-red); color: var(--neon-red); }
+  .filter-btn.active.b { background: rgba(0,212,255,.1); border-color: var(--neon-blue); color: var(--neon-blue); }
+  .filter-btn.active.o { background: rgba(255,138,0,.1); border-color: var(--neon-orange); color: var(--neon-orange); }
+
+  /* ━━━━ RESULT CARD ━━━━ */
+  .result-card {
+    border-radius: 12px; overflow: hidden;
+    margin-bottom: 10px; border: 1px solid var(--border);
+    background: var(--surface);
+    animation: cardIn .3s ease;
+    transition: all .2s;
+  }
+  @keyframes cardIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .result-card.shock-card { border-color: rgba(255,23,68,0.3); }
+  .result-card.fire-card { border-color: rgba(255,138,0,0.5); box-shadow: 0 0 16px rgba(255,138,0,0.1); }
+  .result-card.watch-card { border-color: rgba(0,212,255,0.3); }
+
+  .rc-header { padding: 11px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .rc-stock { flex: 1; min-width: 0; }
+  .rc-name {
+    font-weight: 700; font-size: 15px; margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .rc-sector {
+    font-size: 10px; font-weight: 700; margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  .rc-sector.s1 { color: var(--neon-blue); }
+  .rc-sector.s2 { color: var(--neon-yellow); }
+  .rc-sector.s3 { color: var(--neon-green); }
+  .rc-sector.s4 { color: var(--neon-purple); }
+  .rc-sector.s5 { color: var(--neon-orange); }
+  .rc-sector.s6 { color: #ff52b6; }
+  .rc-sector.s7 { color: #ffeb3b; }
+  .rc-sector.s8 { color: #00e5c8; }
+  .rc-sector.s9 { color: var(--neon-red); }
+
+  .rc-price { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .price-down { color: var(--neon-red); font-weight: 700; }
+  .price-up { color: var(--neon-green); font-weight: 700; }
+
+  .rc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+  .status-badge { padding: 4px 10px; border-radius: 20px; font-family: 'Teko', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; white-space: nowrap; }
+  .sb-shock { background: rgba(255,23,68,.18); color: #ff5566; border: 1px solid rgba(255,23,68,.4); }
+  .sb-watch { background: rgba(0,212,255,.15); color: var(--neon-blue); border: 1px solid rgba(0,212,255,.35); }
+  /* ━━ HUB 복귀 버튼 ━━ */
+  .hub-back-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 700;
+    background: rgba(0,212,255,.07); border: 1px solid rgba(0,212,255,.2);
+    color: #00d4ff; cursor: pointer; font-family: inherit; text-decoration: none;
+    transition: background .15s; white-space: nowrap;
+  }
+  .hub-back-btn:active { background: rgba(0,212,255,.15); }
+  .sb-fire { background: rgba(255,138,0,.2); color: var(--neon-orange); border: 1px solid rgba(255,138,0,.5); animation: firePulse 1.2s infinite; }
+  .sb-fire-ready   { background: rgba(255,208,0,.15); color: var(--neon-yellow); border: 1px solid rgba(255,208,0,.5); animation: firePulse 1.8s infinite; }
+  .sb-fire-confirm { background: rgba(255,58,58,.2);  color: #ff3a3a; border: 1px solid rgba(255,58,58,.6); animation: firePulse 0.8s infinite; font-weight:900; }
+  /* 즉시 판정 버튼 (채피 설계 — Block→Strike 연결) */
+  .strike-now-btn {
+    width:100%; margin-top:8px; padding:10px;
+    background: linear-gradient(135deg, rgba(255,138,0,.2), rgba(255,58,58,.15));
+    border: 1px solid rgba(255,138,0,.5); border-radius:8px;
+    color: var(--neon-orange); font-size:12px; font-weight:800;
+    cursor:pointer; font-family:inherit; letter-spacing:0.5px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    transition:all .2s;
+  }
+  .strike-now-btn:hover { background: linear-gradient(135deg, rgba(255,138,0,.3), rgba(255,58,58,.25)); transform:translateY(-1px); }
+
+  .rc-body { padding: 11px 12px; background: rgba(11,15,20,0.4); }
+
+  /* ━━━━ FLOW ENGINE BAR ━━━━ */
+  .flow-engine {
+    background: var(--bg); border-radius: 9px; padding: 10px;
+    margin-bottom: 10px; border: 1px solid var(--border-soft);
+  }
+  .fe-title {
+    font-size: 9px; color: var(--muted); letter-spacing: 1.5px;
+    margin-bottom: 8px; text-transform: uppercase; font-weight: 600;
+  }
+  .fe-row {
+    display: grid; grid-template-columns: 70px 1fr 30px;
+    gap: 8px; align-items: center; margin-bottom: 5px;
+  }
+  .fe-row:last-child { margin-bottom: 0; }
+  .fe-label {
+    font-family: 'Teko', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .fe-label.shock { color: var(--shock); }
+  .fe-label.absorb { color: var(--absorb); }
+  .fe-label.recovery { color: var(--recovery); }
+  .fe-label.break { color: var(--break); }
+  .fe-bar-bg {
+    height: 7px; background: rgba(35,43,56,0.5); border-radius: 4px;
+    overflow: hidden; position: relative;
+  }
+  .fe-bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+  }
+  .fe-bar-fill.shock { background: linear-gradient(90deg, #ff1744, #ff5566); box-shadow: 0 0 6px rgba(255,23,68,0.4); }
+  .fe-bar-fill.absorb { background: linear-gradient(90deg, #ff8a00, #ffaa44); box-shadow: 0 0 6px rgba(255,138,0,0.4); }
+  .fe-bar-fill.recovery { background: linear-gradient(90deg, #ffd000, #ffe040); box-shadow: 0 0 6px rgba(255,208,0,0.4); }
+  .fe-bar-fill.break { background: linear-gradient(90deg, #00ff88, #44ffaa); box-shadow: 0 0 6px rgba(0,255,136,0.4); }
+  .fe-pct {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    color: var(--text-dim); text-align: right;
+  }
+
+  /* ━━━━ 5 LABELS ━━━━ */
+  .labels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 9px; }
+  .label-item { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 7px; padding: 7px 9px; }
+  .label-item.full { grid-column: 1 / -1; }
+  .li-name { font-size: 9px; color: var(--muted); letter-spacing: .5px; margin-bottom: 2px; font-weight: 500; }
+  .li-val { font-size: 11px; font-weight: 600; }
+  .li-val.good { color: var(--neon-green); }
+  .li-val.warn { color: var(--neon-yellow); }
+  .li-val.bad { color: var(--neon-red); }
+  .li-val.info { color: var(--neon-blue); }
+  .li-val.fire { color: var(--neon-orange); }
+  .li-val.muted { color: var(--muted); }
+
+  /* SCORE */
+  .score-row { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+  .score-num { font-family: 'Teko', sans-serif; font-size: 26px; font-weight: 700; line-height: 1; min-width: 42px; }
+  .score-num.fire { color: var(--neon-orange); text-shadow: 0 0 10px rgba(255,138,0,.4); }
+  .score-num.armed { color: var(--neon-yellow); }
+  .score-num.watch { color: var(--neon-blue); }
+  .score-num.below { color: var(--muted); }
+  .score-bar-bg { flex: 1; height: 6px; background: rgba(11,15,20,0.6); border-radius: 3px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 3px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+  .sbf-fire { background: linear-gradient(90deg, #ff8a00, #ffd000); box-shadow: 0 0 6px rgba(255,138,0,.4); }
+  .sbf-armed { background: linear-gradient(90deg, #ffd000, #ffe080); }
+  .sbf-watch { background: linear-gradient(90deg, #00d4ff, #44e0ff); }
+  .sbf-below { background: var(--border); }
+
+  /* TRACK BUTTON */
+  .track-add-btn {
+    margin-top: 8px; width: 100%; padding: 9px;
+    background: rgba(184,132,255,.1); border: 1px solid rgba(184,132,255,.35);
+    border-radius: 8px; color: var(--neon-purple);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif; transition: all .2s;
+  }
+  .track-add-btn:hover { background: rgba(184,132,255,.18); }
+  .track-add-btn.added { background: rgba(0,255,136,.1); color: var(--neon-green); border-color: rgba(0,255,136,.3); cursor: default; }
+
+  /* ━━━━ TRACKING PAGE ━━━━ */
+  .tracking-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .tc-header2 {
+    padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+  }
+  .tc-name2 { font-weight: 700; font-size: 14px; }
+  .tc-body2 { padding: 12px; }
+
+  .tl-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
+  .tl-row:last-child { margin-bottom: 0; }
+  .tl-line { display: flex; flex-direction: column; align-items: center; width: 16px; flex-shrink: 0; }
+  .tl-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .tl-conn { width: 1px; flex: 1; min-height: 10px; background: var(--border); margin-top: 2px; }
+  .tl-row:last-child .tl-conn { display: none; }
+  .tl-dot.shock { background: var(--shock); }
+  .tl-dot.absorb { background: var(--absorb); box-shadow: 0 0 6px var(--absorb); }
+  .tl-dot.recovery { background: var(--recovery); box-shadow: 0 0 6px var(--recovery); }
+  .tl-dot.break { background: var(--break); box-shadow: 0 0 8px var(--break); }
+  .tl-dot.inactive { background: var(--border); }
+  .tl-content { flex: 1; padding-bottom: 3px; }
+  .tl-label { font-size: 11px; font-weight: 600; margin-bottom: 1px; }
+  .tl-desc { font-size: 10px; color: var(--muted); }
+
+  .status-bar2 { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; border-radius: 8px; margin-top: 10px; }
+  .sb2-shock { background: rgba(255,23,68,.1); border: 1px solid rgba(255,23,68,.3); }
+  .sb2-absorb { background: rgba(255,138,0,.1); border: 1px solid rgba(255,138,0,.3); }
+  .sb2-recovery { background: rgba(255,208,0,.1); border: 1px solid rgba(255,208,0,.3); }
+  .sb2-break { background: rgba(0,255,136,.1); border: 1px solid rgba(0,255,136,.4); animation: firePulse 1.5s infinite; }
+  .sb2-lbl { font-size: 10px; color: var(--muted); }
+  .sb2-val { font-family: 'Teko', sans-serif; font-size: 16px; font-weight: 600; }
+
+  .update-form { background: var(--bg); border-radius: 8px; padding: 11px; margin-top: 10px; border: 1px solid var(--border-soft); }
+  .uf-title { font-size: 10px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; font-weight: 600; }
+  .uf-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .uf-item { display: flex; flex-direction: column; gap: 3px; }
+  .uf-label { font-size: 9px; color: var(--muted); }
+  .uf-input { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; width: 100%; }
+  .uf-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 0 2px rgba(0,212,255,.15); }
+  .uf-btn { width: 100%; padding: 10px; background: rgba(0,212,255,.1); border: 1px solid rgba(0,212,255,.35); border-radius: 8px; color: var(--neon-blue); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
+  .uf-btn:hover { background: rgba(0,212,255,.18); }
+  .del-btn { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 3px; }
+  .del-btn:hover { color: var(--neon-red); }
+
+  /* ━━━━ FIRE ZONE ━━━━ */
+  .fire-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .fire-empty .icon { font-size: 50px; margin-bottom: 12px; opacity: .3; }
+  .fire-empty .msg { font-size: 12px; line-height: 1.8; }
+  .fire-empty .flow-hint { font-size: 10px; opacity: .6; margin-top: 8px; }
+
+  .fire-card-big {
+    background: linear-gradient(135deg, rgba(255,138,0,.08), rgba(255,208,0,.04));
+    border: 1px solid rgba(255,138,0,.4);
+    border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+    position: relative; animation: cardIn .4s ease;
+  }
+  .fire-card-big::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #ff8a00, #ffd000, #ff8a00);
+    background-size: 200% 100%; animation: shimmer 2s infinite;
+  }
+  .fcb-header { padding: 13px 13px 9px; display: flex; align-items: center; justify-content: space-between; }
+  .fcb-body { padding: 0 13px 13px; }
+  .fcb-score-big { font-family: 'Teko', sans-serif; font-size: 46px; font-weight: 700; color: var(--neon-orange); line-height: 1; text-shadow: 0 0 16px rgba(255,138,0,.4); }
+  .fcb-score-lbl { font-size: 10px; color: var(--muted); }
+  .fcb-conds { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 11px; }
+  .fcb-cond { background: var(--bg); border-radius: 7px; padding: 7px 9px; border: 1px solid var(--border-soft); }
+  .fc-name { font-size: 9px; color: var(--muted); margin-bottom: 2px; font-weight: 500; }
+  .fc-val { font-size: 12px; font-weight: 600; }
+  .fc-val.ok { color: var(--neon-green); }
+  .fc-val.no { color: var(--neon-red); }
+  .enter-signal { width: 100%; padding: 13px; background: linear-gradient(135deg, rgba(255,138,0,.25), rgba(255,208,0,.12)); border: 1px solid rgba(255,138,0,.5); border-radius: 9px; text-align: center; font-family: 'Teko', sans-serif; font-size: 19px; font-weight: 700; color: var(--neon-orange); letter-spacing: 2.5px; cursor: pointer; }
+  .enter-signal:hover { background: linear-gradient(135deg, rgba(255,138,0,.35), rgba(255,208,0,.18)); }
+
+  .info-box { background: rgba(0,212,255,.05); border: 1px solid rgba(0,212,255,.2); border-radius: 9px; padding: 9px 12px; font-size: 11px; color: rgba(0,212,255,.8); line-height: 1.7; margin-bottom: 12px; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 12px; line-height: 1.9; }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 18px; font-size: 12px; font-weight: 500; z-index: 9999; transition: transform .3s cubic-bezier(.4,0,.2,1); white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.shock-t { border-color: rgba(255,23,68,.5); color: #ff6677; }
+  .toast.fire-t { border-color: rgba(255,138,0,.5); color: var(--neon-orange); }
+  .toast.ok-t { border-color: rgba(0,255,136,.5); color: var(--neon-green); }
+
+  .last-info { display: flex; align-items: center; justify-content: space-between; padding: 7px 11px; background: rgba(11,15,20,0.6); border-radius: 7px; margin-top: 10px; font-size: 10px; color: var(--muted); }
+  .last-info .key { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-wrap">
+    <span class="logo-icon">🧨</span>
+    <div class="logo-txt">
+      <div class="logo">BLOCK RESET ENGINE</div>
+      <div class="logo-sub">v2.6 — FIRE 2단계 · 앱연결</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <a class="hub-back-btn" href="trinity_hub_v1_0.html">🔱 HUB</a>
+    <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+    <div class="time-d" id="timeDisplay">--:--:--</div>
+  </div>
+</div>
+
+<!-- TAB -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('detector',this)">
+    <span class="tab-icon">⚡</span><span>DETECTOR</span>
+    <span class="tab-count" id="detectorCount">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('tracker',this)">
+    <span class="tab-icon">📡</span><span>TRACKING</span>
+    <span class="tab-count w" id="trackerCount">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('fire',this)">
+    <span class="tab-icon">🔥</span><span>FIRE ZONE</span>
+    <span class="tab-count f" id="fireCount">0</span>
+  </button>
+</div>
+
+<!-- ━━━━━━━━ PAGE 1: DETECTOR ━━━━━━━━ -->
+<div class="page active" id="page-detector">
+
+  <!-- 미션 컨트롤 대시보드 -->
+  <div class="mc-dashboard">
+    <div class="mc-title">⚙ Mission Control</div>
+    <div class="mc-stats">
+      <div class="mc-stat shock">
+        <div class="mc-num" id="mc-shock">0</div>
+        <div class="mc-lbl">SHOCK</div>
+      </div>
+      <div class="mc-stat watch">
+        <div class="mc-num" id="mc-watch">0</div>
+        <div class="mc-lbl">WATCHING</div>
+      </div>
+      <div class="mc-stat fire">
+        <div class="mc-num" id="mc-fire">0</div>
+        <div class="mc-lbl">FIRE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 추천 종목 강조 카드 (최고 점수) -->
+  <div id="topCandidate"></div>
+
+  <!-- 섹터 선택 -->
+  <div class="sector-panel">
+    <div class="sp-title">📌 주도 섹터 (복수 선택)</div>
+    <div class="sector-chips">
+      <button class="sector-chip s1 active" data-sector="반도체/HBM/AI" onclick="toggleSector(this)">🔵 반도체/HBM/AI</button>
+      <button class="sector-chip s2 active" data-sector="전력/변압기" onclick="toggleSector(this)">🟡 전력/변압기</button>
+      <button class="sector-chip s3 active" data-sector="조선/방산" onclick="toggleSector(this)">🟢 조선/방산</button>
+      <button class="sector-chip s4 active" data-sector="PCB/데이터센터" onclick="toggleSector(this)">🟣 PCB/데이터센터</button>
+      <button class="sector-chip s5 active" data-sector="이차전지/소재" onclick="toggleSector(this)">🟠 이차전지/소재</button>
+      <button class="sector-chip s6 active" data-sector="로봇" onclick="toggleSector(this)">🤖 로봇</button>
+      <button class="sector-chip s7 active" data-sector="태양광/신재생" onclick="toggleSector(this)">☀️ 태양광/신재생</button>
+      <button class="sector-chip s8 active" data-sector="건설/모빌리티" onclick="toggleSector(this)">🌊 건설/모빌리티</button>
+      <button class="sector-chip s9 active" data-sector="전력반도체 소부장" onclick="toggleSector(this)">⚡ 전력반도체 소부장</button>
+    </div>
+    <div class="sp-info">
+      ✅ 화이트리스트 등록 종목: <span class="sp-count" id="whitelistCount">0</span>개 — 이 종목들만 분석합니다
+    </div>
+  </div>
+
+  <!-- 스캔 -->
+  <div class="scan-area">
+    <div class="scan-meta">
+      <span class="key">TOP30</span><span class="arrow">→</span>섹터 화이트리스트<span class="arrow">→</span>상승구조<span class="arrow">→</span>BLOCK 탐지<br>
+      <span style="color:var(--muted);font-size:10px">제외: 잡주 · 동전주 · ETN · 섹터 미해당 · 단순폭락주</span>
+    </div>
+    <button class="warmup-btn" id="warmupBtn" onclick="runWarmup()">
+      🔌 서버 웜업 (장 전 필수 · Railway 슬립 해소)
+    </button>
+    <button class="scan-btn" id="scanBtn" onclick="runScan()">⚡ 섹터 스캔 시작</button>
+  </div>
+
+  <!-- 프로그레스 -->
+  <div class="progress-box" id="progressBox">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <span class="prog-text" id="progText">준비 중...</span>
+      <span class="prog-pct" id="progPct">0%</span>
+    </div>
+    <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
+    <div class="prog-step">
+      <div class="step-badge s1" id="step1">STEP1 TOP30</div>
+      <div class="step-badge s2" id="step2">STEP2 화이트리스트</div>
+      <div class="step-badge s3" id="step3">STEP3 구조확인</div>
+      <div class="step-badge s4" id="step4">STEP4 BLOCK</div>
+    </div>
+  </div>
+
+  <!-- 퍼널 -->
+  <div class="funnel-box" id="funnelBox" style="display:none">
+    <div class="funnel-title">📊 필터 퍼널</div>
+    <div class="funnel-steps">
+      <div class="funnel-step"><div class="fs-num n0" id="f0">0</div><div class="fs-lbl">TOP30</div></div>
+      <div class="fs-arrow">›</div>
+      <div class="funnel-step"><div class="fs-num n1" id="f1">0</div><div class="fs-lbl">섹터OK</div></div>
+      <div class="fs-arrow">›</div>
+      <div class="funnel-step"><div class="fs-num n2" id="f2">0</div><div class="fs-lbl">구조OK</div></div>
+      <div class="fs-arrow">›</div>
+      <div class="funnel-step"><div class="fs-num n3" id="f3">0</div><div class="fs-lbl">SHOCK</div></div>
+      <div class="fs-arrow">›</div>
+      <div class="funnel-step"><div class="fs-num n4" id="f4">0</div><div class="fs-lbl">🔥FIRE</div></div>
+    </div>
+    <div class="last-info">
+      <span>마지막 스캔</span>
+      <span class="key" id="lastScanTime">--</span>
+    </div>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
+    <button class="filter-btn" onclick="setFilter('shock',this)">🚨 SHOCK</button>
+    <button class="filter-btn b" onclick="setFilter('watch',this)">⚠️ WATCH</button>
+    <button class="filter-btn o" onclick="setFilter('fire',this)">🔥 FIRE</button>
+    <button class="filter-btn" id="debugBtn" onclick="toggleDebug()" style="margin-left:auto">🐛 디버그</button>
+  </div>
+
+  <div id="detectorResults">
+    <div class="empty-state">
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:14px;line-height:1.7">
+        💡 <strong style="color:var(--neon-orange)">"좋은 종목이 충격을 맞은 경우만 찾는다"</strong>
+      </div>
+      섹터를 선택하고 스캔을 시작하면<br>
+      유망 섹터 안에서 <span style="color:var(--neon-red)">SHOCK</span> /
+      <span style="color:var(--neon-blue)">WATCH</span> /
+      <span style="color:var(--neon-orange)">FIRE</span> 종목만<br>
+      자동으로 표시됩니다
+      <div style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.7">
+        🚫 정상 종목 · 상승 종목은 화면에서 숨김<br>
+        (디버그 모드 켜면 전체 분석 결과 확인 가능)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━━━━━━━ PAGE 2: TRACKER ━━━━━━━━ -->
+<div class="page" id="page-tracker">
+  <div class="section-title">📡 RECOVERY TRACKER</div>
+  <div class="info-box">
+    📡 충격 → 소화 → 회복 → 돌파 흐름을 추적합니다.<br>
+    매일 데이터를 업데이트해 BREAK 신호를 포착하세요.
+  </div>
+  <div id="trackingList"><div class="empty-state">DETECTOR에서 종목을 추가하면<br>여기서 회복 추적이 시작됩니다</div></div>
+</div>
+
+<!-- ━━━━━━━━ PAGE 3: FIRE ZONE ━━━━━━━━ -->
+<div class="page" id="page-fire">
+  <div class="section-title">🔥 FIRE ZONE — 진입 타이밍</div>
+  <div id="fireZoneContent">
+    <div class="fire-empty">
+      <div class="icon">🎯</div>
+      <div class="msg">FIRE 조건 충족 종목이 없습니다</div>
+      <div class="flow-hint">SHOCK → ABSORB → RECOVERY → 🔥BREAK</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const RAILWAY = 'https://fastapi-production-f631.up.railway.app';
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// WARMUP — Railway 슬립 해소
+// ━━━━━━━━━━━━━━━━━━━━━━
+async function runWarmup() {
+  const btn = document.getElementById('warmupBtn');
+  btn.classList.add('loading');
+  btn.textContent = '🔄 웜업 중... (5~15초 소요)';
+  btn.disabled = true;
+
+  const t0 = Date.now();
+  try {
+    // 채피 설계: 하나의 웜업 흐름으로 3개 엔드포인트 순차 핑
+    await fetch(`${RAILWAY}/top30_v2`, { signal: AbortSignal.timeout(18000) }).catch(() => {});
+    await fetch(`${RAILWAY}/stock/005930`, { signal: AbortSignal.timeout(8000) }).catch(() => {});
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    btn.classList.remove('loading');
+    btn.classList.add('done');
+    btn.textContent = `✅ 웜업 완료 (${elapsed}초) — 스캔 준비 OK`;
+    toast('🔌 Railway 서버 웜업 완료 — 스캔 시작 가능', 'ok-t');
+  } catch(e) {
+    btn.classList.remove('loading');
+    btn.classList.add('fail');
+    btn.textContent = '⚠️ 웜업 실패 — Railway 확인 필요';
+    toast('⚠️ 서버 웜업 실패', 'bad-t');
+  }
+  btn.disabled = false;
+  // 30초 후 버튼 초기화
+  setTimeout(() => {
+    btn.classList.remove('done', 'fail');
+    btn.textContent = '🔌 서버 웜업 (장 전 필수 · Railway 슬립 해소)';
+  }, 30000);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// 섹터 화이트리스트 (5개 섹터 × 16+종목)
+// 코드 + 종목명 양쪽 매칭
+// ━━━━━━━━━━━━━━━━━━━━━━
+const SECTOR_WHITELIST = {
+  '반도체/HBM/AI': {
+    color: 's1',
+    stocks: [
+      // 시총 대형
+      ['005930', '삼성전자'], ['000660', 'SK하이닉스'],
+      // HBM/패키징
+      ['042700', '한미반도체'], ['007660', '이수페타시스'],
+      ['058470', '리노공업'], ['131970', '두산테스나'],
+      // 장비
+      ['403870', 'HPSP'], ['036930', '주성엔지니어링'],
+      ['240810', '원익IPS'], ['319660', '피에스케이'],
+      ['036420', '제이씨현시스템'], ['183300', '코미코'],
+      ['089030', '테크윙'], ['357780', '솔브레인'],
+      // 소재/소부장
+      ['298540', '더네이쳐홀딩스'], ['131290', '티에스이'],
+      ['131370', '알에스오토메이션'], ['097520', '엠씨넥스'],
+      ['218410', 'RFHIC'], ['095340', 'ISC'],
+      // PCB/소재
+      ['036490', 'SK머티리얼즈'], ['290660', '비에이치'],
+      ['000990', 'DB하이텍'], ['440110', '파두'],
+      ['399720', '가온칩스'], ['394280', '오픈엣지테크놀로지'],
+      ['436760', '퀄리타스반도체'], ['445090', '에이직랜드'],
+      ['365590', '엘에이티'], ['417200', '두산로보틱스'],
+      ['357550', 'LX세미콘'], ['322000', 'HD현대에너지솔루션']
+    ]
+  },
+  '전력/변압기': {
+    color: 's2',
+    stocks: [
+      ['267260', 'HD현대일렉트릭'], ['298040', '효성중공업'],
+      ['010120', 'LS ELECTRIC'], ['033100', '제룡전기'],
+      ['103590', '일진전기'], ['229640', 'LS전선아시아'],
+      ['001440', '대한전선'], ['000490', '대동'],
+      ['000270', '기아'], // 전기차 인프라
+      ['014820', '동원시스템즈'], ['027410', 'BGF'],
+      ['006400', '삼성SDI'], // 배터리/전력
+      ['051910', 'LG화학'],
+      ['079550', 'LIG넥스원'], // 군수전력
+      ['060980', '한일홀딩스'], ['115390', '락앤락']
+    ]
+  },
+  '조선/방산': {
+    color: 's3',
+    stocks: [
+      ['329180', 'HD현대중공업'], ['010620', 'HD현대미포'],
+      ['010140', '삼성중공업'], ['042660', '한화오션'],
+      ['064350', '현대로템'], ['079550', 'LIG넥스원'],
+      ['012450', '한화에어로스페이스'], ['272210', '한화시스템'],
+      ['009160', 'STX엔진'], ['011210', '현대위아'],
+      ['047810', '한국항공우주'], ['036030', 'KTB네트워크'],
+      ['298050', '효성첨단소재'], // 군수소재
+      ['009540', 'HD한국조선해양'], ['008970', '동양철관'],
+      ['014530', '극동유화']
+    ]
+  },
+  'PCB/데이터센터': {
+    color: 's4',
+    stocks: [
+      ['007660', '이수페타시스'], ['007810', '코리아써키트'],
+      ['008060', '대덕전자'], ['009150', '삼성전기'],
+      ['011070', 'LG이노텍'], ['066910', '제룡산업'],
+      ['039200', '오스코텍'], ['043260', '성호전자'],
+      ['051370', '인터플렉스'], ['090460', '비에이치'],
+      ['036010', '아비코전자'], ['178320', '서진시스템'],
+      ['052710', '아모텍'], ['298040', '효성중공업'], // 데이터센터 전력
+      ['183300', '코미코'], ['322000', 'HD현대에너지솔루션']
+    ]
+  },
+  '이차전지/소재': {
+    color: 's5',
+    stocks: [
+      // 대형 셀/완성품
+      ['005490', 'POSCO홀딩스'], ['047050', 'POSCO인터내셔널'],
+      ['003670', '포스코퓨처엠'], ['051910', 'LG화학'],
+      ['006400', '삼성SDI'], ['373220', 'LG에너지솔루션'],
+      ['096770', 'SK이노베이션'],
+      // 양극재/음극재/소재
+      ['247540', '에코프로비엠'], ['086520', '에코프로'],
+      ['450080', '에코프로머티'], ['066970', '엘앤에프'],
+      ['121600', '나노신소재'], ['005070', '코스모신소재'],
+      ['418550', '제이오'], ['348370', '엔켐'],
+      ['365340', '성일하이텍'],
+      // 신규 추가 (사진 3 — 배터리)
+      ['238120', '필에너지'], ['460850', '한농화성'],
+      ['361380', '레이저쎌'], ['137400', '피엔티'],
+      ['299030', '하나기술'], ['457190', '이수스페셜티케미컬'],
+      ['025900', '동화기업'], ['254490', '씨아이에스'],
+      ['389030', '신성에스티']
+    ]
+  },
+  '로봇': {
+    color: 's6',
+    stocks: [
+      // 협동/산업용 로봇
+      ['454910', '두산로보틱스'], ['277810', '레인보우로보틱스'],
+      ['108490', '로보스타'], ['108860', '셀바스AI'],
+      ['388720', '뉴로메카'], ['388720', '뉴로메카'],
+      ['461970', 'LIG디펜스앤에어로스페이스'],
+      // 부품/모듈
+      ['108860', '셀바스AI'], ['148150', '세경하이테크'],
+      ['357250', '미래반도체'],
+      // 사진 1 종목 직접 추가
+      ['453300', '한국피아이엠'], ['101170', '우림피티에스'],
+      ['396270', '클로봇'], ['090360', '로보스타'],
+      ['270870', '에브리봇'], ['098460', '고영'],
+      ['117730', '티로보틱스'], ['108490', '로보티즈'],
+      ['126560', '현대무벡스'], ['114820', '하이젠알앤엠'],
+      ['389500', '에스비비테크'], ['058610', '에스피지'],
+      ['348340', '뉴로메카'], ['079940', '유진로봇'],
+      ['090710', '휴림로봇'], ['322000', '현대오토에버']
+    ]
+  },
+  '태양광/신재생': {
+    color: 's7',
+    stocks: [
+      ['009830', '한화솔루션'], ['010060', 'OCI홀딩스'],
+      ['322000', 'HD현대에너지솔루션'],
+      // 사진 2 종목
+      ['171090', '선익시스템'], ['078600', '대주전자재료'],
+      ['099220', 'SDN'], ['413630', 'PLUS태양광ESS'],
+      ['095910', '에스에너지'], ['079950', '인베니아'],
+      ['107640', '한중엔시에스'], ['457800', 'SK이터닉스'],
+      ['099410', '동방선기'], ['072470', '우리산업홀딩스'],
+      // 풍력/신재생 추가
+      ['112610', '씨에스윈드'], ['064350', '현대로템'],
+      ['145720', '디앤씨미디어'], ['322180', '주성엔지니어링']
+    ]
+  },
+  '건설/모빌리티': {
+    color: 's8',
+    stocks: [
+      // 건설사
+      ['000720', '현대건설'], ['375500', 'DL이앤씨'],
+      ['047040', '대우건설'], ['006360', 'GS건설'],
+      ['002990', '금호건설'], ['001530', 'DL'],
+      ['012630', 'HDC'],
+      // 모빌리티 (자동차/완성차/부품)
+      ['000270', '기아'], ['005380', '현대차'],
+      ['012330', '현대모비스'], ['086280', '현대글로비스'],
+      ['011210', '현대위아'], ['322000', '현대오토에버'],
+      // 새만금/인프라 (사진 4)
+      ['417200', 'LS머트리얼즈'], ['229640', 'LS에코에너지'],
+      ['009180', '한솔로지스틱스'], ['001440', '대한전선'],
+      ['033100', '제룡전기'], ['009070', 'KCTC'],
+      ['112610', '씨에스윈드']
+    ]
+  },
+  '전력반도체 소부장': {
+    color: 's9',
+    stocks: [
+      // ━━━ 사진 화면 직접 종목 (네이버 전력반도체 테마 — 2026.04.24 기준) ━━━
+      ['037030', '파워넷'],         // SMPS·차량용 전력반도체
+      ['429270', '시지트로닉스'],   // 산화갈륨(Ga2O3) SBD 개발 — 1200V급
+      ['327260', 'RF머트리얼즈'],   // GaN 패키지·ETRI 산화갈륨 국산화
+      ['108320', 'LX세미콘'],       // 시스템반도체 팹리스·전력 IC
+      ['417200', 'LS머트리얼즈'],   // 울트라커패시터·전력저장
+      ['273640', '와이엠텍'],       // 고전압 직류 릴레이 — EV 전력
+      ['355150', '코스텍시스'],     // SiC/GaN 고방열 스페이서
+      ['110990', '디아이티'],       // 반도체·디스플레이 검사장비
+      ['036540', 'SFA반도체'],      // 반도체 후공정 (4.24 +22%)
+      ['172670', '에이엘티'],       // SiC 웨이퍼 후공정·림컷 국내 유일 (4.24 +26%)
+      ['330860', '네패스아크'],     // 시스템반도체 테스트 (4.24 +20%)
+      ['092220', 'KEC'],            // SiC 전력반도체 본업
+      ['000990', 'DB하이텍'],       // GaN 8인치 파운드리·2026하반기 양산
+      // ━━━ 추가 SiC/GaN 핵심 관련주 ━━━
+      ['017900', '광전자'],         // 전력반도체 광소자
+      ['388790', '나노씨엠에스'],   // SiC·GaN 관련
+      ['396470', '큐알티'],         // 반도체 신뢰성 평가
+      ['036200', '유니셈'],         // 반도체 가스 처리
+      ['419080', '아이언디바이스'], // 전력반도체 IC
+      ['046890', '서울반도체']      // LED·전력반도체
+    ]
+  }
+};
+
+// 빠른 조회용 인덱스 생성
+const STOCK_TO_SECTOR = {};
+for (const [sector, data] of Object.entries(SECTOR_WHITELIST)) {
+  for (const [code, name] of data.stocks) {
+    if (!STOCK_TO_SECTOR[code]) STOCK_TO_SECTOR[code] = [];
+    STOCK_TO_SECTOR[code].push({ sector, color: data.color });
+    // 종목명 매칭도 추가
+    const cleanName = name.replace(/\s/g, '');
+    if (!STOCK_TO_SECTOR[cleanName]) STOCK_TO_SECTOR[cleanName] = [];
+    STOCK_TO_SECTOR[cleanName].push({ sector, color: data.color });
+  }
+}
+
+// ━━━━ STATE ━━━━
+let activeSectors = new Set(['반도체/HBM/AI', '전력/변압기', '조선/방산', 'PCB/데이터센터', '이차전지/소재', '로봇', '태양광/신재생', '건설/모빌리티', '전력반도체 소부장']);
+let scanResults = JSON.parse(localStorage.getItem('bre_v2_scan') || '[]');
+let trackingStocks = JSON.parse(localStorage.getItem('bre_v2_tracking') || '[]');
+let currentFilter = 'all';
+
+// ━━━━ TIME ━━━━
+function updateTime() {
+  document.getElementById('timeDisplay').textContent = new Date().toLocaleTimeString('ko-KR', {hour12:false});
+}
+setInterval(updateTime, 1000); updateTime();
+
+// ━━━━ TAB ━━━━
+function switchTab(tab, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'tracker') renderTracking();
+  if (tab === 'fire') renderFireZone();
+}
+
+function updateCounts() {
+  const shockCount = scanResults.filter(s => s.status === 'shock').length;
+  const watchCount = scanResults.filter(s => s.status === 'watch').length;
+  const fireCount = scanResults.filter(s => s.status === 'fire').length + 
+                    trackingStocks.filter(s => s.status === 'break' || s.status === 'fire').length;
+
+  document.getElementById('detectorCount').textContent = shockCount + watchCount + fireCount;
+  document.getElementById('trackerCount').textContent = trackingStocks.length;
+  document.getElementById('fireCount').textContent = trackingStocks.filter(s => s.status === 'break' || s.status === 'fire').length;
+
+  document.getElementById('mc-shock').textContent = shockCount;
+  document.getElementById('mc-watch').textContent = watchCount + trackingStocks.filter(s => s.status === 'recovery').length;
+  document.getElementById('mc-fire').textContent = fireCount;
+
+  updateWhitelistCount();
+}
+
+function updateWhitelistCount() {
+  const codes = new Set();
+  for (const sector of activeSectors) {
+    const data = SECTOR_WHITELIST[sector];
+    if (data) data.stocks.forEach(([code]) => codes.add(code));
+  }
+  document.getElementById('whitelistCount').textContent = codes.size;
+}
+
+// ━━━━ TOAST ━━━━
+function toast(msg, cls = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + cls + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ━━━━ SECTOR ━━━━
+function toggleSector(chip) {
+  const sector = chip.dataset.sector;
+  if (activeSectors.has(sector)) {
+    if (activeSectors.size <= 1) return;
+    activeSectors.delete(sector);
+    chip.classList.remove('active');
+  } else {
+    activeSectors.add(sector);
+    chip.classList.add('active');
+  }
+  updateWhitelistCount();
+}
+
+function classifyStock(code, name) {
+  // 1. 코드 직접 매칭
+  if (STOCK_TO_SECTOR[code]) {
+    const matches = STOCK_TO_SECTOR[code].filter(m => activeSectors.has(m.sector));
+    if (matches.length > 0) return matches[0];
+  }
+  // 2. 종목명 매칭
+  const cleanName = name.replace(/\s/g, '');
+  if (STOCK_TO_SECTOR[cleanName]) {
+    const matches = STOCK_TO_SECTOR[cleanName].filter(m => activeSectors.has(m.sector));
+    if (matches.length > 0) return matches[0];
+  }
+  // 3. 부분 키워드 매칭 (백업)
+  for (const [sector, data] of Object.entries(SECTOR_WHITELIST)) {
+    if (!activeSectors.has(sector)) continue;
+    for (const [code2, name2] of data.stocks) {
+      const clean2 = name2.replace(/\s/g, '');
+      if (cleanName.includes(clean2) || clean2.includes(cleanName)) {
+        return { sector, color: data.color };
+      }
+    }
+  }
+  return null;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// 상승구조 필터
+// ━━━━━━━━━━━━━━━━━━━━━━
+function checkUptrend(s) {
+  const above20ma = s.price >= s.ma20 * 0.92;       // 20일선 -8%까지 허용
+  const notDontStock = s.price > 2000;
+  const volSufficient = s.vol > 30000;
+  const notDeepCrash = s.changeRate > -25;
+  const pass = above20ma && notDontStock && volSufficient && notDeepCrash;
+  let reason = pass ? '구조 양호' :
+    !above20ma ? '20일선 크게 이탈' :
+    !notDontStock ? '저가주 제외' :
+    !volSufficient ? '거래량 부족' :
+    !notDeepCrash ? '상폐급 폭락' : '필터';
+  return { pass, reason };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// BLOCK DETECTOR
+// ━━━━━━━━━━━━━━━━━━━━━━
+function detectBlock(s) {
+  let score = 0;
+  const cr = s.changeRate;
+  const vr = s.volRatio;
+  const fromHigh = s.high10 > 0 ? (s.price - s.high10) / s.high10 * 100 : cr * 1.5;
+
+  // 충격강도 (25)
+  const shockScore = cr <= -10 ? 25 : cr <= -7 ? 20 : cr <= -5 ? 12 : cr <= -3 ? 5 : 0;
+  // 거래량폭발 (25)
+  const volScore = vr >= 3 ? 25 : vr >= 2 ? 20 : vr >= 1.5 ? 12 : vr >= 1.2 ? 5 : 0;
+  // 섹터 (20) — 화이트리스트 통과 = 만점
+  const sectorScore = 20;
+  // 구조 (15)
+  const structScore = s.uptrendPass ? 15 : 0;
+  // 5일선 (15)
+  const ma5Score = s.price < s.ma5 * 0.95 ? 15 : s.price < s.ma5 ? 10 : 0;
+
+  score = shockScore + volScore + sectorScore + structScore + ma5Score;
+  score = Math.min(100, score);
+
+  // ━━━ 4단계 Flow Engine ━━━
+  // SHOCK %: 충격강도 + 거래량 폭발
+  const shockFlow = Math.min(100, (Math.abs(cr) / 10) * 50 + (Math.min(vr, 4) / 4) * 50);
+  // ABSORB %: 시간 기반 (지금은 0, tracking에서 갱신)
+  const absorbFlow = 0;
+  // RECOVERY %: 0 (tracking에서 갱신)
+  const recoveryFlow = 0;
+  // BREAK %: 0
+  const breakFlow = 0;
+
+  // 상태 결정
+  const isShock = cr <= -7 && vr >= 2;
+  const isWatch = cr <= -5 && vr >= 1.5;
+
+  // ━━━ FIRE 2단계 (채피 설계) ━━━
+  // FIRE_READY  : 충격+점수 조건 충족 (반등 여부 미확인)
+  // FIRE_CONFIRM: 충격+점수+거래량유지(vr>=1.8) = 살아있는 신호
+  const isFireReady   = score >= 75 && isShock;
+  const isFireConfirm = score >= 75 && isShock && vr >= 1.8;
+
+  let status = 'normal';
+  let hiddenReason = null;
+
+  // ━━━ 수정4: 상승 종목은 BLOCK 후보에서 제외 ━━━
+  if (cr > 0) {
+    status = 'normal';
+    hiddenReason = '상승 종목 — BLOCK 대상 아님';
+  } else if (isFireConfirm) status = 'fire_confirm';
+  else if (isFireReady)   status = 'fire_ready';
+  else if (isShock) status = 'shock';
+  else if (isWatch) status = 'watch';
+
+  return {
+    score, status, hiddenReason,
+    shockScore, volScore, sectorScore, structScore, ma5Score,
+    isShock, isFireReady, isFireConfirm, cr, vr, fromHigh,
+    flow: { shock: shockFlow, absorb: absorbFlow, recovery: recoveryFlow, break: breakFlow }
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// 앱 간 연결 (채피 설계 / 써니 구현)
+// Block Reset → Strike Check
+// ━━━━━━━━━━━━━━━━━━━━━━
+function sendToStrike(code, name, price, changePct) {
+  // localStorage에 종목 정보 저장 → Strike Check가 읽음
+  localStorage.setItem('trinity_strike_incoming', JSON.stringify({
+    code, name, price, changePct,
+    from: 'block_reset',
+    timestamp: Date.now()
+  }));
+  toast(`⚡ Strike Check로 전송 — ${name} (${changePct>=0?'+':''}${changePct.toFixed(1)}%)`, 'ok-t');
+  // Strike Check 파일이 같은 폴더에 있는 경우 자동 열기 시도
+  // (파일 기반 운용 시 수동으로 Strike Check 열 것)
+}
+async function runScan() {
+  const btn = document.getElementById('scanBtn');
+  const pbox = document.getElementById('progressBox');
+  btn.disabled = true; btn.textContent = '⏳ 스캔 중...';
+  pbox.classList.add('active');
+  scanResults = [];
+  setStep(1);
+
+  setProgress('STEP1 — Railway TOP30 요청 중...', 5);
+  let top30 = [];
+  try {
+    const res = await fetch(`${RAILWAY}/top30_v2`, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    top30 = data.items || [];
+    if (!top30.length) throw new Error('종목 없음');
+  } catch (e) {
+    pbox.classList.remove('active');
+    btn.disabled = false; btn.textContent = '⚡ 섹터 스캔 시작';
+    toast(`❌ Railway 연결 실패: ${e.message}`, 'shock-t');
+    document.getElementById('detectorResults').innerHTML =
+      `<div class="info-box" style="color:#ff6677">⚠️ Railway 연결 실패: ${e.message}</div>`;
+    return;
+  }
+
+  document.getElementById('f0').textContent = top30.length;
+  setStep(2);
+  setProgress('STEP2 — 화이트리스트 매칭 중...', 20);
+  await sleep(300);
+
+  // ━━━ 화이트리스트 사전 필터링 ━━━
+  const whitelisted = [];
+  for (const item of top30) {
+    const match = classifyStock(item.code, item.name);
+    if (match) {
+      whitelisted.push({ ...item, sectorMatch: match });
+    }
+  }
+
+  document.getElementById('f1').textContent = whitelisted.length;
+
+  if (whitelisted.length === 0) {
+    pbox.classList.remove('active');
+    btn.disabled = false; btn.textContent = '⚡ 재스캔';
+    document.getElementById('funnelBox').style.display = 'block';
+    document.getElementById('lastScanTime').textContent = new Date().toLocaleTimeString('ko-KR', {hour12:false});
+    document.getElementById('detectorResults').innerHTML =
+      `<div class="empty-state">
+        🔍 TOP30에 선택 섹터 종목이 없습니다<br><br>
+        <span style="font-size:10px">오늘은 다른 섹터가 거래량 상위를 차지했네요</span>
+      </div>`;
+    toast('🔍 선택 섹터 종목 없음 — 다른 섹터 시도', 'ok-t');
+    updateCounts();
+    return;
+  }
+
+  setStep(3);
+  let structPass = 0, shockCount = 0, watchCount = 0, fireCount = 0;
+
+  for (let i = 0; i < whitelisted.length; i++) {
+    const item = whitelisted[i];
+    const pct = 25 + Math.round((i / whitelisted.length) * 65);
+    setProgress(`분석: ${item.name} (${i+1}/${whitelisted.length})`, pct);
+
+    let detail = null;
+    try {
+      const dr = await fetch(`${RAILWAY}/stock/${item.code}`, { signal: AbortSignal.timeout(4000) });
+      if (dr.ok) detail = await dr.json();
+    } catch {}
+
+    const s = buildStock(item, detail);
+    s.sectorName = item.sectorMatch.sector;
+    s.sectorColor = item.sectorMatch.color;
+    s.sectorPass = true;
+
+    const uptrend = checkUptrend(s);
+    s.uptrendPass = uptrend.pass;
+    s.uptrendReason = uptrend.reason;
+    if (s.uptrendPass) { structPass++; setStep(4); }
+
+    const r = detectBlock(s);
+    s.detectionResult = r;
+    s.status = r.status;
+    s.score = r.score;
+
+    if (r.status === 'shock') { shockCount++; autoAddTracking(s); }
+    if (r.status === 'fire') { fireCount++; autoAddTracking(s); }
+    if (r.status === 'watch') watchCount++;
+
+    document.getElementById('f2').textContent = structPass;
+    document.getElementById('f3').textContent = shockCount;
+    document.getElementById('f4').textContent = fireCount;
+
+    scanResults.push(s);
+    await sleep(60);
+  }
+
+  localStorage.setItem('bre_v2_scan', JSON.stringify(scanResults));
+  setProgress('스캔 완료!', 100);
+
+  setTimeout(() => {
+    pbox.classList.remove('active');
+    btn.disabled = false; btn.textContent = '⚡ 재스캔';
+    document.getElementById('funnelBox').style.display = 'block';
+    document.getElementById('filterBar').style.display = 'flex';
+    document.getElementById('lastScanTime').textContent = new Date().toLocaleTimeString('ko-KR', {hour12:false});
+    renderResults();
+    renderTopCandidate();
+    updateCounts();
+
+    if (shockCount + fireCount > 0)
+      toast(`🚨 SHOCK ${shockCount}건 / 🔥 FIRE ${fireCount}건!`, 'shock-t');
+    else if (watchCount > 0)
+      toast(`⚠️ WATCH ${watchCount}건 — 관찰 중`, 'ok-t');
+    // ━━ HUB에 스캔 결과 전달 ━━
+    try {
+      localStorage.setItem('trinity_block_last', JSON.stringify({
+        shock: shockCount, fire: fireCount, watch: watchCount,
+        ts: Date.now()
+      }));
+    } catch(e) {}
+    else
+      toast(`✅ 스캔 완료 (${whitelisted.length}종목 분석) — 블록딜 없음`, 'ok-t');
+  }, 400);
+}
+
+function setProgress(text, pct) {
+  document.getElementById('progText').textContent = text;
+  document.getElementById('progPct').textContent = pct + '%';
+  document.getElementById('progFill').style.width = pct + '%';
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    if (i < n) { el.classList.remove('active'); el.classList.add('done'); }
+    else if (i === n) { el.classList.add('active'); el.classList.remove('done'); }
+    else { el.classList.remove('active', 'done'); }
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function buildStock(item, detail) {
+  const price = detail?.price || item.price || 0;
+  const prev = detail?.prev_close || detail?.prev || (price / (1 + (item.change_pct||0)/100));
+  const vol = detail?.volume || item.volume || 0;
+  const avgVol = detail?.avg_volume || detail?.vol_avg5 || Math.max(vol * 0.5, 1);
+  const high10 = detail?.high10 || detail?.high_10d || price * 1.1;
+  const ma5 = detail?.ma5 || detail?.ma_5 || price * 1.03;
+  const ma20 = detail?.ma20 || detail?.ma_20 || price * 1.06;
+  return {
+    id: item.code + '_' + Date.now(),
+    code: item.code, name: item.name,
+    price, prev, vol, avgVol, high10, ma5, ma20,
+    changeRate: item.change_pct || ((price-prev)/prev*100),
+    volRatio: vol / Math.max(avgVol, 1),
+    shockPrice: price, sector: 'alive',
+    detectedAt: new Date().toLocaleDateString('ko-KR'),
+    history: []
+  };
+}
+
+function autoAddTracking(s) {
+  if (!trackingStocks.find(t => t.code === s.code)) {
+    trackingStocks.unshift({...s, history:[{status:s.status, date:s.detectedAt, price:s.price}]});
+    localStorage.setItem('bre_v2_tracking', JSON.stringify(trackingStocks));
+  }
+}
+
+function manualAdd(code) {
+  const s = scanResults.find(r => r.code === code);
+  if (!s) return;
+  autoAddTracking(s);
+  const btn = document.getElementById('addBtn_' + code);
+  if (btn) { btn.textContent = '✅ 추적 중'; btn.className = 'track-add-btn added'; btn.disabled = true; }
+  updateCounts(); toast('📡 TRACKING 추가됨', 'ok-t');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// TOP CANDIDATE
+// ━━━━━━━━━━━━━━━━━━━━━━
+function renderTopCandidate() {
+  const el = document.getElementById('topCandidate');
+  const top = scanResults.filter(s => s.status === 'fire' || s.status === 'shock')
+                          .sort((a, b) => b.score - a.score)[0];
+  if (!top) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div class="top-candidate">
+      <div class="tc-header">
+        <div>
+          <div class="tc-tag">⭐ TOP CANDIDATE</div>
+          <div class="tc-name">${top.name}</div>
+          <div class="tc-sector">${top.sectorName}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="tc-score-big">${top.score}</div>
+          <div class="tc-score-lbl">/ 100점</div>
+        </div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap">
+        <span class="${top.detectionResult.cr < 0 ? 'price-down' : 'price-up'}">${top.detectionResult.cr.toFixed(2)}%</span>
+        <span>${top.price.toLocaleString()}원</span>
+        <span>거래량 ${top.detectionResult.vr.toFixed(1)}배</span>
+      </div>
+    </div>
+  `;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// RENDER
+// ━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ 수정3: 디버그 모드 (true로 바꾸면 NORMAL 종목도 보임) ━━━
+let debugMode = false;
+
+function toggleDebug() {
+  debugMode = !debugMode;
+  const btn = document.getElementById('debugBtn');
+  if (btn) {
+    btn.textContent = debugMode ? '🐛 디버그 ON' : '🐛 디버그';
+    btn.style.color = debugMode ? 'var(--neon-orange)' : 'var(--muted)';
+  }
+  renderResults();
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderResults();
+}
+
+function statusLabel(s) {
+  return {shock:'SHOCK', absorb:'ABSORB', recovery:'RECOVERY', break:'🔥BREAK',
+    watch:'WATCH', fire:'🔥FIRE', fire_ready:'🔥 READY', fire_confirm:'🔥 CONFIRM',
+    normal:'NORMAL'}[s] || s;
+}
+
+function renderResults() {
+  const el = document.getElementById('detectorResults');
+
+  // ━━━ 수정1: NORMAL 종목은 기본 숨김 (디버그 모드 제외) ━━━
+  let list;
+  if (debugMode) {
+    list = [...scanResults];
+  } else {
+    list = scanResults.filter(s =>
+      s.status === 'shock' ||
+      s.status === 'watch' ||
+      s.status === 'fire_ready' ||
+      s.status === 'fire_confirm' ||
+      s.status === 'fire'
+    );
+  }
+
+  list.sort((a, b) => {
+    const order = {fire_confirm:0, fire_ready:1, fire:2, shock:3, watch:4, normal:5};
+    return (order[a.status]??9) - (order[b.status]??9) || b.score - a.score;
+  });
+
+  // ━━━ 수정2: '전체' 필터 = SHOCK + WATCH + FIRE만 ━━━
+  if (currentFilter === 'all') {
+    if (!debugMode) {
+      list = list.filter(s => ['shock','watch','fire'].includes(s.status));
+    }
+  } else {
+    list = list.filter(s => s.status === currentFilter);
+  }
+
+  if (!list.length) {
+    // 더 친절한 빈 상태 메시지
+    const totalScanned = scanResults.length;
+    const sectorPass = scanResults.length;
+    const hiddenNormal = scanResults.filter(s => s.status === 'normal').length;
+    el.innerHTML = `<div class="empty-state">
+      ✅ 스캔 완료 — 블록딜 없음<br><br>
+      <span style="font-size:10px;line-height:1.8">
+        섹터/구조 통과: <span style="color:var(--neon-green)">${totalScanned}</span>종목<br>
+        ${hiddenNormal > 0 ? `정상 종목 (숨김): ${hiddenNormal}개<br>` : ''}
+        SHOCK / WATCH / FIRE: <span style="color:var(--neon-red)">0</span>건
+      </span>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(s => {
+    const r = s.detectionResult;
+    const cardCls = (s.status==='fire_confirm') ? 'fire-card' :
+                    (s.status==='fire_ready')   ? 'fire-card' :
+                    (s.status==='fire')         ? 'fire-card' :
+                    (s.status==='shock')        ? 'shock-card' :
+                    (s.status==='watch')        ? 'watch-card' : '';
+    const badgeCls = s.status==='fire_confirm' ? 'sb-fire-confirm' :
+                     s.status==='fire_ready'   ? 'sb-fire-ready'   :
+                     (s.status==='shock'||s.status==='fire') ? 'sb-shock' : 'sb-watch';
+    const scoreClass = s.score>=90?'fire':s.score>=80?'armed':s.score>=70?'watch':'below';
+    const isTracking = !!trackingStocks.find(t => t.code === s.code);
+
+    const sectorColor = s.sectorPass ? 'good' : 'bad';
+    const structColor = s.uptrendPass ? 'good' : 'warn';
+    const shockColor = r.isShock ? 'bad' : Math.abs(r.cr) >= 5 ? 'warn' : 'muted';
+
+    return `
+      <div class="result-card ${cardCls}">
+        <div class="rc-header">
+          <div class="rc-stock">
+            <div class="rc-name">${s.name}</div>
+            <div class="rc-sector ${s.sectorColor}">${s.sectorName}</div>
+            <div class="rc-price">
+              <span class="${r.cr<0?'price-down':'price-up'}">${r.cr>=0?'+':''}${r.cr.toFixed(2)}%</span>
+              <span>${s.price.toLocaleString()}원</span>
+              <span style="color:var(--muted)">거래량 ${r.vr.toFixed(1)}배</span>
+            </div>
+          </div>
+          <div class="rc-right">
+            <div class="status-badge ${badgeCls}">${statusLabel(s.status)}</div>
+            <div style="font-size:9px;color:var(--muted)">${s.detectedAt}</div>
+          </div>
+        </div>
+        <div class="rc-body">
+          <!-- Flow Engine -->
+          <div class="flow-engine">
+            <div class="fe-title">⚡ Flow Engine</div>
+            <div class="fe-row">
+              <div class="fe-label shock">SHOCK</div>
+              <div class="fe-bar-bg"><div class="fe-bar-fill shock" style="width:${r.flow.shock}%"></div></div>
+              <div class="fe-pct">${Math.round(r.flow.shock)}%</div>
+            </div>
+            <div class="fe-row">
+              <div class="fe-label absorb">ABSORB</div>
+              <div class="fe-bar-bg"><div class="fe-bar-fill absorb" style="width:${r.flow.absorb}%"></div></div>
+              <div class="fe-pct">${Math.round(r.flow.absorb)}%</div>
+            </div>
+            <div class="fe-row">
+              <div class="fe-label recovery">RECOVERY</div>
+              <div class="fe-bar-bg"><div class="fe-bar-fill recovery" style="width:${r.flow.recovery}%"></div></div>
+              <div class="fe-pct">${Math.round(r.flow.recovery)}%</div>
+            </div>
+            <div class="fe-row">
+              <div class="fe-label break">BREAK</div>
+              <div class="fe-bar-bg"><div class="fe-bar-fill break" style="width:${r.flow.break}%"></div></div>
+              <div class="fe-pct">${Math.round(r.flow.break)}%</div>
+            </div>
+          </div>
+
+          <div class="score-row">
+            <span class="score-num ${scoreClass}">${s.score}</span>
+            <div class="score-bar-bg"><div class="score-bar-fill sbf-${scoreClass}" style="width:${s.score}%"></div></div>
+            <span style="font-size:10px;color:var(--muted)">/100</span>
+          </div>
+
+          <div class="labels-grid">
+            <div class="label-item"><div class="li-name">상승구조</div>
+              <div class="li-val ${structColor}">${s.uptrendPass?'✅ 양호':'⚠️ '+s.uptrendReason}</div></div>
+            <div class="label-item"><div class="li-name">충격강도</div>
+              <div class="li-val ${shockColor}">${r.cr.toFixed(1)}% / ${r.vr.toFixed(1)}배</div></div>
+          </div>
+
+          ${(s.status==='shock'||s.status==='watch'||s.status==='fire'||s.status==='fire_ready'||s.status==='fire_confirm') ? `
+          <button class="track-add-btn ${isTracking?'added':''}" id="addBtn_${s.code}"
+            onclick="manualAdd('${s.code}')" ${isTracking?'disabled':''}>
+            ${isTracking ? '✅ 추적 중' : '📡 TRACKING 추가'}
+          </button>
+          <button class="strike-now-btn" onclick="sendToStrike('${s.code}','${s.name}',${s.price},${r.cr})">
+            ⚡ Strike Check — 즉시 판정
+          </button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// TRACKING
+// ━━━━━━━━━━━━━━━━━━━━━━
+function renderTracking() {
+  const el = document.getElementById('trackingList');
+  if (!trackingStocks.length) {
+    el.innerHTML = '<div class="empty-state">DETECTOR에서 종목을 추가하면<br>여기서 회복 추적이 시작됩니다</div>';
+    return;
+  }
+
+  const stages = ['shock', 'absorb', 'recovery', 'break'];
+  const tlItems = [
+    {key: 'shock', label: '🚨 SHOCK', desc: '충격 — 진입 금지'},
+    {key: 'absorb', label: '🟠 ABSORB', desc: '물량 소화 중'},
+    {key: 'recovery', label: '🟡 RECOVERY', desc: '회복 신호'},
+    {key: 'break', label: '🟢 BREAK', desc: '돌파! 진입 타이밍'},
+  ];
+
+  el.innerHTML = trackingStocks.map(s => {
+    const cur = s.status === 'fire' ? 'break' : (s.status === 'watch' ? 'recovery' : (s.status === 'digest' ? 'absorb' : (s.status === 'shock' ? 'shock' : s.status)));
+    const curIdx = stages.indexOf(cur);
+    const scoreClass = s.score>=90?'fire':s.score>=80?'armed':s.score>=70?'watch':'below';
+    const sbCls = `sb2-${cur}`;
+
+    return `
+      <div class="tracking-card">
+        <div class="tc-header2">
+          <div>
+            <div class="tc-name2">${s.name} <span style="font-size:10px;color:var(--muted)">${s.code}</span></div>
+            <div style="font-size:10px;color:var(--neon-blue);font-weight:600">${s.sectorName||'—'}</div>
+            <div style="font-size:10px;color:var(--muted)">감지: ${s.detectedAt}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-badge ${cur==='shock'?'sb-shock':cur==='break'?'sb-fire':'sb-watch'}">${statusLabel(cur)}</div>
+            <button class="del-btn" onclick="delTracking('${s.id}')">✕</button>
+          </div>
+        </div>
+        <div class="tc-body2">
+          ${tlItems.map((item, i) => {
+            const isPassed = i < curIdx;
+            const isActive = item.key === cur;
+            return `<div class="tl-row">
+              <div class="tl-line">
+                <div class="tl-dot ${isActive?item.key:isPassed?item.key:'inactive'}"></div>
+                <div class="tl-conn"></div>
+              </div>
+              <div class="tl-content" style="opacity:${isActive?1:isPassed?.6:.25}">
+                <div class="tl-label" style="color:${isActive?'var(--text)':'var(--muted)'}">${item.label}</div>
+                <div class="tl-desc">${item.desc}</div>
+              </div>
+            </div>`;
+          }).join('')}
+          <div class="status-bar2 ${sbCls}">
+            <div><div class="sb2-lbl">현재 단계</div>
+            <div class="sb2-val" style="color:var(--${cur})">${statusLabel(cur)}</div>
+            ${s.m5Data?.high5 ? `<div style="font-size:9px;color:${s.m5Data.breakConfirmed?'var(--neon-green)':'var(--muted)'};margin-top:2px">${s.m5Data.breakConfirmed?'🎯 5분봉 돌파':'⏳ 5분봉 대기'}</div>` : ''}
+            </div>
+            <div style="text-align:right"><div class="sb2-lbl">점수</div>
+            <div class="score-num ${scoreClass}" style="font-size:22px">${s.score}<span style="font-size:10px;opacity:.5">/100</span></div></div>
+          </div>
+          <div class="update-form">
+            <div class="uf-title">🔄 상태 업데이트</div>
+            <div class="uf-grid">
+              <div class="uf-item"><label class="uf-label">현재가</label><input class="uf-input" id="p_${s.id}" placeholder="${s.price}" type="number"></div>
+              <div class="uf-item"><label class="uf-label">거래량</label><input class="uf-input" id="v_${s.id}" placeholder="${s.vol}" type="number"></div>
+              <div class="uf-item"><label class="uf-label">전일저점</label><input class="uf-input" id="l_${s.id}" placeholder="${Math.round(s.price*.97)}" type="number"></div>
+              <div class="uf-item"><label class="uf-label">당일저점</label><input class="uf-input" id="tl_${s.id}" placeholder="${Math.round(s.price*.98)}" type="number"></div>
+              <div class="uf-item"><label class="uf-label">전일종가</label><input class="uf-input" id="pc_${s.id}" placeholder="${s.price}" type="number"></div>
+              <div class="uf-item"><label class="uf-label">5일선</label><input class="uf-input" id="m5_${s.id}" placeholder="${s.ma5}" type="number"></div>
+              <div class="uf-item"><label class="uf-label" style="color:var(--neon-green)">5분봉고점 ★</label><input class="uf-input green" id="m5h2_${s.id}" placeholder="${s.m5Data?.high5||'신규'}" type="number"></div>
+            </div>
+            <button class="uf-btn" onclick="updateTracking('${s.id}')">📡 상태 업데이트</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function delTracking(id) {
+  trackingStocks = trackingStocks.filter(s => s.id !== id);
+  localStorage.setItem('bre_v2_tracking', JSON.stringify(trackingStocks));
+  renderTracking(); renderFireZone(); updateCounts(); toast('🗑 삭제됨');
+}
+
+function updateTracking(id) {
+  const idx = trackingStocks.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  const s = trackingStocks[idx];
+  const price = parseFloat(document.getElementById('p_'+id)?.value) || s.price;
+  const vol = parseFloat(document.getElementById('v_'+id)?.value) || s.vol;
+  const prevLow = parseFloat(document.getElementById('l_'+id)?.value) || s.price*.97;
+  const todayLow = parseFloat(document.getElementById('tl_'+id)?.value) || s.price*.98;
+  const prevClose = parseFloat(document.getElementById('pc_'+id)?.value) || s.price;
+  const ma5 = parseFloat(document.getElementById('m5_'+id)?.value) || s.ma5;
+
+  const r = calcRecovery(s, {price, vol, prevLow, todayLow, prevClose, ma5});
+
+  // v2.3: 5분봉 고점 업데이트 (입력된 경우)
+  const m5HighInput = parseFloat(document.getElementById('m5h2_'+id)?.value) || 0;
+  let m5Data = s.m5Data || {};
+  if (m5HighInput > 0) {
+    const breakConfirmed = price > m5HighInput;
+    m5Data = { high5: m5HighInput, curPrice: price, breakConfirmed, updatedAt: new Date().toLocaleTimeString('ko-KR', {hour12:false}) };
+  }
+
+  trackingStocks[idx] = {...s, status: r.status, score: r.score, price, ma5, recoveryResult: r, m5Data,
+    history: [...(s.history||[]), {status: r.status, date: new Date().toLocaleDateString('ko-KR'), price}]};
+  localStorage.setItem('bre_v2_tracking', JSON.stringify(trackingStocks));
+  renderTracking(); renderFireZone(); updateCounts();
+
+  if (r.status === 'break' || r.status === 'fire') {
+    if (m5Data.breakConfirmed) toast('🎯 FIRE CONFIRMED! 5분봉 돌파 + BREAK!', 'fire-t');
+    else toast('⚡ BREAK! 5분봉 고점 입력하면 최종 확인 가능', 'fire-t');
+  }
+  else if (r.status === 'recovery') toast('⚠️ RECOVERY — 준비!', 'ok-t');
+  else toast(`📡 ${statusLabel(r.status)}`);
+}
+
+function calcRecovery(s, u) {
+  let score = Math.min(40, (s.detectionResult?.shockScore||0) + (s.detectionResult?.volScore||0));
+  const isBullish = u.price > u.prevClose;
+  const holdLow = u.todayLow >= u.prevLow * .995;
+  const volReInc = u.vol > s.avgVol * 1.3;
+  const above5ma = u.price > u.ma5;
+  const shockMid = (s.shockPrice + (s.prev || s.shockPrice * 1.07)) / 2;
+  const aboveShockMid = u.price > shockMid;
+  const lowBreach = u.todayLow < u.prevLow;
+
+  if (holdLow) score += 20;
+  if (volReInc && holdLow) score += 15;
+  if (isBullish && holdLow) score += 15;
+  score += 10;
+  score = Math.min(100, score);
+
+  let status = 'absorb';
+  if (lowBreach && u.vol >= s.vol*.7) status = 'shock';
+  else if (above5ma && aboveShockMid && isBullish && volReInc) status = 'break';
+  else if (isBullish && volReInc && holdLow) status = 'recovery';
+  else if (holdLow) status = 'absorb';
+
+  return {status, score, isBullish, holdLow, volReInc, above5ma, aboveShockMid, vr: u.vol/Math.max(s.avgVol,1)};
+}
+
+// FIRE ZONE
+function renderFireZone() {
+  const fires = trackingStocks.filter(s => s.status === 'break' || s.status === 'fire');
+  const el = document.getElementById('fireZoneContent');
+  if (!fires.length) {
+    el.innerHTML = `<div class="fire-empty">
+      <div class="icon">🎯</div>
+      <div class="msg">FIRE 조건 충족 종목이 없습니다</div>
+      <div class="flow-hint">SHOCK → ABSORB → RECOVERY → 🔥BREAK</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = fires.map(s => {
+    const r = s.recoveryResult || {};
+    const m5 = s.m5Data || {};
+    // 반등폭 계산
+    const bounceRate = s.shockPrice > 0 ? ((s.price - s.shockPrice) / s.shockPrice * 100) : 0;
+    const bounceCls = bounceRate >= 3 ? 'strong' : bounceRate >= 2 ? 'mid' : bounceRate >= 1 ? 'weak' : 'none';
+    const bounceLabel = bounceRate >= 3 ? `+${bounceRate.toFixed(1)}% 🔥` : bounceRate >= 2 ? `+${bounceRate.toFixed(1)}% ✅` : bounceRate >= 1 ? `+${bounceRate.toFixed(1)}% ⚠️` : '반등 미확인';
+    // 거래량 재유입 배수 등급
+    const vrLevel = (r.vr||0) >= 2.0 ? '🔥 강력' : (r.vr||0) >= 1.5 ? '✅ 양호' : (r.vr||0) >= 1.3 ? '⚠️ 약함' : '❌ 부족';
+    const vrColor = (r.vr||0) >= 2.0 ? 'confirmed' : (r.vr||0) >= 1.5 ? 'confirmed' : (r.vr||0) >= 1.3 ? 'pending' : 'missing';
+    // 5분봉 고점 돌파 여부
+    const m5Break = m5.breakConfirmed === true;
+    const m5Entered = m5.high5 > 0;
+    // 종합 FIRE 판정
+    const coreConditions = (r.above5ma ? 1:0) + (r.aboveShockMid ? 1:0) + ((r.vr||0)>=1.3 ? 1:0) + (r.isBullish ? 1:0);
+    const isFullFire = m5Break && coreConditions >= 3;
+    const isArmed = !m5Break && coreConditions >= 3;
+    const bannerHtml = isFullFire
+      ? `<div class="fire-confirmed-banner">🎯 FIRE CONFIRMED — 진입 타이밍!</div>`
+      : isArmed
+      ? `<div class="fire-armed-banner">⚡ ARMED — 5분봉 고점 돌파 대기</div>`
+      : `<div class="fire-wait-banner">⏳ 조건 누적 중 (${coreConditions}/4)</div>`;
+
+    return `<div class="fire-card-big">
+      <div class="fcb-header">
+        <div>
+          <div style="font-weight:700;font-size:18px">${s.name}</div>
+          <div style="font-size:11px;color:var(--neon-blue);font-weight:600;margin-top:2px">${s.sectorName||'—'}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">감지가 ${s.price?.toLocaleString()}원 → 현재 ${s.price?.toLocaleString()}원</div>
+        </div>
+        <div style="text-align:right"><div class="fcb-score-big">${s.score}</div><div class="fcb-score-lbl">/ 100점</div></div>
+      </div>
+      <div class="fcb-body">
+        <!-- 핵심 4조건 -->
+        <div class="fcb-conds">
+          <div class="fcb-cond"><div class="fc-name">5일선 회복</div><div class="fc-val ${r.above5ma?'ok':'no'}">${r.above5ma?'✅ 확인':'❌ 미확인'}</div></div>
+          <div class="fcb-cond"><div class="fc-name">급락봉 중단 돌파</div><div class="fc-val ${r.aboveShockMid?'ok':'no'}">${r.aboveShockMid?'✅ 돌파':'❌ 미돌파'}</div></div>
+          <div class="fcb-cond">
+            <div class="fc-name">거래량 재유입</div>
+            <div class="fc-val ${vrColor}">${r.vr?r.vr.toFixed(1)+'배':'-'} ${vrLevel}</div>
+          </div>
+          <div class="fcb-cond"><div class="fc-name">양봉 전환</div><div class="fc-val ${r.isBullish?'ok':'no'}">${r.isBullish?'✅ 양봉':'❌ 음봉'}</div></div>
+        </div>
+
+        <!-- 반등폭 표시 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:10px;color:var(--muted)">반등폭</span>
+          <span class="bounce-badge ${bounceCls}">${bounceLabel}</span>
+          <span style="font-size:9px;color:var(--muted)">(기준: +2% / +3%)</span>
+        </div>
+
+        <!-- 5분봉 고점 돌파 패널 -->
+        <div class="fire-trigger-panel">
+          <div class="ftp-title">⚡ FIRE TRIGGER v2.3 — 5분봉 고점 돌파</div>
+          <div class="ftp-grid">
+            <div class="ftp-item">
+              <div class="ftp-name">5분봉 고점</div>
+              <div class="ftp-val ${m5Entered ? 'pending' : 'na'}">${m5Entered ? m5.high5.toLocaleString()+'원' : '입력 필요'}</div>
+            </div>
+            <div class="ftp-item">
+              <div class="ftp-name">현재가 돌파</div>
+              <div class="ftp-val ${m5Break ? 'confirmed' : m5Entered ? 'missing' : 'na'}">${m5Break ? '✅ 돌파 확인!' : m5Entered ? '❌ 미돌파' : '—'}</div>
+            </div>
+            <div class="ftp-item full">
+              <div class="ftp-name">📊 진입 기준 가격</div>
+              <div class="ftp-val ${m5Entered ? 'confirmed' : 'na'}" style="font-size:13px">${m5Entered ? '>' + m5.high5.toLocaleString() + '원 돌파 시 진입' : '5분봉 고점 입력 후 확인'}</div>
+            </div>
+          </div>
+          <!-- 5분봉 입력 -->
+          <div class="m5-input-section">
+            <div class="m5-title">🕐 5분봉 데이터 입력</div>
+            <div class="m5-grid">
+              <div class="uf-item">
+                <label class="uf-label">5분봉 고점 (원)</label>
+                <input class="uf-input green" id="m5h_${s.id}" placeholder="${m5.high5||'예: 45200'}" type="number">
+              </div>
+              <div class="uf-item">
+                <label class="uf-label">현재가 (원)</label>
+                <input class="uf-input green" id="m5p_${s.id}" placeholder="${s.price}" type="number">
+              </div>
+            </div>
+            <button class="m5-btn" onclick="updateM5('${s.id}')">🕐 5분봉 고점 돌파 확인</button>
+          </div>
+        </div>
+
+        <!-- 종합 FIRE 판정 배너 -->
+        <div style="margin-top:10px">${bannerHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// v2.3: 5분봉 고점 돌파 업데이트
+// ━━━━━━━━━━━━━━━━━━━━━━
+function updateM5(id) {
+  const idx = trackingStocks.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  const s = trackingStocks[idx];
+
+  const high5 = parseFloat(document.getElementById('m5h_' + id)?.value) || 0;
+  const curPrice = parseFloat(document.getElementById('m5p_' + id)?.value) || s.price;
+
+  if (!high5) { toast('⚠️ 5분봉 고점을 입력하세요', 'shock-t'); return; }
+
+  const breakConfirmed = curPrice > high5;
+  const m5Data = { high5, curPrice, breakConfirmed, updatedAt: new Date().toLocaleTimeString('ko-KR', {hour12:false}) };
+
+  // 현재가도 업데이트
+  trackingStocks[idx] = { ...s, price: curPrice, m5Data };
+  localStorage.setItem('bre_v2_tracking', JSON.stringify(trackingStocks));
+  renderFireZone();
+  updateCounts();
+
+  if (breakConfirmed) {
+    toast(`🎯 ${s.name} — 5분봉 고점 돌파! FIRE CONFIRMED!`, 'fire-t');
+  } else {
+    toast(`⏳ ${s.name} — 아직 ${high5.toLocaleString()}원 돌파 전`, 'ok-t');
+  }
+}
+
+// INIT
+updateWhitelistCount();
+if (scanResults.length > 0) {
+  document.getElementById('funnelBox').style.display = 'block';
+  document.getElementById('filterBar').style.display = 'flex';
+  renderResults();
+  renderTopCandidate();
+}
+updateCounts();
+</script>
+</body>
+</html>
