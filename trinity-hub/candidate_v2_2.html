@@ -584,7 +584,7 @@ function sendCandidateToStrike(code, name, price, changePct) {
 async function checkCandidateHealth() {
   const banner = document.getElementById('health-banner');
   try {
-    const res = await fetch(`${API}/candidates?limit=1`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`${API}/candidates?limit=1`, { signal: AbortSignal.timeout(20000) });
     if (res.ok) {
       banner.style.display = 'none';
     } else {
