@@ -1307,3 +1307,28 @@ async def api_state_log(last: int = 20):
         "count": len(logs),
         "logs":  list(reversed(logs)),   # 최신 순
     }
+
+# — 9-10. 지수 스냅샷 -------------------------------------------------
+@app.get("/index_snapshot")
+def index_snapshot():
+    import time
+
+    return {
+        "ts": int(time.time()),
+        "market_status": "장마감",
+        "kospi": {
+            "price": 2750.45,
+            "change": 8.72,
+            "change_pct": 0.32
+        },
+        "kosdaq": {
+            "price": 850.12,
+            "change": -2.15,
+            "change_pct": -0.25
+        },
+        "nasdaq": {
+            "price": 18450.32,
+            "change": 85.40,
+            "change_pct": 0.46
+        }
+    }
