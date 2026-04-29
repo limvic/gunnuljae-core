@@ -1332,3 +1332,117 @@ def index_snapshot():
             "change_pct": 0.46
         }
     }
+# — 9-11. IGNITION 실데이터 스캔 ---------------------------------
+
+def calc_ignition_score(item):
+    price = float(item.get("price") or 0)
+    change_pct = float(item.get("change_pct") or 0)
+    volume = int(item.get("volume") or 0)
+
+    score = 0
+
+    # 거래량 에너지
+    if volume >= 100_000_000:
+        score += 40
+    elif volume >= 50_000_000:
+        score += 30
+    elif volume >= 20_000_000:
+        score += 20
+    elif volume >= 10_000_000:
+        score += 10
+
+    # 상승률 에너지
+    if 3 <= change_pct <= 12:
+        score += 35
+    elif 1 <= change_pct < 3:
+        score += 20
+    elif 12 < change_pct <= 20:
+        score += 15
+
+    # 과열 제외 보정
+    if change_pct > 20:
+        score -= 20
+
+    # 현재가 유효성
+    if price > 0:
+        score += 10
+
+    # 거래량 순위 보너스
+    rank = int(item.get("rank") or 99)
+    if rank <= 10:
+        score += 15
+    elif rank <= 20:
+        score += 10
+    elif rank <= 30:
+        score += 5
+
+    return max(0, min(score, 100))
+
+
+def ignition_status(score):
+    if score >= 80:
+        return "BREAK"
+    if score >= 60:
+        return "READY"
+    if score >= 40:
+        return "WATCH"
+    return "IGNORE"
+
+
+@app.get("/ignition_scan")
+async def ignition_scan():
+    """
+    TOP30_v2 실데이터 기반 IGNITION 스캔.
+    WATCH / READY / BREAK 반환.
+    """
+    try:
+        data = await get_top30_v3()   # ⭐ 실제 함수명
+    except HTTPException as e:
+        return {
+            "status": "error",
+            "message": f"top30_v2 호출 실패: {e.detail}",
+            "count": 0, "watch": 0, "ready": 0, "break": 0,
+            "items": []
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"예외: {str(e)}",
+            "count": 0, "watch": 0, "ready": 0, "break": 0,
+            "items": []
+        }
+
+    items = data.get("items", [])
+    results = []
+
+    for item in items:
+        score = calc_ignition_score(item)
+        status = ignition_status(score)
+
+        if status == "IGNORE":
+            continue
+
+        results.append({
+            "code":       item.get("code"),
+            "name":       item.get("name"),
+            "price":      item.get("price"),
+            "change_pct": item.get("change_pct"),
+            "volume":     item.get("volume"),
+            "market":     item.get("market"),
+            "rank":       item.get("rank"),
+            "score":      score,
+            "status":     status,
+            "source":     "top30_v2"
+        })
+
+    results = sorted(results, key=lambda x: x["score"], reverse=True)
+
+    return {
+        "status": "ok",
+        "count":  len(results),
+        "watch":  len([x for x in results if x["status"] == "WATCH"]),
+        "ready":  len([x for x in results if x["status"] == "READY"]),
+        "break":  len([x for x in results if x["status"] == "BREAK"]),
+        "items":  results
+    }
+    
