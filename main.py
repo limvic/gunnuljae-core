@@ -1446,3 +1446,93 @@ async def ignition_scan():
         "items":  results
     }
     
+# — 9-12. 공용 필터: ETF / ETN 제외 ---------------------------------
+
+ETF_PREFIXES = [
+    "KODEX", "TIGER", "KBSTAR", "ARIRANG", "ACE", "HANARO",
+    "SOL", "KOSEF", "KINDEX", "SMART", "히어로즈", "WOORI", "RISE"
+]
+
+ETF_KEYWORDS = [
+    "ETF", "ETN", "인버스", "레버리지", "선물", "TR", "합성"
+]
+
+
+def is_etf_etn(name: str) -> bool:
+    if not name:
+        return False
+
+    upper = str(name).upper().strip()
+
+    if any(upper.startswith(prefix) for prefix in ETF_PREFIXES):
+        return True
+
+    if any(keyword.upper() in upper for keyword in ETF_KEYWORDS):
+        return True
+
+    return False
+
+
+def filter_tradeable_stocks(items, exclude_etf: bool = True):
+    if not exclude_etf:
+        return items
+
+    return [
+        item for item in items
+        if not is_etf_etn(item.get("name", ""))
+    ]
+
+
+# — 9-13. IGNITION 실데이터 스캔 ---------------------------------
+
+@app.get("/ignition_scan")
+async def ignition_scan(exclude_etf: bool = True):
+    """
+    TOP30_v2 실데이터 기반 IGNITION 스캔.
+    기본값: ETF/ETN 제외.
+    사용 예:
+    /ignition_scan
+    /ignition_scan?exclude_etf=true
+    /ignition_scan?exclude_etf=false
+    """
+    data = await top30_v2()
+    raw_items = data.get("items", [])
+
+    items = filter_tradeable_stocks(raw_items, exclude_etf=exclude_etf)
+
+    results = []
+
+    for item in items:
+        score = calc_ignition_score(item)
+        status = ignition_status(score)
+
+        if status == "IGNORE":
+            continue
+
+        results.append({
+            "code": item.get("code"),
+            "name": item.get("name"),
+            "price": item.get("price"),
+            "change_pct": item.get("change_pct"),
+            "volume": item.get("volume"),
+            "market": item.get("market"),
+            "rank": item.get("rank"),
+            "score": score,
+            "status": status,
+            "source": "top30_v2",
+            "exclude_etf": exclude_etf
+        })
+
+    results = sorted(results, key=lambda x: x["score"], reverse=True)
+
+    return {
+        "status": "ok",
+        "exclude_etf": exclude_etf,
+        "raw_count": len(raw_items),
+        "filtered_count": len(items),
+        "count": len(results),
+        "watch": len([x for x in results if x["status"] == "WATCH"]),
+        "ready": len([x for x in results if x["status"] == "READY"]),
+        "break": len([x for x in results if x["status"] == "BREAK"]),
+        "items": results
+    }
