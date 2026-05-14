@@ -806,6 +806,8 @@ app.include_router(create_router(get_token, BASE_URL))
 from target_engine import router as target_router
 app.include_router(target_router)
 
+from scan_confirm_router import router as wave_scan_router
+app.include_router(wave_scan_router)
 
 # ── 거래량 TOP 30 v2 OLD (비활성화) ──────────────────────
 import re as _re_top30
