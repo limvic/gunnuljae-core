@@ -1886,3 +1886,189 @@ async def scan_loop():
 async def start_scheduler():
     """FastAPI 시작 시 자동 스캔 루프 백그라운드 실행"""
     asyncio.create_task(scan_loop())
+
+# ============================================
+# 🔥 AUTO ORDER ROUTER — IGNITION AUTO v0.1
+# AUTO 전용 계좌 (KIS_AUTO_ACCOUNT) 전용
+# 실주문 라우터 — 기존 KIS 로직과 완전 분리
+# ============================================
+
+import os as _os
+
+KIS_AUTO_ACCOUNT = _os.environ.get("KIS_AUTO_ACCOUNT", "")
+
+# ── AUTO 전용 토큰 (앱키는 기존과 동일) ──
+_auto_access_token: str = ""
+_auto_token_expires: float = 0.0
+
+async def _get_auto_token() -> str:
+    """AUTO 계좌 전용 액세스 토큰 발급/재사용"""
+    import time, httpx
+    global _auto_access_token, _auto_token_expires
+    if _auto_access_token and time.time() < _auto_token_expires - 60:
+        return _auto_access_token
+    url = "https://openapi.koreainvestment.com:9443/oauth2/tokenP"
+    body = {
+        "grant_type": "client_credentials",
+        "appkey":    KIS_APP_KEY,
+        "appsecret": KIS_APP_SECRET,
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        res = await client.post(url, json=body)
+        data = res.json()
+    _auto_access_token  = data["access_token"]
+    _auto_token_expires = time.time() + int(data.get("expires_in", 86400))
+    print(f"[AUTO-ORDER] 토큰 발급 완료 — 계좌: {KIS_AUTO_ACCOUNT}")
+    return _auto_access_token
+
+
+@app.post("/auto/order/buy")
+async def auto_order_buy(body: dict):
+    """
+    AUTO 매수 주문
+    body: { code, qty, price }
+    """
+    import httpx
+    if not KIS_AUTO_ACCOUNT:
+        raise HTTPException(status_code=500, detail="KIS_AUTO_ACCOUNT 미설정")
+
+    code  = body.get("code", "")
+    qty   = int(body.get("qty", 0))
+    price = int(body.get("price", 0))
+
+    if not code or qty <= 0 or price <= 0:
+        raise HTTPException(status_code=400, detail="code/qty/price 필수")
+
+    token = await _get_auto_token()
+    url   = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/trading/order-cash"
+    headers = {
+        "content-type":  "application/json",
+        "authorization": f"Bearer {token}",
+        "appkey":        KIS_APP_KEY,
+        "appsecret":     KIS_APP_SECRET,
+        "tr_id":         "TTTC0802U",   # 현금 매수
+        "custtype":      "P",
+    }
+    payload = {
+        "CANO":                KIS_AUTO_ACCOUNT,
+        "ACNT_PRDT_CD":        "01",
+        "PDNO":                code,
+        "ORD_DVSN":            "00",    # 지정가
+        "ORD_QTY":             str(qty),
+        "ORD_UNPR":            str(price),
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        res  = await client.post(url, json=payload, headers=headers)
+        data = res.json()
+
+    rt_cd = data.get("rt_cd", "")
+    msg   = data.get("msg1", "")
+    print(f"[AUTO-BUY] {code} {qty}주 @ {price}원 → rt_cd:{rt_cd} {msg}")
+
+    if rt_cd != "0":
+        raise HTTPException(status_code=400, detail=f"KIS 오류: {msg}")
+
+    return {
+        "status": "ok",
+        "code":   code,
+        "qty":    qty,
+        "price":  price,
+        "ord_no": data.get("output", {}).get("ODNO", ""),
+        "msg":    msg,
+    }
+
+
+@app.post("/auto/order/sell")
+async def auto_order_sell(body: dict):
+    """
+    AUTO 매도 주문
+    body: { code, qty, price }
+    """
+    import httpx
+    if not KIS_AUTO_ACCOUNT:
+        raise HTTPException(status_code=500, detail="KIS_AUTO_ACCOUNT 미설정")
+
+    code  = body.get("code", "")
+    qty   = int(body.get("qty", 0))
+    price = int(body.get("price", 0))
+
+    if not code or qty <= 0 or price <= 0:
+        raise HTTPException(status_code=400, detail="code/qty/price 필수")
+
+    token = await _get_auto_token()
+    url   = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/trading/order-cash"
+    headers = {
+        "content-type":  "application/json",
+        "authorization": f"Bearer {token}",
+        "appkey":        KIS_APP_KEY,
+        "appsecret":     KIS_APP_SECRET,
+        "tr_id":         "TTTC0801U",   # 현금 매도
+        "custtype":      "P",
+    }
+    payload = {
+        "CANO":                KIS_AUTO_ACCOUNT,
+        "ACNT_PRDT_CD":        "01",
+        "PDNO":                code,
+        "ORD_DVSN":            "00",    # 지정가
+        "ORD_QTY":             str(qty),
+        "ORD_UNPR":            str(price),
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        res  = await client.post(url, json=payload, headers=headers)
+        data = res.json()
+
+    rt_cd = data.get("rt_cd", "")
+    msg   = data.get("msg1", "")
+    print(f"[AUTO-SELL] {code} {qty}주 @ {price}원 → rt_cd:{rt_cd} {msg}")
+
+    if rt_cd != "0":
+        raise HTTPException(status_code=400, detail=f"KIS 오류: {msg}")
+
+    return {
+        "status": "ok",
+        "code":   code,
+        "qty":    qty,
+        "price":  price,
+        "ord_no": data.get("output", {}).get("ODNO", ""),
+        "msg":    msg,
+    }
+
+
+@app.get("/auto/balance")
+async def auto_balance():
+    """AUTO 계좌 현금 잔고 조회"""
+    import httpx
+    if not KIS_AUTO_ACCOUNT:
+        raise HTTPException(status_code=500, detail="KIS_AUTO_ACCOUNT 미설정")
+
+    token = await _get_auto_token()
+    url   = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/trading/inquire-psbl-order"
+    headers = {
+        "authorization": f"Bearer {token}",
+        "appkey":        KIS_APP_KEY,
+        "appsecret":     KIS_APP_SECRET,
+        "tr_id":         "TTTC8908R",
+        "custtype":      "P",
+    }
+    params = {
+        "CANO":         KIS_AUTO_ACCOUNT,
+        "ACNT_PRDT_CD": "01",
+        "PDNO":         "005930",   # 더미 종목코드 (잔고 조회용)
+        "ORD_UNPR":     "0",
+        "ORD_DVSN":     "00",
+        "CMA_EVLU_AMT_ICLD_YN": "N",
+        "OVRS_ICLD_YN": "N",
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        res  = await client.get(url, headers=headers, params=params)
+        data = res.json()
+
+    output = data.get("output", {})
+    cash   = int(output.get("ord_psbl_cash", 0))
+    print(f"[AUTO-BALANCE] 가용현금: {cash:,}원")
+
+    return {
+        "status":     "ok",
+        "account":    KIS_AUTO_ACCOUNT,
+        "avail_cash": cash,
+    }
