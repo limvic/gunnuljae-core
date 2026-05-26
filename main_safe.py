@@ -498,6 +498,15 @@ async def root():
             return FileResponse(str(fpath))
     return {"status": "ok", "message": "Trinity API v5.1"}
 
+@app.get("/ignition")
+async def ignition_page():
+    """🔥 IGNITION AUTO 페이지 — same-origin 서빙으로 CORS 회피"""
+    import pathlib
+    base = pathlib.Path(__file__).parent
+    fpath = base / "ignition.html"
+    if fpath.exists():
+        return FileResponse(str(fpath))
+    return {"status": "error", "message": "ignition.html not found in repo root"}
 
 # ── Trinity v1.1 자동주문 ──────────────────────────────
 import json, hashlib, secrets
