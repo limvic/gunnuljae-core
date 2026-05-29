@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+<meta name="theme-color" content="#0a0a0a">
+<title>Trinity Strike Check v2.3</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1c1c1c;
+    --surface-3: #242424;
+    --border: #2a2a2a;
+    --text: #f5f5f5;
+    --muted: #888;
+    --accent: #ffb800;
+    --green: #00d67c;
+    --yellow: #ffb800;
+    --red: #ff4757;
+    --blue: #4a9eff;
+    --purple: #a78bfa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "Pretendard", "Noto Sans KR", sans-serif;
+    font-size: 18px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+
+  .wrap { max-width: 500px; margin: 0 auto; padding: 14px 14px 100px; }
+
+  /* HEADER */
+  .header-card {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .header-left { flex: 1; }
+  .header-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .header-time {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .header-right { text-align: right; }
+  .logo {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    color: var(--accent);
+  }
+  .logo-sub {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* TITLE */
+  .title-block { margin: 6px 4px 14px; }
+  .title-main {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .title-main .accent { color: var(--accent); }
+  .title-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* SPEED BADGE */
+  .speed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 184, 0, 0.1);
+    border: 1px solid rgba(255, 184, 0, 0.3);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title .hint {
+    font-size: 12px;
+    color: #555;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .row { display: grid; gap: 8px; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  .row.single { grid-template-columns: 1fr; }
+  .row.double { grid-template-columns: 1fr 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+  }
+  .field label .tip { color: #555; font-size: 12px; font-weight: 400; }
+  .field input {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 12px;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field input::placeholder { color: #555; font-weight: 400; }
+  .field input.text { font-size: 18px; padding: 14px; }
+
+  /* 등락률 필드 특수 스타일 */
+  .pct-field {
+    position: relative;
+  }
+  .pct-field input {
+    padding-right: 32px;
+  }
+  .pct-field::after {
+    content: '%';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+    font-weight: 600;
+    pointer-events: none;
+  }
+
+  /* 등락률 퀵 버튼 */
+  .pct-quick {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .pct-quick button {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 8px 0;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.1s;
+  }
+  .pct-quick button:active { background: var(--accent); color: #000; }
+
+  /* CHIPS */
+  .chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .chip {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 4px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chip .chip-sub {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    font-weight: 500;
+  }
+  .chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .chip.active .chip-sub { color: rgba(0,0,0,0.6); }
+
+  /* TOGGLES */
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 16px; font-weight: 500; }
+  .toggle-label .hint { font-size: 12px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+
+  .toggle {
+    display: inline-flex;
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid var(--border);
+  }
+  .toggle button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .toggle button.on { background: var(--accent); color: #000; }
+  .toggle button.on.danger { background: var(--red); color: #fff; }
+  .toggle button.on.good { background: var(--green); color: #000; }
+
+  /* ACTIONS */
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .btn {
+    border: none;
+    border-radius: 10px;
+    padding: 15px 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-sample { background: var(--surface-2); border: 1px solid var(--border); color: var(--purple); }
+  .btn-reset { background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+  .btn-go { background: var(--accent); color: #000; letter-spacing: 0.5px; font-size: 15px; }
+  .btn-go:active { transform: scale(0.98); }
+
+  /* RESULT */
+  .result { display: none; animation: slideUp 0.3s ease-out; margin-top: 14px; }
+  .result.show { display: block; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .verdict-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 16px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .verdict-card.green { border-color: var(--green); }
+  .verdict-card.yellow { border-color: var(--yellow); }
+  .verdict-card.red { border-color: var(--red); }
+  .verdict-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
+  .verdict-card.green::before { background: var(--green); }
+  .verdict-card.yellow::before { background: var(--yellow); }
+  .verdict-card.red::before { background: var(--red); }
+
+  .score-name { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .score-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .score-big {
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-big.green { color: var(--green); }
+  .score-big.yellow { color: var(--yellow); }
+  .score-big.red { color: var(--red); }
+  .score-max { font-size: 18px; color: var(--muted); font-weight: 600; }
+  .state-text { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+  .state-text.green { color: var(--green); }
+  .state-text.yellow { color: var(--yellow); }
+  .state-text.red { color: var(--red); }
+
+  .verdict-main {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 13px;
+    margin-bottom: 10px;
+  }
+  .verdict-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-bottom: 5px;
+  }
+  .verdict-value { font-size: 19px; font-weight: 800; margin-bottom: 3px; }
+  .verdict-sub { font-size: 12px; color: var(--muted); }
+
+  .reject-reasons {
+    background: rgba(255, 71, 87, 0.08);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: 10px;
+    padding: 11px 13px;
+    margin-bottom: 10px;
+  }
+  .reject-reasons .label {
+    font-size: 10px;
+    color: var(--red);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .reject-reasons .reason {
+    font-size: 12px;
+    color: #ffb8bf;
+    line-height: 1.5;
+    padding-left: 10px;
+    position: relative;
+    margin-bottom: 3px;
+  }
+  .reject-reasons .reason::before {
+    content: '▸';
+    position: absolute;
+    left: 0;
+    color: var(--red);
+  }
+
+  /* 눌림 판정 배지 (v1.3) */
+  .pullback-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    border: 1px solid;
+  }
+  .pullback-badge.show { display: flex; }
+  .pullback-badge.healthy {
+    background: rgba(34, 197, 94, 0.12);
+    border-color: rgba(34, 197, 94, 0.4);
+    color: var(--green);
+  }
+  .pullback-badge.deep {
+    background: rgba(250, 204, 21, 0.12);
+    border-color: rgba(250, 204, 21, 0.4);
+    color: var(--yellow);
+  }
+  .pullback-badge.weak {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: var(--red);
+  }
+  .pullback-badge-icon { font-size: 14px; }
+  .pullback-badge-sub { font-size: 10px; opacity: 0.8; font-weight: 500; }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .plan-cell {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 11px;
+  }
+  .plan-cell.full { grid-column: span 2; }
+  .plan-label { font-size: 10px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .plan-value { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .plan-value.red { color: var(--red); }
+  .plan-value.green { color: var(--green); }
+  .plan-value.blue { color: var(--blue); }
+  .plan-value.yellow { color: var(--yellow); }
+
+  .memo {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 12px;
+    line-height: 1.5;
+    display: flex;
+    gap: 8px;
+  }
+  .memo-icon { flex-shrink: 0; }
+
+  .breakdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px;
+    margin-bottom: 10px;
+  }
+  .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .breakdown-item:last-child { border-bottom: none; }
+  .breakdown-name { color: var(--muted); }
+  .breakdown-score {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+  }
+  .bar-bg {
+    display: inline-block;
+    width: 50px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-right: 8px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+
+  /* ─── Wave Target 카드 (v2.1) ─── */
+  .wave-card {
+    background: linear-gradient(135deg, rgba(184,134,11,0.06), rgba(184,134,11,0.02));
+    border: 1px solid rgba(184,134,11,0.35);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    position: relative;
+    transition: opacity 0.3s, filter 0.3s;
+  }
+  .wave-card.muted {
+    opacity: 0.55;
+    filter: grayscale(0.7);
+  }
+  .wave-card.muted::after {
+    content: "참고용 · 진입 보류";
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--red);
+    background: rgba(255,80,80,0.12);
+    border: 1px solid rgba(255,80,80,0.3);
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+  }
+  .wave-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .wave-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .wave-title .hint {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 6px;
+    letter-spacing: 0;
+  }
+  .wave-state {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+  }
+  .wave-state.READY    { color: #00d4ff; background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.3); }
+  .wave-state.BREAK    { color: var(--yellow); background: rgba(255,200,0,0.12); border: 1px solid rgba(255,200,0,0.3); }
+  .wave-state.CONFIRM  { color: var(--green); background: rgba(0,200,120,0.15); border: 1px solid rgba(0,200,120,0.35); }
+  .wave-state.EXHAUST  { color: var(--red); background: rgba(255,80,80,0.12); border: 1px solid rgba(255,80,80,0.3); }
+
+  .wave-current {
+    text-align: center;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+  }
+  .wave-current-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+  .wave-current-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wave-targets {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .wave-target-cell {
+    background: rgba(0,0,0,0.18);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+  .wave-target-days {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .wave-target-price {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 2px;
+  }
+  .wave-target-pct {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 2px;
+  }
+  .wave-target-prob {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .wave-safety {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .wave-safety-cell {
+    background: rgba(0,0,0,0.18);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 8px;
+  }
+  .wave-safety-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .wave-safety-value {
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .wave-safety-value.red { color: var(--red); }
+  .wave-safety-value.yellow { color: var(--yellow); }
+  .wave-safety-sub {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-left: 4px;
+  }
+
+  .wave-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .wave-flag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: rgba(255,200,0,0.12);
+    color: var(--yellow);
+    border: 1px solid rgba(255,200,0,0.3);
+  }
+
+  .wave-philosophy {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    font-style: italic;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+  }
+
+  .wave-loading {
+    text-align: center;
+    padding: 16px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .wave-error {
+    text-align: center;
+    padding: 12px;
+    color: var(--red);
+    font-size: 11px;
+    background: rgba(255,80,80,0.06);
+    border-radius: 8px;
+  }
+
+  /* ─── Wave Scan 후보 카드 (v2.2) ─── */
+  .scan-section {
+    margin-bottom: 14px;
+  }
+  .scan-section-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--accent);
+    padding: 8px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .scan-section-title .count {
+    background: rgba(184,134,11,0.15);
+    color: var(--accent);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .scan-section-title.warn { color: var(--red); }
+  .scan-section-title.warn .count {
+    background: rgba(255,80,80,0.12);
+    color: var(--red);
+  }
+
+  .scan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .scan-card:hover { transform: translateY(-1px); }
+  .scan-card:active { transform: translateY(0); }
+  .scan-card.CONFIRM {
+    border-color: rgba(0,200,120,0.4);
+    background: linear-gradient(135deg, rgba(0,200,120,0.05), var(--surface));
+  }
+  .scan-card.BREAK {
+    border-color: rgba(255,200,0,0.4);
+    background: linear-gradient(135deg, rgba(255,200,0,0.05), var(--surface));
+  }
+  .scan-card.EXHAUST {
+    border-color: rgba(255,80,80,0.4);
+    background: linear-gradient(135deg, rgba(255,80,80,0.05), var(--surface));
+  }
+
+  .scan-card-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .scan-card-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .scan-card-code {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .scan-card-state {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 1px;
+  }
+  .scan-card-state.CONFIRM { color: var(--green); background: rgba(0,200,120,0.15); border: 1px solid rgba(0,200,120,0.3); }
+  .scan-card-state.BREAK   { color: var(--yellow); background: rgba(255,200,0,0.15); border: 1px solid rgba(255,200,0,0.3); }
+  .scan-card-state.EXHAUST { color: var(--red); background: rgba(255,80,80,0.12); border: 1px solid rgba(255,80,80,0.3); }
+
+  .scan-card-row2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .scan-card-price {
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .scan-card-target {
+    font-weight: 700;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+  }
+  .scan-card-target.warn { color: var(--red); }
+  .scan-card-score {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .scan-card-flags {
+    margin-top: 6px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .scan-card-flag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255,200,0,0.1);
+    color: var(--yellow);
+    border: 1px solid rgba(255,200,0,0.25);
+  }
+  .scan-card-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: right;
+    font-style: italic;
+  }
+
+  .scan-empty {
+    text-align: center;
+    padding: 24px 14px;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .scan-empty-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    opacity: 0.7;
+  }
+  .scan-meta {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    padding: 6px;
+    font-style: italic;
+    opacity: 0.8;
+  }
+
+  /* LOG */
+  .log-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-top: 12px;
+  }
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .log-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px; }
+  .log-clear {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-family: inherit;
+  }
+  .log-empty { text-align: center; color: #444; font-size: 12px; padding: 16px 0; }
+  .log-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-left { flex: 1; min-width: 0; }
+  .log-name {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-time { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .log-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .log-score {
+    font-size: 15px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    min-width: 32px;
+    text-align: right;
+  }
+  .log-score.green { color: var(--green); }
+  .log-score.yellow { color: var(--yellow); }
+  .log-score.red { color: var(--red); }
+  .log-badge {
+    font-size: 9px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    background: var(--surface-3);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .log-badge.ok { background: rgba(0, 214, 124, 0.15); color: var(--green); }
+  .log-badge.wait { background: rgba(255, 184, 0, 0.15); color: var(--yellow); }
+  .log-badge.no { background: rgba(255, 71, 87, 0.15); color: var(--red); }
+
+  .footer {
+    text-align: center;
+    color: #444;
+    font-size: 10px;
+    margin-top: 20px;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+  }
+  .footer .fam { color: var(--muted); }
+  /* ━━ VWAP 뱃지 (채피 §6) ━━ */
+  .vwap-badge {
+    display:inline-block; margin-top:6px; font-size:12px; font-weight:700;
+    padding:4px 10px; border-radius:100px; letter-spacing:0.3px;
+  }
+  .vwap-badge.muted { color:var(--muted); border:1px solid var(--border); background:var(--surface-2); }
+  .vwap-badge.above { color:var(--green); border:1px solid rgba(0,214,124,.35); background:rgba(0,214,124,.08); }
+  .vwap-badge.below { color:var(--red);   border:1px solid rgba(255,71,87,.35); background:rgba(255,71,87,.08); }
+
+  /* ━━ MORNING FILTER 카드 ━━ */
+  .morning-card {
+    border-radius:14px; padding:16px; margin-bottom:10px;
+    border:1px solid var(--border); background:var(--surface);
+  }
+  .morning-card.buy  { border-color:rgba(0,214,124,.5); background:linear-gradient(135deg, rgba(0,214,124,.08), var(--surface)); }
+  .morning-card.hold { border-color:var(--border); }
+  .mf-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .mf-label { font-size:11px; font-weight:800; letter-spacing:1.5px; color:var(--muted); }
+  .mf-verdict { font-size:18px; font-weight:900; letter-spacing:-0.3px; }
+  .mf-verdict.buy  { color:var(--green); }
+  .mf-verdict.hold { color:var(--muted); }
+  .mf-checks { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px; }
+  .mf-check { font-size:13px; font-weight:600; padding:8px 10px; border-radius:8px; background:var(--surface-2); }
+  .mf-check.ok { color:var(--green); }
+  .mf-check.no { color:var(--muted); }
+  .mf-sell-title, .mf-reasons-title { font-size:11px; font-weight:800; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+  .mf-sell { background:var(--surface-2); border-radius:10px; padding:10px 12px; }
+  .mf-sell-row { display:flex; justify-content:space-between; font-size:14px; padding:4px 0; font-variant-numeric:tabular-nums; }
+  .mf-sell-row span { color:var(--muted); }
+  .mf-sell-row b { font-weight:800; }
+  .mf-sell-row.tp b { color:var(--green); }
+  .mf-sell-row.sl b { color:var(--red); }
+  .mf-sell-row.ts b { color:var(--yellow); font-size:12px; font-weight:700; }
+  .mf-reasons { margin-top:12px; background:rgba(255,71,87,.06); border:1px solid rgba(255,71,87,.2); border-radius:10px; padding:10px 12px; }
+  .mf-reason { font-size:13px; color:var(--red); padding:2px 0; }
+  .mf-note { margin-top:12px; font-size:11px; color:#666; text-align:center; line-height:1.5; }
+  .mf-log-item { padding:10px 0; border-bottom:1px solid var(--border); }
+  .mf-log-item:last-child { border-bottom:none; }
+  .mf-log-top { display:flex; align-items:center; gap:8px; }
+  .mf-log-name { font-weight:700; font-size:14px; flex:1; }
+  .mf-log-badge { font-size:10px; font-weight:800; padding:2px 7px; border-radius:5px; }
+  .mf-log-badge.buy  { color:var(--green); background:rgba(0,214,124,.12); }
+  .mf-log-badge.hold { color:var(--muted); background:var(--surface-2); }
+  .mf-log-score { font-weight:800; font-variant-numeric:tabular-nums; }
+  .mf-log-meta { font-size:11px; color:var(--muted); margin-top:3px; font-variant-numeric:tabular-nums; }
+  /* ━━ 🎯 진입 적합도 순위 블록 ━━ */
+  .rank-block {
+    background:linear-gradient(135deg, rgba(255,184,0,.06), var(--surface));
+    border:1px solid rgba(255,184,0,.25); border-radius:14px;
+    padding:14px; margin-bottom:12px;
+  }
+  .rank-title { font-size:14px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .rank-sub { font-size:10px; font-weight:600; color:var(--muted); letter-spacing:0.3px; }
+  .rank-item {
+    display:flex; align-items:center; gap:10px; padding:10px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; margin-bottom:6px; cursor:pointer; transition:all .12s;
+  }
+  .rank-item:active { transform:scale(0.98); border-color:var(--accent); }
+  .rank-item.CONFIRM { border-left:3px solid var(--green); }
+  .rank-item.BREAK   { border-left:3px solid var(--yellow); }
+  .rank-item.EXHAUST { border-left:3px solid var(--red); opacity:0.85; }
+  .rank-medal { font-size:18px; font-weight:800; min-width:24px; text-align:center; font-variant-numeric:tabular-nums; }
+  .rank-info { flex:1; min-width:0; }
+  .rank-name { font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; }
+  .rank-state { font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px; }
+  .rank-state.CONFIRM { color:var(--green); background:rgba(0,214,124,.12); }
+  .rank-state.BREAK   { color:var(--yellow); background:rgba(255,184,0,.12); }
+  .rank-state.EXHAUST { color:var(--red); background:rgba(255,71,87,.12); }
+  .rank-meta { font-size:11px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums; }
+  .rank-badge { font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; white-space:nowrap; }
+  .rank-badge.buy   { color:#000; background:var(--green); }
+  .rank-badge.watch { color:var(--muted); background:var(--surface-3); }
+  .rank-badge.warn  { color:var(--red); background:rgba(255,71,87,.12); }
+  .rank-note { font-size:10px; color:#666; text-align:center; margin-top:8px; }
+  .rank-row1 { display:flex; align-items:center; gap:10px; }
+  .rank-code { font-size:10px; color:#666; font-weight:500; }
+  .rank-flags { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; padding-left:34px; }
+  .rank-flag { font-size:9px; font-weight:700; color:var(--yellow); background:rgba(255,184,0,.1); border:1px solid rgba(255,184,0,.25); border-radius:4px; padding:2px 6px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header-card">
+    <div class="header-left">
+      <div class="header-label">KST</div>
+      <div class="header-time" id="clock">2026.--.-- (-) --:--:--</div>
+    </div>
+    <div class="header-right" style="display:flex;align-items:center;gap:8px;">
+      <a href="trinity_hub_v1_0.html" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);color:#00d4ff;text-decoration:none;">🔱 HUB</a>
+      <div>
+        <div class="logo">TRINITY STRIKE</div>
+        <div class="logo-sub">CHECK · v2.3 · Wave Scan · Target · 🔥Morning</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 웜업 배너 -->
+  <div id="warmup-bar" style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;">
+    <span style="color:var(--muted);flex:1" id="warmup-status">🔌 Railway 서버 상태 미확인 — 장 전 웜업 권장</span>
+    <button id="warmup-btn" onclick="runStrikeWarmup()" style="background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;">🔌 웜업</button>
+  </div>
+
+  <div class="title-block">
+    <div class="title-main">Strike <span class="accent">Check</span></div>
+    <div class="title-sub">100만원 하루 단타용 · 손절 2% · 1차 익절 3~5% · 2차는 강세 유지 시 확장</div>
+    <div class="speed-badge">⚡ SPEED MODE · 3필드 10초</div>
+  </div>
+
+
+  <!-- 🔥 거래량 TOP 30 -->
+  <div style="margin-bottom:12px;">
+    <button id="btn-top30" style="width:100%; background:linear-gradient(135deg,#ff4757,#ff6b35); border:none; border-radius:12px; color:#fff; font-size:16px; font-weight:800; padding:14px; cursor:pointer; font-family:inherit; letter-spacing:0.5px; display:flex; align-items:center; justify-content:center; gap:8px;"><div>🔥 거래량 TOP 30 실시간 스캔</div><div style="font-size:11px;font-weight:500;opacity:0.85;margin-top:3px;">탭 한 번 → 자동입력 + 즉시 판정 ⚡</div></button>
+    <div id="top30-panel" style="display:none; margin-top:8px;">
+      <div id="top30-status" style="font-size:12px; color:var(--muted); text-align:center; padding:8px; min-height:20px;"></div>
+      <div id="top30-list" style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden;"></div>
+    </div>
+  </div>
+
+  <!-- 🌊 Wave Scan — CONFIRM 후보 자동 추출 (v2.2) -->
+  <div style="margin-bottom:12px;">
+    <button id="btn-scan" style="width:100%; background:linear-gradient(135deg,#b8860b,#8b6914); border:1px solid rgba(184,134,11,0.6); border-radius:12px; color:#fff; font-size:16px; font-weight:800; padding:14px; cursor:pointer; font-family:inherit; letter-spacing:0.5px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 2px 8px rgba(184,134,11,0.15);">
+      <div>🌊 Wave Scan · 후보 추출</div>
+      <div style="font-size:11px;font-weight:500;opacity:0.85;margin-top:3px;">TOP 30 → CONFIRM/BREAK 자동 추출 🔱</div>
+    </button>
+    <div id="scan-panel" style="display:none; margin-top:8px;">
+      <div id="scan-status" style="font-size:12px; color:var(--muted); text-align:center; padding:8px; min-height:20px;"></div>
+      <div id="scan-results"></div>
+    </div>
+  </div>
+
+  <!-- 종목 & 핵심 3필드 -->
+  <div class="card">
+    <div class="card-title">종목 · 핵심 3필드 <span class="hint">종목명 검색 → 자동조회</span></div>
+
+    <!-- 종목명 검색 자동완성 -->
+    <div class="row single" style="margin-bottom:8px;">
+      <div class="field">
+        <label>종목명 검색 <span class="tip">한글 입력 → 자동완성</span></label>
+        <div style="position:relative;">
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="stock-search" class="text"
+                   placeholder="예: 한네트, 삼성전자, SK하이닉스" autocomplete="off"
+                   style="flex:1;">
+            <button id="btn-fetch" style="
+              background:var(--accent); border:none; border-radius:8px;
+              color:#000; font-size:13px; font-weight:800;
+              padding:0 16px; cursor:pointer; white-space:nowrap; font-family:inherit;
+            ">조회</button>
+          </div>
+          <!-- 자동완성 드롭다운 -->
+          <div id="search-dropdown" style="
+            display:none; position:absolute; top:100%; left:0; right:0;
+            background:var(--surface-2); border:1px solid var(--accent);
+            border-radius:8px; margin-top:4px; z-index:100;
+            max-height:220px; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+          "></div>
+        </div>
+        <div id="fetch-status" style="
+          font-size:11px; margin-top:5px; min-height:16px;
+          color:var(--muted); padding-left:2px;
+        "></div>
+        <div id="vwap-badge" class="vwap-badge muted">VWAP 준비중</div>
+      </div>
+    </div>
+
+    <div class="row single" style="display:none;">
+      <div class="field">
+        <label>종목명</label>
+        <input type="text" id="name" class="text" placeholder="자동입력 또는 직접입력" autocomplete="off">
+      </div>
+    </div>
+    <div class="row double">
+      <div class="field">
+        <label>현재가 <span class="tip">원</span></label>
+        <input type="number" id="now" inputmode="numeric" placeholder="5310">
+      </div>
+      <div class="field">
+        <label>고가 <span class="tip">당일</span></label>
+        <input type="number" id="high" inputmode="numeric" placeholder="5400">
+      </div>
+    </div>
+    <div class="row single">
+      <div class="field">
+        <label>등락률 <span class="tip">전일 대비, 예: 2.1 / -3.5</span></label>
+        <div class="pct-field">
+          <input type="number" id="pct" inputmode="decimal" step="0.1" min="-30" max="30" placeholder="2.1">
+        </div>
+        <div class="pct-quick">
+          <button data-pct="-5">-5</button>
+          <button data-pct="-2">-2</button>
+          <button data-pct="0">0</button>
+          <button data-pct="3">+3</button>
+          <button data-pct="7">+7</button>
+          <button data-pct="12">+12</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 시간대 -->
+  <div class="card">
+    <div class="card-title">시간대 <span class="hint">지금 몇시?</span></div>
+    <div class="chips" id="time-chips">
+      <div class="chip" data-time="early">🌅 장초<span class="chip-sub">09:00~09:30</span></div>
+      <div class="chip" data-time="mid">☀️ 장중<span class="chip-sub">09:30~14:30</span></div>
+      <div class="chip" data-time="late">🌆 종가권<span class="chip-sub">14:30~</span></div>
+    </div>
+  </div>
+
+  <!-- 거래량 & 조건 -->
+  <div class="card">
+    <div class="card-title">거래량 & 조건</div>
+
+    <div class="field" style="margin-bottom: 10px;">
+      <label style="margin-bottom:6px;">거래량 상태</label>
+      <div class="chips" id="vol-chips">
+        <div class="chip" data-vol="hot">🔥 터짐</div>
+        <div class="chip" data-vol="normal">👍 평소</div>
+        <div class="chip" data-vol="weak">💤 약함</div>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-label">첫 눌림 <span class="hint">건눌재 철학</span></div>
+      <div class="toggle" data-key="pullback">
+        <button data-v="1" class="good-btn">YES</button>
+        <button data-v="0">NO</button>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-label">섹터 강세 <span class="hint">테마 살아있나</span></div>
+      <div class="toggle" data-key="sector">
+        <button data-v="1">YES</button>
+        <button data-v="0">NO</button>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-label">대장 동조 <span class="hint">같이 가나</span></div>
+      <div class="toggle" data-key="leader">
+        <button data-v="1">YES</button>
+        <button data-v="0">NO</button>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-label">윗꼬리 큼 <span class="hint">위험 신호</span></div>
+      <div class="toggle" data-key="tail">
+        <button data-v="1" class="danger-btn">YES</button>
+        <button data-v="0">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 버튼 -->
+  <div class="actions">
+    <button class="btn btn-sample" id="btn-sample">샘플</button>
+    <button class="btn btn-reset" id="btn-reset">초기화</button>
+    <button class="btn btn-go" id="btn-go">진단 ▶</button>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result" id="result">
+    <div class="verdict-card" id="verdict-card">
+      <div class="score-name" id="score-name">종목명</div>
+      <div class="score-row">
+        <div class="score-big" id="score">0</div>
+        <div class="score-max">/ 100</div>
+      </div>
+      <div class="state-text" id="state">상태</div>
+
+      <div class="verdict-main">
+        <div class="verdict-label">ENTRY VERDICT</div>
+        <div class="verdict-value" id="entry-verdict">-</div>
+        <div class="verdict-sub" id="entry-sub">-</div>
+      </div>
+
+      <div class="pullback-badge" id="pullback-badge">
+        <span class="pullback-badge-icon" id="pullback-badge-icon">-</span>
+        <div style="display:flex; flex-direction:column;">
+          <span id="pullback-badge-text">-</span>
+          <span class="pullback-badge-sub" id="pullback-badge-sub">-</span>
+        </div>
+      </div>
+
+      <div class="reject-reasons" id="reject-block" style="display:none;">
+        <div class="label">⚠️ 거부/주의 사유</div>
+        <div id="reject-list"></div>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan-cell">
+          <div class="plan-label">🛑 손절가</div>
+          <div class="plan-value red" id="stop-price">-</div>
+        </div>
+        <div class="plan-cell">
+          <div class="plan-label">고가 대비</div>
+          <div class="plan-value" id="high-ratio">-</div>
+        </div>
+        <div class="plan-cell">
+          <div class="plan-label">🎯 1차 익절</div>
+          <div class="plan-value green" id="tp1">-</div>
+        </div>
+        <div class="plan-cell">
+          <div class="plan-label">🚀 2차 확장</div>
+          <div class="plan-value blue" id="tp2">-</div>
+        </div>
+        <div class="plan-cell full">
+          <div class="plan-label">🌕 러너 시나리오</div>
+          <div class="plan-value yellow" id="runner" style="font-size:12px;">-</div>
+        </div>
+        <div class="plan-cell full">
+          <div class="plan-label">💰 100만원 분할</div>
+          <div class="plan-value" id="split" style="font-size:13px;">-</div>
+        </div>
+      </div>
+
+      <div class="memo">
+        <div class="memo-icon">📝</div>
+        <div id="memo">-</div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="card-title" style="margin-bottom:6px;">세부 점수</div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">진입 자리 (35)</span>
+        <span class="breakdown-score"><span class="bar-bg"><span class="bar-fill" id="bar-entry"></span></span><span id="sc-entry">-</span></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">손절 관리 (25)</span>
+        <span class="breakdown-score"><span class="bar-bg"><span class="bar-fill" id="bar-stop"></span></span><span id="sc-stop">-</span></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">거래량/에너지 (20)</span>
+        <span class="breakdown-score"><span class="bar-bg"><span class="bar-fill" id="bar-energy"></span></span><span id="sc-energy">-</span></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">섹터/동조 (10)</span>
+        <span class="breakdown-score"><span class="bar-bg"><span class="bar-fill" id="bar-sector"></span></span><span id="sc-sector">-</span></span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">시간대 보정 (±5)</span>
+        <span class="breakdown-score" id="sc-time">-</span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">첫 눌림 보너스 (+8)</span>
+        <span class="breakdown-score" id="sc-pull">-</span>
+      </div>
+      <div class="breakdown-item">
+        <span class="breakdown-name">리스크 감점 (-20)</span>
+        <span class="breakdown-score" id="sc-risk">-</span>
+      </div>
+    </div>
+
+    <!-- ─── 🔥 STRIKE MORNING FILTER v0.1 카드 ─── -->
+    <div class="morning-card hold" id="morning-card" style="display:none;">
+      <div class="mf-header">
+        <span class="mf-label">🔥 MORNING FILTER v0.1</span>
+        <span class="mf-verdict hold" id="mf-verdict">⏸ HOLD</span>
+      </div>
+      <div class="mf-checks" id="mf-checks"></div>
+      <div class="mf-sell-title">AUTO SELL 계획</div>
+      <div class="mf-sell" id="mf-sell"></div>
+      <div class="mf-reasons" id="mf-reasons" style="display:none;"></div>
+      <div class="mf-note">신호 품질 검증용 · 자동주문 없음 · 최종 판단/실행은 림빅</div>
+    </div>
+
+    <!-- 모닝필터 검증 로그 -->
+    <div class="card" id="mf-log-card">
+      <div class="card-title">🔥 MORNING FILTER 검증 이력 <span class="hint">최근 50건</span></div>
+      <div id="mf-log-body"><div class="log-empty">검증 이력 없음</div></div>
+    </div>
+
+    <!-- ─── Wave Target 카드 (v2.1) ─── -->
+    <div class="wave-card" id="wave-card" style="display:none;">
+      <div class="wave-header">
+        <div class="wave-title">
+          🌊 Wave Target
+          <span class="hint">운영 계기판</span>
+        </div>
+        <div class="wave-state" id="wave-state">-</div>
+      </div>
+
+      <div class="wave-current">
+        <div class="wave-current-label">현재가</div>
+        <div class="wave-current-value" id="wave-current">-</div>
+      </div>
+
+      <div class="wave-targets" id="wave-targets-grid">
+        <div class="wave-target-cell">
+          <div class="wave-target-days">익일</div>
+          <div class="wave-target-price" id="wave-t1-price">-</div>
+          <div class="wave-target-pct" id="wave-t1-pct">-</div>
+          <div class="wave-target-prob" id="wave-t1-prob">-</div>
+        </div>
+        <div class="wave-target-cell">
+          <div class="wave-target-days">3일</div>
+          <div class="wave-target-price" id="wave-t3-price">-</div>
+          <div class="wave-target-pct" id="wave-t3-pct">-</div>
+          <div class="wave-target-prob" id="wave-t3-prob">-</div>
+        </div>
+        <div class="wave-target-cell">
+          <div class="wave-target-days">7일</div>
+          <div class="wave-target-price" id="wave-t7-price">-</div>
+          <div class="wave-target-pct" id="wave-t7-pct">-</div>
+          <div class="wave-target-prob" id="wave-t7-prob">-</div>
+        </div>
+      </div>
+
+      <div class="wave-safety">
+        <div class="wave-safety-cell">
+          <div class="wave-safety-label">⚠️ 무효가</div>
+          <div class="wave-safety-value red">
+            <span id="wave-invalid">-</span>
+            <span class="wave-safety-sub" id="wave-invalid-pct">-</span>
+          </div>
+        </div>
+        <div class="wave-safety-cell">
+          <div class="wave-safety-label">🔄 재평가가</div>
+          <div class="wave-safety-value yellow">
+            <span id="wave-reentry">-</span>
+            <span class="wave-safety-sub" id="wave-reentry-pct">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wave-flags" id="wave-flags-row" style="display:none;"></div>
+
+      <div class="wave-philosophy">
+        욕심과 공포를 조절하는 운영 계기판 · 채피 설계
+      </div>
+    </div>
+    <!-- ─── /Wave Target 카드 ─── -->
+
+  </div>
+
+  <!-- LOG -->
+  <div class="log-card">
+    <div class="log-header">
+      <div class="log-title">📜 진단 이력</div>
+      <button class="log-clear" id="btn-clear-log">전체 삭제</button>
+    </div>
+    <div id="log-body">
+      <div class="log-empty">아직 진단 이력이 없어요</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div style="color: var(--accent); margin-bottom: 2px; font-weight: 700;">Trinity Strike Check v2.3 · 🔥 Morning Filter v0.1 · KIS 실측 VWAP</div>
+    <div class="fam">림빅 × 채피 × 써니 · Trinity Family</div>
+    <div style="margin-top: 4px;">종목코드 입력 → Railway KIS 자동조회</div>
+  </div>
+</div>
+
+<script>
+  // ===== RAILWAY CONFIG =====
+  const RAILWAY_URL = 'https://fastapi-production-f631.up.railway.app';
+
+  // ━━ 앱 간 연결 수신 (채피 설계 / 써니 구현) ━━
+  // Block Reset / Candidate 에서 localStorage로 종목 전달받음
+  function checkIncomingStock() {
+    try {
+      const raw = localStorage.getItem('trinity_strike_incoming');
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      // 5분 이내 데이터만 수신
+      if (Date.now() - d.timestamp > 5 * 60 * 1000) { localStorage.removeItem('trinity_strike_incoming'); return; }
+      localStorage.removeItem('trinity_strike_incoming');
+      // 자동 입력
+      selectedCode = d.code;
+      document.getElementById('stock-search').value = d.name || '';
+      document.getElementById('name').value  = d.name  || '';
+      if (d.price)     document.getElementById('now').value  = d.price;
+      if (d.changePct !== undefined) document.getElementById('pct').value = d.changePct.toFixed(1);
+      // 상단 배너
+      const bar = document.getElementById('warmup-bar');
+      if (bar) {
+        bar.style.background = 'rgba(255,138,0,0.08)';
+        bar.style.borderColor = 'rgba(255,138,0,0.35)';
+        document.getElementById('warmup-status').textContent =
+          `⚡ ${d.from==='block_reset'?'Block Reset':'Candidate'}에서 수신 — ${d.name} (${d.changePct>=0?'+':''}${d.changePct?.toFixed(1)||'?'}%) · 데이터 조회 후 판정하세요`;
+        document.getElementById('warmup-status').style.color = 'var(--neon-orange)';
+      }
+      // Railway에서 고가 자동 조회
+      fetchStockData(d.code, false);
+    } catch(e) {}
+  }
+  // 페이지 로드 시 + 포커스 시 수신 체크
+  window.addEventListener('DOMContentLoaded', () => { setTimeout(checkIncomingStock, 500); });
+  window.addEventListener('focus', checkIncomingStock);
+
+  // ===== WARMUP — 채피 설계 / 써니 구현 =====
+  async function runStrikeWarmup() {
+    const btn = document.getElementById('warmup-btn');
+    const status = document.getElementById('warmup-status');
+    const bar = document.getElementById('warmup-bar');
+    btn.textContent = '⏳ 연결 중...'; btn.disabled = true;
+    status.textContent = '🔄 Railway 서버 웜업 중... (최대 15초)';
+    status.style.color = '#00d4ff';
+    try {
+      const t0 = Date.now();
+      await fetch(`${RAILWAY_URL}/stock/005930`, { signal: AbortSignal.timeout(15000) });
+      const elapsed = ((Date.now()-t0)/1000).toFixed(1);
+      btn.textContent = '✅ 완료';
+      status.textContent = `✅ 서버 웜업 완료 (${elapsed}초) — 데이터 조회 가능`;
+      status.style.color = '#00ff88';
+      bar.style.borderColor = 'rgba(0,255,136,0.3)';
+      bar.style.background = 'rgba(0,255,136,0.05)';
+    } catch(e) {
+      btn.textContent = '❌ 실패';
+      status.textContent = '⚠️ Railway 연결 실패 — 잠시 후 재시도';
+      status.style.color = '#ff3a3a';
+      bar.style.borderColor = 'rgba(255,58,58,0.3)';
+    }
+    btn.disabled = false;
+    setTimeout(() => {
+      btn.textContent = '🔌 웜업'; btn.style.cssText = '';
+      status.textContent = '🔌 서버 웜업 완료 상태';
+    }, 25000);
+  }
+
+  // ===== 🚫 ETF/ETN 필터 (v2.1) =====
+  // Trinity 원칙: 좋은 기업의 파동 탐지 중심
+  // ETF/ETN은 지수 추종·레버리지 왜곡·거래량 해석 차이·목표가 신뢰도 저하로 기본 제외
+  const ETF_NAME_PATTERNS = [
+    // 운용사 prefix
+    'KODEX','TIGER','KBSTAR','HANARO','ARIRANG','KOSEF','ACE','SOL',
+    'RISE','PLUS','MASTER','FOCUS','TIMEFOLIO','BNK','KIWOOM','WOORI',
+    'KINDEX','KOACT','HK','SMART','파워','히어로즈','마이다스','네비게이터',
+    // 상품/구조 키워드
+    '인버스','레버리지','선물','2X','3X','ETN','ETF',
+    '인덱스','지수추종','코스피200','코스닥150','TR ','선물지수'
+  ];
+  function isETF(name) {
+    if (!name) return false;
+    const upper = String(name).toUpperCase();
+    return ETF_NAME_PATTERNS.some(p => upper.includes(p.toUpperCase()));
+  }
+
+  // ===== 종목 마스터 데이터 (림빅 관심종목 전체) =====
+  const STOCKS = [
+    // ── Quad-Core & 핵심 포트폴리오 ──
+    ["삼성전자","005930"],["SK하이닉스","000660"],["HD현대일렉트릭","267260"],
+    ["한미반도체","042700"],["이수페타시스","007660"],["주성엔지니어링","036930"],
+    ["LS ELECTRIC","010120"],["휴림로봇","090710"],
+
+    // ── 반도체 장비/소재 ──
+    ["원익IPS","240810"],["유진테크","084370"],["HPSP","403870"],
+    ["피에스케이","319660"],["피에스케이홀딩스","137310"],["이오테크닉스","039020"],
+    ["테스","095610"],["기가레인","049080"],["인텍플러스","064290"],
+    ["퀄리타스반도체","432720"],["오픈엣지테크놀로지","394280"],
+    ["DB하이텍","000990"],["하나마이크론","067310"],["네패스","033640"],
+    ["SFA반도체","036540"],["LB세미콘","161890"],["ISC","095340"],
+    ["솔브레인","357780"],["동진쎄미켐","005290"],["GST","083450"],
+
+    // ── 전력/에너지 인프라 ──
+    ["산일전기","062040"],["효성중공업","298040"],["LS","006260"],
+    ["대한전선","001440"],["대원전선","006340"],["한전KPS","051600"],
+    ["일진전기","103590"],["제룡전기","033100"],["서전기전","014440"],
+    ["보성파워텍","034220"],["LS에코에너지","229640"],["SK이터닉스","399720"],
+    ["유디엠텍","115160"],["옴니시스템","057540"],["한전기술","052690"],
+    ["한전산업","130660"],
+
+    // ── 원전 ──
+    ["두산에너빌리티","034020"],["비에이치아이","083650"],["우리기술","032820"],
+    ["에너토크","019990"],["우진","011390"],["오르비텍","046120"],
+    ["일진파워","094820"],
+
+    // ── 조선/해운/북극항로 ──
+    ["HD현대중공업","329180"],["HD한국조선해양","009540"],["삼성중공업","010140"],
+    ["한화오션","042660"],["태웅","044490"],["HMM","011200"],
+    ["팬오션","028670"],["대한해운","005880"],["현대글로비스","086280"],
+    ["동방","004140"],["KCTC","030610"],["STX그린로지스","465770"],
+    ["인터지스","129260"],["한국카본","017960"],["STX엔진","077970"],
+    ["포스코인터내셔널","047050"],["오리엔탈정공","014940"],["한국가스공사","036460"],
+
+    // ── 방산 ──
+    ["한화에어로스페이스","012450"],["한화시스템","272210"],["현대로템","064350"],
+    ["LIG디펜스앤에어로스페이스","079550"],["한국항공우주","047810"],
+    ["풍산","103140"],["퍼스텍","010820"],["한일단조","023460"],
+    ["빅텍","065450"],["RF시스템즈","156774"],
+
+    // ── 로봇 ──
+    ["레인보우로보틱스","277810"],["두산로보틱스","454910"],["로보스타","090360"],
+    ["에브리봇","270660"],["고영","098460"],["티로보틱스","117730"],
+    ["로보티즈","108490"],["현대무벡스","115960"],["하이젠알앤엠","192410"],
+    ["에스비비테크","389500"],["에스피지","058610"],["뉴로메카","385170"],
+    ["유일로보틱스","388790"],
+
+    // ── 6G/통신 ──
+    ["RFHIC","218410"],["케이엠더블유","032500"],["대한광통신","010170"],
+    ["쏠리드","050890"],["서진시스템","178320"],["AP위성","211270"],
+    ["LIG아큐버","026890"],["아이씨티케이","456550"],
+
+    // ── 해저케이블/광케이블 ──
+    ["오이솔루션","138080"],["LS마린솔루션","314090"],["파이버프로","368770"],
+    ["우리로","430690"],
+
+    // ── 배터리/소재 ──
+    ["LG에너지솔루션","373220"],["삼성SDI","006400"],["LG화학","051910"],
+    ["에코프로","086520"],["에코프로비엠","247540"],["엘앤에프","066970"],
+    ["필에너지","378340"],["한농화성","002100"],["레이저쎌","432320"],
+    ["피엔티","137400"],["하나기술","299030"],["이수스페셜티케미컬","009240"],
+    ["동화기업","025900"],["씨아이에스","222080"],["신성에스티","011930"],
+    ["SK이노베이션","096770"],
+
+    // ── 태양광 ──
+    ["한화솔루션","009830"],["OCI홀딩스","010060"],["HD현대에너지솔루션","322000"],
+    ["에스에너지","095910"],["한중엔시에스","347260"],["대주전자재료","078600"],
+
+    // ── 인공지능/AI ──
+    ["NAVER","035420"],["NHN","181710"],["리노공업","058470"],
+    ["대성하이텍","130580"],["크라우드웍스","094480"],["셀바스AI","108860"],
+    ["에스투더블유","488280"],["위세아이텍","065370"],["딥노이드","315640"],
+    ["코난테크놀로지","402030"],["노타","278990"],["비투엔","307930"],
+    ["트윔","290120"],["클로봇","325610"],["포커스에이아이","376030"],
+    ["유디엠텍","115160"],
+
+    // ── 데이터센터/건설 ──
+    ["시지메드텍","308920"],["SK디앤디","210980"],["제우스","079370"],
+    ["GS건설","006360"],["삼성물산","028260"],["LS","006260"],
+
+    // ── 액침냉각 ──
+    ["케이엔솔","322310"],["GST","083450"],["LG전자","066570"],
+    ["SK","034730"],["GS","078930"],["S-Oil","010950"],
+
+    // ── 배당/기타 관심 ──
+    ["태성","323280"],["삼성전기","009150"],["마크로젠","038290"],
+    ["아이비김영","339950"],["농우바이오","054050"],["LG씨엔에스","457190"],
+    ["한네트","069140"],["쏘닉스","056190"],
+    ["한국첨단소재","077280"],["파이버프로","368770"],
+
+    // ── 괴리율/기타 ──
+    ["파마리서치","214450"],["콘텐트리중앙","036420"],["코스메카코리아","241710"],
+    ["롯데관광개발","032350"],["아이에스동서","010780"],["한글과컴퓨터","030520"],
+    ["에이프릴바이오","397030"],["코웨이","021240"],["씨어스","307180"],
+    ["현대오토에버","307950"],["아이에스동서","010780"],
+
+    // ── 전력대장 ──
+    ["효성중공업","298040"],["SK이터닉스","399720"],["대한전선","001440"],
+    ["일진전기","103590"],["원익QnC","074600"],["서플러스글로벌","140670"],
+    ["디아이","092590"],["풍산","103140"],
+  ];
+
+  let selectedCode = '';
+
+  // ===== 검색 자동완성 =====
+  const searchInput = document.getElementById('stock-search');
+  const dropdown    = document.getElementById('search-dropdown');
+
+  function showDropdown(query) {
+    if (!query) { dropdown.style.display = 'none'; return; }
+    const q = query.toLowerCase();
+    const filtered = STOCKS
+      .filter(([name, code]) => !isETF(name))   // 🚫 ETF/ETN 제외 (v2.1)
+      .filter(([name, code]) =>
+        name.toLowerCase().includes(q) || code.includes(q)
+      ).slice(0, 8);
+    if (!filtered.length) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = filtered.map(([name, code]) => `
+      <div onclick="selectStock('${code}','${name}')" style="
+        padding:14px; cursor:pointer; display:flex;
+        justify-content:space-between; align-items:center;
+        border-bottom:1px solid var(--border); font-size:15px;
+      ">
+        <span style="font-weight:700;">${name}</span>
+        <span style="color:var(--accent); font-size:13px; font-weight:600; letter-spacing:1px;">${code}</span>
+      </div>
+    `).join('');
+    dropdown.style.display = 'block';
+  }
+
+  function selectStock(code, name) {
+    selectedCode = code;
+    searchInput.value = name;
+    dropdown.style.display = 'none';
+    const statusEl = document.getElementById('fetch-status');
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = `${code} 선택 — 조회 버튼 누르세요 ▶`;
+  }
+  window.selectStock = selectStock;
+
+  searchInput.addEventListener('input', (e) => {
+    selectedCode = '';
+    showDropdown(e.target.value.trim());
+  });
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { dropdown.style.display = 'none'; if (selectedCode) fetchStockData(selectedCode, true); }
+    if (e.key === 'Escape') dropdown.style.display = 'none';
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#stock-search') && !e.target.closest('#search-dropdown'))
+      dropdown.style.display = 'none';
+  });
+
+  // ===== 시세 조회 =====
+  // ===== 토글 자동 세팅 헬퍼 =====
+  function autoSetToggle(key, val) {
+    const toggle = document.querySelector(`.toggle[data-key="${key}"]`);
+    if (!toggle) return;
+    toggle.querySelectorAll('button').forEach(b => {
+      b.classList.remove('on','danger','good');
+      if (parseInt(b.dataset.v) === val) {
+        b.classList.add('on');
+        if (key === 'tail' && val === 1) b.classList.add('danger');
+        if (key === 'pullback' && val === 1) b.classList.add('good');
+      }
+    });
+    state[key] = val;
+  }
+  function autoSetChip(selector, key, attr, val) {
+    document.querySelectorAll(selector + ' .chip').forEach(c => c.classList.remove('active'));
+    const chip = document.querySelector(`${selector} .chip[data-${attr}="${val}"]`);
+    if (chip) { chip.classList.add('active'); state[key] = val; }
+  }
+  function autoSetTime() {
+    const h = new Date().getHours();
+    const m = new Date().getMinutes();
+    const total = h * 60 + m;
+    let t = total < 10*60 ? 'early' : total < 14*60+30 ? 'mid' : 'late';
+    autoSetChip('#time-chips', 'time', 'time', t);
+  }
+
+  async function fetchStockData(code, autoEval = false) {
+    const statusEl = document.getElementById('fetch-status');
+    const btn = document.getElementById('btn-fetch');
+    if (!code) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '⚠️ 종목을 선택하세요';
+      return;
+    }
+    // 새 종목 조회 → 이전 Wave Target 카드 숨김 (v2.1)
+    const waveCard = document.getElementById('wave-card');
+    if (waveCard) waveCard.style.display = 'none';
+
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = '⏳ 조회 중...';
+    btn.disabled = true; btn.style.opacity = '0.5';
+    try {
+      const res = await fetch(`${RAILWAY_URL}/stock/${code}`, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.status !== 'ok') throw new Error(d.detail || '조회 실패');
+
+      // ── 숫자 필드 자동입력 ──
+      document.getElementById('name').value = d.name || code;
+      document.getElementById('now').value  = d.price || '';
+      document.getElementById('high').value = d.high  || '';
+      document.getElementById('pct').value  = d.change_pct != null ? parseFloat(d.change_pct).toFixed(1) : '';
+
+      // ── 거래량 자동 ──
+      if (d.vol_ratio != null) {
+        const volVal = d.vol_ratio >= 1.5 ? 'hot' : d.vol_ratio >= 0.8 ? 'normal' : 'weak';
+        autoSetChip('#vol-chips', 'volume', 'vol', volVal);
+      }
+
+      // ── 시간대 자동 (현재 시각 기준) ──
+      autoSetTime();
+
+      // ── 눌림목 자동 (pullback_pct 기반) ──
+      const pb = d.pullback_pct != null ? parseFloat(d.pullback_pct) : null;
+      if (pb != null) {
+        const isPullback = pb <= -1 && pb >= -8 ? 1 : 0;
+        autoSetToggle('pullback', isPullback);
+      }
+
+      // ── 섹터 / 대장주 — 기본 1 (TOP30 자체가 주도주) ──
+      if (autoEval) {
+        autoSetToggle('sector', 1);
+        autoSetToggle('leader', 1);
+      }
+
+      // ── 윗꼬리 자동 (고가 대비 현재가 기반 추정) ──
+      if (d.price && d.high) {
+        const tailRatio = d.price / d.high;
+        // 현재가가 고가의 92% 미만 = 윗꼬리 있는 것으로 판단
+        autoSetToggle('tail', tailRatio < 0.92 ? 1 : 0);
+      }
+
+      // ── Trinity VWAP SSOT v1.0 수신 (백엔드 실측, 추정 금지) ──
+      state.vwap       = (d.vwap != null) ? d.vwap : null;
+      state.vwapSource = d.vwap_source || 'UNAVAILABLE';
+      state.vwapGap    = (d.vwap_gap != null) ? d.vwap_gap : null;
+      // 영업이익 지속흑자 여부 수신
+      state.profitStable = (typeof d.profit_stable === 'boolean') ? d.profit_stable : null;
+      renderVwapBadge();
+
+      const pctStr = d.change_pct >= 0 ? `+${parseFloat(d.change_pct).toFixed(1)}` : parseFloat(d.change_pct).toFixed(1);
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = `✅ ${d.name} · ${(d.price||0).toLocaleString()}원 (${pctStr}%) · 자동입력 완료`;
+
+      // ── TOP30에서 탭했을 때: 자동으로 판정 실행 ──
+      if (autoEval) {
+        setTimeout(() => {
+          statusEl.textContent += ' → 판정 중...';
+          evaluate();
+        }, 300);
+      }
+
+    } catch (e) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = `❌ 조회 실패: ${e.message}`;
+    } finally {
+      btn.disabled = false; btn.style.opacity = '1';
+    }
+  }
+
+  document.getElementById('btn-fetch').addEventListener('click', () => {
+    if (selectedCode) fetchStockData(selectedCode);
+    else {
+      document.getElementById('fetch-status').style.color = 'var(--red)';
+      document.getElementById('fetch-status').textContent = '⚠️ 목록에서 종목을 먼저 선택하세요';
+    }
+  });
+
+  // ===== TOP 30 =====
+  let top30Open = false;
+
+  document.getElementById('btn-top30').addEventListener('click', async () => {
+    top30Open = !top30Open;
+    const panel = document.getElementById('top30-panel');
+    const btn = document.getElementById('btn-top30');
+
+    if (!top30Open) {
+      panel.style.display = 'none';
+      btn.textContent = '🔥 거래량 TOP 30 실시간 스캔';
+      return;
+    }
+
+    panel.style.display = 'block';
+    btn.textContent = '▲ TOP 30 닫기';
+
+    const statusEl = document.getElementById('top30-status');
+    const listEl   = document.getElementById('top30-list');
+    statusEl.textContent = '⏳ 거래량 TOP 30 조회 중...';
+    listEl.innerHTML = '';
+
+    try {
+      const res = await fetch(`${RAILWAY_URL}/top30_v2`, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.status !== 'ok') throw new Error('조회 실패');
+
+      // 🚫 ETF/ETN 필터 (v2.1) — Trinity 원칙
+      const originalCount = d.items.length;
+      const filteredItems = d.items
+        .filter(item => !isETF(item.name))
+        .map((item, idx) => ({ ...item, rank: idx + 1 })); // 랭킹 재할당
+      const excludedCount = originalCount - filteredItems.length;
+
+      const filterNote = excludedCount > 0
+        ? ` · ETF/ETN ${excludedCount}개 제외`
+        : '';
+      statusEl.textContent = `✅ ${new Date().toLocaleTimeString('ko-KR')} 기준${filterNote} · 탭하면 바로 조회`;
+
+      if (filteredItems.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted); font-size:13px;">필터 후 표시할 종목이 없습니다.</div>';
+        return;
+      }
+
+      listEl.innerHTML = filteredItems.map(item => {
+        const pctColor = item.change_pct >= 5 ? '#ff4757' : item.change_pct >= 0 ? '#00d67c' : '#4a9eff';
+        const pctStr   = (item.change_pct >= 0 ? '+' : '') + item.change_pct.toFixed(1) + '%';
+        const volStr   = item.volume >= 1000000
+          ? (item.volume / 1000000).toFixed(0) + '백만'
+          : item.volume >= 10000
+          ? (item.volume / 10000).toFixed(0) + '만'
+          : item.volume.toLocaleString();
+        return `
+          <div onclick="top30Select('${item.code}','${item.name}',${item.price},${item.high},${item.change_pct})"
+               style="display:flex; justify-content:space-between; align-items:center;
+                      padding:12px 14px; border-bottom:1px solid var(--border);
+                      cursor:pointer; active:background:var(--surface-2);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:12px; color:var(--muted); width:22px; font-weight:700;">${item.rank}</span>
+              <div>
+                <div style="font-size:15px; font-weight:700;">${item.name}</div>
+                <div style="font-size:11px; color:var(--muted);">${item.code} · 거래량 ${volStr}</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:15px; font-weight:800; font-variant-numeric:tabular-nums;">${item.price.toLocaleString()}원</div>
+              <div style="font-size:13px; font-weight:700; color:${pctColor};">${pctStr}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+    } catch (e) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = `❌ 조회 실패: ${e.message}`;
+    }
+  });
+
+  function top30Select(code, name, price, high, changePct) {
+    selectedCode = code;
+    document.getElementById('stock-search').value = name;
+    document.getElementById('name').value = name;
+    document.getElementById('now').value  = price;
+    document.getElementById('high').value = high;
+    document.getElementById('pct').value  = changePct.toFixed(1);
+
+    // 패널 닫기
+    top30Open = false;
+    document.getElementById('top30-panel').style.display = 'none';
+    document.getElementById('btn-top30').textContent = '🔥 거래량 TOP 30 실시간 스캔';
+
+    // ✅ autoEval=true → 토글 자동세팅 + 판정 자동실행
+    fetchStockData(code, true);
+
+    document.getElementById('fetch-status').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  window.top30Select = top30Select;
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🌊 Wave Scan Engine (v2.2)
+  // Trinity 철학: 림빅의 탐색 피로 제거 (좋은 종목 발견 X)
+  // "Wave는 길을 보여주고, Strike는 발을 디딘다"
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  let scanOpen = false;
+
+  document.getElementById('btn-scan').addEventListener('click', async () => {
+    const panel = document.getElementById('scan-panel');
+    const btn = document.getElementById('btn-scan');
+    const statusEl = document.getElementById('scan-status');
+    const resultsEl = document.getElementById('scan-results');
+
+    // 토글 닫기
+    if (scanOpen) {
+      scanOpen = false;
+      panel.style.display = 'none';
+      btn.innerHTML = '<div>🌊 Wave Scan · 후보 추출</div><div style="font-size:11px;font-weight:500;opacity:0.85;margin-top:3px;">TOP 30 → CONFIRM/BREAK 자동 추출 🔱</div>';
+      return;
+    }
+    scanOpen = true;
+    panel.style.display = 'block';
+    btn.innerHTML = '<div>▲ Wave Scan 닫기</div>';
+    statusEl.textContent = '⏳ 시장 레이더 가동 중... (최대 1분)';
+    resultsEl.innerHTML = '';
+
+    try {
+      const data = await fetchScanConfirm();
+      renderScanResults(data);
+    } catch (e) {
+      console.warn('[wave_scan] 실패:', e);
+      // 백엔드 미완성(404) vs 실패 구분
+      const is404 = (e.message || '').includes('404');
+      if (is404) {
+        statusEl.textContent = '🔧 백엔드 준비 중';
+        resultsEl.innerHTML = `
+          <div class="scan-empty">
+            Wave Scan 엔진이 아직 배포 전입니다.
+            <div class="scan-empty-sub">Wave Scan v1.1 라이브 — 진입 후보 자동 추출 🔱</div>
+          </div>`;
+      } else {
+        statusEl.textContent = '⚠️ 스캔 실패';
+        resultsEl.innerHTML = `
+          <div class="scan-empty">
+            스캔 엔진이 응답하지 않습니다.
+            <div class="scan-empty-sub">${e.message || 'unknown'} · 잠시 후 다시 시도해주세요.</div>
+          </div>`;
+      }
+    }
+  });
+
+  async function fetchScanConfirm() {
+    const url = `${RAILWAY_URL}/scan/confirm?top=30`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  }
+
+  function renderScanResults(data) {
+    const statusEl = document.getElementById('scan-status');
+    const resultsEl = document.getElementById('scan-results');
+
+    const confirms = (data.candidates || []).filter(it => it.state === 'CONFIRM');
+    const breaks   = (data.candidates || []).filter(it => it.state === 'BREAK');
+    const exhausts = (data.candidates || []).filter(it => it.state === 'EXHAUST');
+
+    // 점수 내림차순 정렬 (림빅이 다시 정렬할 수 있게 기본만 제공)
+    [confirms, breaks, exhausts].forEach(arr => arr.sort((a,b) => (b.score||0) - (a.score||0)));
+
+    const totalFound = confirms.length + breaks.length + exhausts.length;
+    const totalScanned = data.total_scanned || 30;
+    const latencyMs = data.scan_latency_ms || 0;
+    const latencyNote = latencyMs > 0 ? ` · ${(latencyMs/1000).toFixed(1)}초` : ' · 캐시';
+
+    statusEl.textContent = `✅ ${totalScanned}종목 스캔 완료${latencyNote} · 후보 ${totalFound}개`;
+
+    if (totalFound === 0) {
+      resultsEl.innerHTML = `
+        <div class="scan-empty">
+          지금은 진입 후보가 없습니다.
+          <div class="scan-empty-sub">시장이 잠잠해요. 기다리세요. 🔱</div>
+        </div>`;
+      return;
+    }
+
+    let html = '';
+
+    // ━━ 🎯 진입 적합도 순위 (통합 · 유일한 후보 리스트) ━━━━━━
+    // 정렬: state 우선순위(CONFIRM>BREAK>EXHAUST) → score 내림차순
+    const STATE_RANK = { CONFIRM: 3, BREAK: 2, EXHAUST: 1 };
+    const ranked = [...confirms, ...breaks, ...exhausts].sort((a, b) => {
+      const sr = (STATE_RANK[b.state]||0) - (STATE_RANK[a.state]||0);
+      if (sr !== 0) return sr;
+      return (b.score||0) - (a.score||0);
+    });
+    const medal = (i) => ['🥇','🥈','🥉'][i] || `${i+1}`;
+
+    html += `
+      <div class="rank-block">
+        <div class="rank-title">🎯 진입 적합도 순위 <span class="rank-sub">CONFIRM 우선 · 점수순 · ${ranked.length}개</span></div>
+        ${ranked.map((it, i) => {
+          const isBuyCand = (it.score >= 85) && it.state === 'CONFIRM';
+          const badge = isBuyCand
+            ? '<span class="rank-badge buy">🔥 BUY 후보</span>'
+            : (it.state === 'EXHAUST'
+                ? '<span class="rank-badge warn">⚠ 추격주의</span>'
+                : '<span class="rank-badge watch">관찰</span>');
+          const tp = (it.target_7d_pct >= 0 ? '+' : '') + (it.target_7d_pct||0).toFixed(1) + '%';
+          const flags = (it.flags && it.flags.length)
+            ? `<div class="rank-flags">${it.flags.map(f => `<span class="rank-flag">⚠ ${f}</span>`).join('')}</div>`
+            : '';
+          return `
+            <div class="rank-item ${it.state}" onclick="scanSelect('${it.code}','${it.name}',${it.current})">
+              <div class="rank-row1">
+                <span class="rank-medal">${medal(i)}</span>
+                <div class="rank-info">
+                  <div class="rank-name">${it.name} <span class="rank-state ${it.state}">${it.state}</span> <span class="rank-code">${it.code}</span></div>
+                  <div class="rank-meta">${Number(it.current).toLocaleString('ko-KR')}원 · 점수 ${it.score||'-'} · 7일 ${tp}</div>
+                </div>
+                ${badge}
+              </div>
+              ${flags}
+            </div>`;
+        }).join('')}
+        <div class="rank-note">탭 → VWAP 확인 + 🔥 모닝필터 진입계획 · 주문은 직접</div>
+      </div>`;
+
+    const updatedAt = data.scanned_at ? new Date(data.scanned_at).toLocaleTimeString('ko-KR') : '-';
+    html += `<div class="scan-meta">레이더 갱신: ${updatedAt} · 탭하면 Strike 평가로 이동</div>`;
+
+    resultsEl.innerHTML = html;
+  }
+
+  function renderScanCard(item) {
+    const fmtPrice = (n) => Number(n).toLocaleString('ko-KR');
+    const targetPctStr = (item.target_7d_pct >= 0 ? '+' : '') + (item.target_7d_pct || 0).toFixed(1) + '%';
+    const isExhaust = item.state === 'EXHAUST';
+    const flagsHtml = (item.flags && item.flags.length > 0)
+      ? `<div class="scan-card-flags">${item.flags.map(f => `<span class="scan-card-flag">⚠ ${f}</span>`).join('')}</div>`
+      : '';
+    const hintText = isExhaust ? '⚠ 추격 금지 · 자리 재확인 필요' : '탭 → Strike 검증';
+
+    return `
+      <div class="scan-card ${item.state}" onclick="scanSelect('${item.code}','${item.name}',${item.current})">
+        <div class="scan-card-row1">
+          <div>
+            <span class="scan-card-name">${item.name}</span>
+            <span class="scan-card-code">${item.code}</span>
+          </div>
+          <span class="scan-card-state ${item.state}">${item.state}</span>
+        </div>
+        <div class="scan-card-row2">
+          <div>
+            <span class="scan-card-price">${fmtPrice(item.current)}원</span>
+            <span class="scan-card-score">· 점수 ${item.score || '-'}</span>
+          </div>
+          <div>
+            <span style="font-size:10px; color:var(--muted); font-weight:600;">7일 예상</span>
+            <span class="scan-card-target ${isExhaust ? 'warn' : ''}">${targetPctStr}</span>
+          </div>
+        </div>
+        ${flagsHtml}
+        <div class="scan-card-hint">${hintText}</div>
+      </div>`;
+  }
+
+  // 후보 카드 탭 → Strike Check 평가 진입
+  function scanSelect(code, name, currentPrice) {
+    // 자동완성 채우기
+    selectedCode = code;
+    document.getElementById('stock-search').value = name;
+
+    // 패널 닫기
+    scanOpen = false;
+    document.getElementById('scan-panel').style.display = 'none';
+    document.getElementById('btn-scan').innerHTML = '<div>🌊 Wave Scan · 후보 추출</div><div style="font-size:11px;font-weight:500;opacity:0.85;margin-top:3px;">TOP 30 → CONFIRM/BREAK 자동 추출 🔱</div>';
+
+    // Strike Check 자동 평가 진입 (TOP30Select와 동일 흐름)
+    fetchStockData(code, true);
+    document.getElementById('fetch-status').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  window.scanSelect = scanSelect;
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  // ===== CLOCK =====
+  const DAYS = ['일','월','화','수','목','금','토'];
+  function updateClock() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const mo = String(d.getMonth()+1).padStart(2,'0');
+    const da = String(d.getDate()).padStart(2,'0');
+    const dow = DAYS[d.getDay()];
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    const s = String(d.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent = `${y}.${mo}.${da} (${dow}) ${h}:${m}:${s}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ===== STATE =====
+  const state = {
+    volume: null, time: null, pullback: null,
+    sector: null, leader: null, tail: null,
+    // ━━ Trinity VWAP SSOT v1.0 (백엔드 /stock 실측, 프론트 계산 금지) ━━
+    vwap: null, vwapSource: 'UNAVAILABLE', vwapGap: null,
+    // 영업이익 지속흑자 여부 (백엔드 Universe 참조, null=미확인)
+    profitStable: null
+  };
+
+  // ===== 등락률 퀵버튼 =====
+  document.querySelectorAll('.pct-quick button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('pct').value = btn.dataset.pct;
+    });
+  });
+
+  // ===== CHIP HANDLERS =====
+  function bindChips(selector, key, attr) {
+    document.querySelectorAll(selector + ' .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll(selector + ' .chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        state[key] = chip.dataset[attr];
+      });
+    });
+  }
+  bindChips('#vol-chips', 'volume', 'vol');
+  bindChips('#time-chips', 'time', 'time');
+
+  // ===== TOGGLE HANDLERS =====
+  document.querySelectorAll('.toggle').forEach(toggle => {
+    const key = toggle.dataset.key;
+    toggle.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggle.querySelectorAll('button').forEach(b => {
+          b.classList.remove('on'); b.classList.remove('danger'); b.classList.remove('good');
+        });
+        btn.classList.add('on');
+        if (key === 'tail' && btn.dataset.v === '1') btn.classList.add('danger');
+        if (key === 'pullback' && btn.dataset.v === '1') btn.classList.add('good');
+        state[key] = parseInt(btn.dataset.v);
+      });
+    });
+  });
+
+  // ===== RESET =====
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    document.querySelectorAll('input').forEach(i => i.value = '');
+    document.getElementById('fetch-status').textContent = '';
+    selectedCode = '';
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.toggle button').forEach(b => {
+      b.classList.remove('on'); b.classList.remove('danger'); b.classList.remove('good');
+    });
+    Object.keys(state).forEach(k => state[k] = null);
+    state.vwapSource = 'UNAVAILABLE';
+    state.profitStable = null;
+    renderVwapBadge();
+    document.getElementById('result').classList.remove('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ===== SAMPLE =====
+  document.getElementById('btn-sample').addEventListener('click', () => {
+    document.getElementById('name').value = '쏘닉스';
+    document.getElementById('now').value = 5310;
+    document.getElementById('high').value = 5400;
+    document.getElementById('pct').value = 2.1;
+
+    document.querySelectorAll('#vol-chips .chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('#vol-chips .chip[data-vol="normal"]').classList.add('active');
+    state.volume = 'normal';
+
+    document.querySelectorAll('#time-chips .chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('#time-chips .chip[data-time="mid"]').classList.add('active');
+    state.time = 'mid';
+
+    const setToggle = (key, val) => {
+      const toggle = document.querySelector(`.toggle[data-key="${key}"]`);
+      toggle.querySelectorAll('button').forEach(b => { b.classList.remove('on'); b.classList.remove('danger'); b.classList.remove('good'); });
+      const btn = toggle.querySelector(`button[data-v="${val}"]`);
+      btn.classList.add('on');
+      if (key === 'tail' && val === 1) btn.classList.add('danger');
+      if (key === 'pullback' && val === 1) btn.classList.add('good');
+      state[key] = val;
+    };
+    setToggle('pullback', 1);
+    setToggle('sector', 1);
+    setToggle('leader', 1);
+    setToggle('tail', 0);
+  });
+
+  // ===== LOG =====
+  const LOG_KEY = 'trinity_strike_log_v1';
+  function loadLog() {
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function saveLog(log) {
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 20))); } catch {}
+  }
+  function renderLog() {
+    const log = loadLog();
+    const body = document.getElementById('log-body');
+    if (!log.length) {
+      body.innerHTML = '<div class="log-empty">아직 진단 이력이 없어요</div>';
+      return;
+    }
+    body.innerHTML = log.map(item => {
+      const scColor = item.score >= 70 ? 'green' : item.score >= 55 ? 'yellow' : 'red';
+      let badgeClass = 'no', badgeText = item.verdict;
+      if (item.verdict === 'ENTER_OK') { badgeClass = 'ok'; badgeText = '진입'; }
+      else if (item.verdict === 'WAIT_PULLBACK') { badgeClass = 'wait'; badgeText = '대기'; }
+      else if (item.verdict === 'WATCH_ONLY') { badgeClass = 'wait'; badgeText = '관찰'; }
+      else if (item.verdict === 'NO_CHASE') { badgeClass = 'no'; badgeText = '금지'; }
+      else { badgeClass = 'no'; badgeText = '제외'; }
+      return `
+        <div class="log-item">
+          <div class="log-left">
+            <div class="log-name">${escapeHtml(item.name)}</div>
+            <div class="log-time">${item.time}</div>
+          </div>
+          <div class="log-right">
+            <div class="log-badge ${badgeClass}">${badgeText}</div>
+            <div class="log-score ${scColor}">${item.score}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🔥 STRIKE MORNING FILTER v0.1 (채피 설계 · 신호 품질 검증용)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 목적: 오전장 단타 자동판정. 수익 극대화 X, 신호 품질 검증 O.
+  // 과최적화 금지 — 조건/수치 하드코딩, 가중치 튜닝 없음.
+  //
+  // AUTO BUY 필수 (6개 전부 충족):
+  //   score >= 85 / pullback == YES / volume == HOT
+  //   현재가 > VWAP (실측, vwap != null) / 시간대 EARLY|MID
+  //   영업이익 지속흑자 (PROFIT_STABLE_UNIVERSE 포함)
+  // AUTO SELL: TP1 +1.0% / TP2 +2.0% / SL -1.0% / TIME STOP 10분
+  //   → 판정·표시·LOG만. 자동주문 없음 (Trinity 원칙: 실행은 림빅).
+
+  const MORNING_FILTER = {
+    SCORE_MIN: 85,
+    TP1: 1.0, TP2: 2.0, SL: -1.0,
+    TIME_STOP_MIN: 10,
+  };
+
+  // VWAP 상태 뱃지 렌더 (채피 §6)
+  function renderVwapBadge() {
+    const el = document.getElementById('vwap-badge');
+    if (!el) return;
+    if (state.vwapSource === 'UNAVAILABLE' || state.vwap == null) {
+      el.className = 'vwap-badge muted';
+      el.textContent = 'VWAP 준비중';
+      return;
+    }
+    const price = parseFloat(document.getElementById('now').value) || 0;
+    const above = price > state.vwap;
+    el.className = 'vwap-badge ' + (above ? 'above' : 'below');
+    const gapStr = state.vwapGap != null ? ` (${state.vwapGap >= 0 ? '+' : ''}${state.vwapGap}%)` : '';
+    el.textContent = `${above ? '▲ VWAP 위' : '▼ VWAP 아래'} ${state.vwap.toLocaleString()}원${gapStr}`;
+  }
+
+  // 모닝필터 판정 → {buy, reasons[], vwapPass, sell{}}
+  function morningFilter(score, price) {
+    const reasons = [];
+
+    // VWAP 조건 (채피 §8): null → 금지, price<=vwap → 금지
+    let vwapPass = false;
+    if (state.vwap == null || state.vwapSource !== 'KIS_INQUIRE_PRICE') {
+      reasons.push('VWAP 미확인 (실측 없음) → AUTO 보류');
+    } else if (price <= state.vwap) {
+      reasons.push(`현재가 ≤ VWAP (${state.vwap.toLocaleString()}원) → 진입 금지`);
+    } else {
+      vwapPass = true;
+    }
+
+    if (score < MORNING_FILTER.SCORE_MIN) reasons.push(`score ${Math.round(score)} < 85`);
+    if (state.pullback !== 1)            reasons.push('pullback ≠ YES');
+    if (state.volume !== 'hot')          reasons.push('volume ≠ HOT');
+    if (!(state.time === 'early' || state.time === 'mid')) reasons.push('시간대 ≠ EARLY/MID');
+
+    // 영업이익 조건 (채피 §2): 지속흑자 Universe 미포함 → AUTO 진입 제한
+    let profitPass = false;
+    if (state.profitStable === true) {
+      profitPass = true;
+    } else if (state.profitStable === false) {
+      reasons.push('영업이익 지속흑자 아님 → AUTO 진입 제한');
+    } else {
+      reasons.push('영업이익 미확인 → AUTO 보류');
+    }
+
+    const buy = reasons.length === 0;
+
+    // AUTO SELL 계획 (price 기준 절대가)
+    const r = (p) => Math.round(price * (1 + p / 100));
+    const sell = {
+      entry: Math.round(price),
+      tp1: r(MORNING_FILTER.TP1), tp1Pct: MORNING_FILTER.TP1,
+      tp2: r(MORNING_FILTER.TP2), tp2Pct: MORNING_FILTER.TP2,
+      sl:  r(MORNING_FILTER.SL),  slPct:  MORNING_FILTER.SL,
+      timeStop: MORNING_FILTER.TIME_STOP_MIN,
+    };
+    return { buy, reasons, vwapPass, profitPass, sell };
+  }
+
+  // 모닝필터 결과 렌더 + LOG 확장
+  function renderMorningFilter(mf, name, score) {
+    const card = document.getElementById('morning-card');
+    if (!card) return;
+    card.style.display = 'block';
+    card.className = 'morning-card ' + (mf.buy ? 'buy' : 'hold');
+
+    document.getElementById('mf-verdict').textContent = mf.buy ? '🔥 AUTO BUY' : '⏸ HOLD';
+    document.getElementById('mf-verdict').className = 'mf-verdict ' + (mf.buy ? 'buy' : 'hold');
+
+    // AUTO BUY 조건 체크리스트
+    const checks = [
+      ['score ≥ 85',        score >= MORNING_FILTER.SCORE_MIN],
+      ['pullback = YES',    state.pullback === 1],
+      ['volume = HOT',      state.volume === 'hot'],
+      ['현재가 > VWAP',      mf.vwapPass],
+      ['시간대 EARLY/MID',   state.time === 'early' || state.time === 'mid'],
+      ['영업이익 지속흑자',   mf.profitPass],
+    ];
+    document.getElementById('mf-checks').innerHTML = checks.map(([label, ok]) =>
+      `<div class="mf-check ${ok ? 'ok' : 'no'}">${ok ? '✅' : '❌'} ${label}</div>`
+    ).join('');
+
+    // AUTO SELL 계획
+    const s = mf.sell;
+    document.getElementById('mf-sell').innerHTML = `
+      <div class="mf-sell-row"><span>진입</span><b>${s.entry.toLocaleString()}원</b></div>
+      <div class="mf-sell-row tp"><span>TP1 (+${s.tp1Pct}%)</span><b>${s.tp1.toLocaleString()}원</b></div>
+      <div class="mf-sell-row tp"><span>TP2 (+${s.tp2Pct}%)</span><b>${s.tp2.toLocaleString()}원</b></div>
+      <div class="mf-sell-row sl"><span>SL (${s.slPct}%)</span><b>${s.sl.toLocaleString()}원</b></div>
+      <div class="mf-sell-row ts"><span>TIME STOP</span><b>${s.timeStop}분 내 TP1 미달 시 청산</b></div>
+    `;
+
+    // 차단 사유
+    const rblock = document.getElementById('mf-reasons');
+    if (!mf.buy && mf.reasons.length) {
+      rblock.style.display = 'block';
+      rblock.innerHTML = '<div class="mf-reasons-title">차단 사유</div>' +
+        mf.reasons.map(r => `<div class="mf-reason">• ${r}</div>`).join('');
+    } else {
+      rblock.style.display = 'none';
+    }
+
+    // LOG 확장 (채피 요청: 진입시각·종목·score·VWAP·SL·TP·TIMESTOP)
+    const d = new Date();
+    const t = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    addMorningLog({
+      time: t, name, score: Math.round(score),
+      buy: mf.buy,
+      vwap: state.vwap, vwapSource: state.vwapSource,
+      tp1: mf.sell.tp1, tp2: mf.sell.tp2, sl: mf.sell.sl, timeStop: mf.sell.timeStop,
+    });
+  }
+
+  // 모닝필터 전용 LOG (기존 strike log와 별도 키)
+  const MF_LOG_KEY = 'trinity_morning_filter_log_v01';
+  function loadMfLog() { try { return JSON.parse(localStorage.getItem(MF_LOG_KEY) || '[]'); } catch { return []; } }
+  function addMorningLog(entry) {
+    const log = loadMfLog();
+    log.unshift(entry);
+    try { localStorage.setItem(MF_LOG_KEY, JSON.stringify(log.slice(0, 50))); } catch {}
+    renderMfLog();
+  }
+  function renderMfLog() {
+    const body = document.getElementById('mf-log-body');
+    if (!body) return;
+    const log = loadMfLog();
+    if (!log.length) { body.innerHTML = '<div class="log-empty">검증 이력 없음</div>'; return; }
+    body.innerHTML = log.map(it => {
+      const vwapStr = it.vwap != null ? `${it.vwap.toLocaleString()}원` : '준비중';
+      return `<div class="mf-log-item ${it.buy ? 'buy' : 'hold'}">
+        <div class="mf-log-top">
+          <span class="mf-log-name">${escapeHtml(it.name)}</span>
+          <span class="mf-log-badge ${it.buy ? 'buy' : 'hold'}">${it.buy ? 'BUY' : 'HOLD'}</span>
+          <span class="mf-log-score">${it.score}</span>
+        </div>
+        <div class="mf-log-meta">${it.time} · VWAP ${vwapStr} · TP ${it.tp1.toLocaleString()}/${it.tp2.toLocaleString()} · SL ${it.sl.toLocaleString()} · TS ${it.timeStop}분</div>
+      </div>`;
+    }).join('');
+  }
+
+  function addLog(entry) {
+    const log = loadLog();
+    log.unshift(entry);
+    saveLog(log);
+    renderLog();
+  }
+  document.getElementById('btn-clear-log').addEventListener('click', () => {
+    if (confirm('진단 이력을 모두 삭제할까요?')) {
+      localStorage.removeItem(LOG_KEY);
+      renderLog();
+    }
+  });
+  renderLog();
+  renderMfLog();
+
+  // ===== SCORING (v1.3 · 건눌재 철학 반영) =====
+  function evaluate() {
+    const name = document.getElementById('name').value.trim() || '종목';
+    const now = parseFloat(document.getElementById('now').value);
+    const high = parseFloat(document.getElementById('high').value);
+    const pct = parseFloat(document.getElementById('pct').value);
+
+    if (!now || !high) {
+      alert('⚠️ 현재가와 고가를 입력해주세요'); return;
+    }
+    if (isNaN(pct)) {
+      alert('⚠️ 등락률을 입력해주세요 (예: 2.1 또는 -3.5)'); return;
+    }
+    if (now > high) {
+      alert('⚠️ 현재가가 당일 고가보다 클 수 없어요'); return;
+    }
+    if (state.volume === null) { alert('⚠️ 거래량 상태를 선택해주세요'); return; }
+    if (state.time === null) { alert('⚠️ 시간대를 선택해주세요'); return; }
+    if (state.pullback === null || state.sector === null || state.leader === null || state.tail === null) {
+      alert('⚠️ 모든 토글을 선택해주세요'); return;
+    }
+
+    // ===== 파생 지표 계산 =====
+    // 고가 대비 현재가 비율 (0~1)
+    const highRatio = now / high;  // 1이면 고점, 0.95면 고가의 95%
+    const highDropPct = (1 - highRatio) * 100;  // 고점에서 몇 % 빠졌나
+    const dayPct = pct;
+
+    // ===== 1. 진입 자리 (35) - VWAP 대신 고가비율 사용 =====
+    let entryScore = 0;
+
+    // 고가 대비 위치 (15점) - VWAP 대체
+    // 고가의 97%+ : 고점 근처 (추격 위험)
+    // 고가의 92~97% : 건강한 위치 (이상적)
+    // 고가의 85~92% : 눌림 구간
+    // 고가의 85% 미만 : 약세
+    if (highRatio >= 0.97) entryScore += 5;       // 고점 (추격)
+    else if (highRatio >= 0.92) entryScore += 15; // 이상적
+    else if (highRatio >= 0.85) entryScore += 10; // 눌림
+    else if (highRatio >= 0.75) entryScore += 4;  // 약세 시작
+    // 그 이하는 0점
+
+    // 전일 대비 강도 (15점) — 건눌재 철학 반영 (v1.3)
+    // 핵심: 마이너스 등락률도 섹터+대장 살아있으면 "건강한 눌림"으로 인정
+    const sectorAlive = (state.sector === 1 && state.leader === 1);
+    let pullbackVerdict = null;  // 'healthy' | 'deep' | 'weak' | null
+
+    if (dayPct >= 2 && dayPct <= 7) {
+      entryScore += 15;                                    // 건강한 강세
+    } else if (dayPct > 0 && dayPct < 2) {
+      entryScore += 10;                                    // 약강세
+    } else if (dayPct > 7 && dayPct <= 12) {
+      entryScore += 7;                                     // 과열권
+    } else if (dayPct > 12) {
+      entryScore += 2;                                     // 과열
+    } else if (dayPct >= -1 && dayPct <= 0) {
+      entryScore += 5;                                     // 약한 조정
+    } else if (dayPct >= -4 && dayPct < -1) {
+      // 건눌재 핵심 구간: 섹터+대장 살아있고 고가 85%+ 이면 건강한 눌림
+      if (sectorAlive && highRatio >= 0.85) {
+        entryScore += 15;                                  // 건강한 눌림 (만점)
+        pullbackVerdict = 'healthy';
+      } else if (sectorAlive || highRatio >= 0.85) {
+        entryScore += 8;                                   // 부분 인정
+        pullbackVerdict = 'deep';
+      } else {
+        entryScore += 3;                                   // 약세 진행
+        pullbackVerdict = 'weak';
+      }
+    } else if (dayPct >= -7 && dayPct < -4) {
+      // 깊은 눌림: 섹터+대장 필수
+      if (sectorAlive && highRatio >= 0.85) {
+        entryScore += 8;                                   // 관찰 대기
+        pullbackVerdict = 'deep';
+      } else {
+        entryScore += 2;
+        pullbackVerdict = 'weak';
+      }
+    } else {
+      // -7% 이하: 진짜 약세
+      pullbackVerdict = 'weak';
+    }
+
+    // 고점 미도달 보너스 (5점)
+    // 장중이고 고가의 92~97%면 "건강한 상승 중" → 보너스
+    if (state.time === 'mid' && highRatio >= 0.92 && highRatio < 0.98) {
+      entryScore += 5;
+    }
+
+    // ===== 2. 손절 관리 (25) =====
+    let stopScore = 0;
+    const stopPrice = Math.round(now * 0.98);
+
+    // 2% 손절 기준 - 고가 비율 기반 판단
+    // 고가 근처일수록 손절폭 여유 없음 → 감점
+    // 눌림 구간에서 진입하는게 손절폭 이상적
+    if (highRatio >= 0.92 && highRatio <= 0.97) stopScore += 15;  // 이상적 손절 가능
+    else if (highRatio >= 0.85 && highRatio < 0.92) stopScore += 10; // 저점 진입형
+    else if (highRatio > 0.97) stopScore += 5;                     // 고점 근처 손절 애매
+    else stopScore += 3;
+
+    // 변동성 체크 - 고점 대비 낙폭
+    if (highDropPct <= 3) stopScore += 10;          // 변동성 낮음
+    else if (highDropPct <= 6) stopScore += 6;      // 보통
+    else if (highDropPct <= 10) stopScore += 3;     // 높음
+    // 그 이상은 0점 (변동성 큼)
+
+    // ===== 3. 거래량 (20) =====
+    let energyScore = 0;
+    if (state.volume === 'hot') energyScore = 20;
+    else if (state.volume === 'normal') energyScore = 10;
+    else energyScore = 3;
+
+    // ===== 4. 섹터 (10) =====
+    let sectorScore = 0;
+    if (state.sector === 1) sectorScore += 5;
+    if (state.leader === 1) sectorScore += 5;
+
+    // ===== 5. 시간대 보정 (±5) =====
+    let timeScore = 0;
+    if (state.time === 'early') {
+      timeScore = state.volume === 'weak' ? 2 : 5;
+    } else if (state.time === 'mid') {
+      timeScore = 0;
+    } else {
+      timeScore = dayPct > 5 ? -5 : -2;
+    }
+
+    // ===== 6. 첫 눌림 (+8) =====
+    const pullbackBonus = state.pullback === 1 ? 8 : 0;
+
+    // ===== 7. 리스크 감점 (-20) =====
+    let riskPenalty = 0;
+    if (state.tail === 1) riskPenalty -= 10;
+    if (dayPct > 12) riskPenalty -= 7;
+    if (highRatio >= 0.98 && dayPct > 3) riskPenalty -= 5;  // 고점 + 상승폭 = 추격
+    if (state.volume === 'weak' && dayPct > 3) riskPenalty -= 5;
+    if (highRatio < 0.80 && dayPct < 0) riskPenalty -= 3;   // 약세 진행 중
+
+    // ===== TOTAL =====
+    const raw = entryScore + stopScore + energyScore + sectorScore + timeScore + pullbackBonus + riskPenalty;
+    const total = Math.max(0, Math.min(100, raw));
+
+    // ===== 거부 이유 =====
+    const rejectReasons = [];
+    if (state.tail === 1) rejectReasons.push('윗꼬리 큼 → 고점 추격 위험');
+    if (dayPct > 12) rejectReasons.push(`당일 +${dayPct.toFixed(1)}% 과열권`);
+    if (highRatio >= 0.98 && dayPct > 3) rejectReasons.push(`고가의 ${(highRatio*100).toFixed(0)}% → 고점 근처 추격`);
+    if (state.volume === 'weak' && dayPct > 3) rejectReasons.push('거래량 약한데 상승 → 수상');
+    if (state.time === 'late' && dayPct > 5) rejectReasons.push('종가권 + 상승폭 크면 막판 추격');
+    if (highRatio < 0.75) rejectReasons.push(`고가의 ${(highRatio*100).toFixed(0)}% → 이미 약세 전환`);
+    if (highDropPct > 10) rejectReasons.push(`고점에서 -${highDropPct.toFixed(1)}% → 변동성 과도`);
+
+    // ===== VERDICT =====
+    let stateLabel, stateColor, entryVerdict, entrySub;
+
+    if (total >= 85) {
+      stateLabel = '🟢 즉시 감시 / 눌림 확인 후 진입';
+      stateColor = 'green';
+      entryVerdict = 'ENTER_OK';
+      entrySub = '조건 양호, 분할 진입 가능';
+    } else if (total >= 70) {
+      stateLabel = '🟡 조건부 진입 가능';
+      stateColor = 'yellow';
+      entryVerdict = 'WAIT_PULLBACK';
+      entrySub = '눌림/재지지 확인 후';
+    } else if (total >= 55) {
+      stateLabel = '🟡 관찰만';
+      stateColor = 'yellow';
+      entryVerdict = 'WATCH_ONLY';
+      entrySub = '자리 잡힐 때까지 대기';
+    } else if (total >= 40) {
+      stateLabel = '🔴 단타 비추천';
+      stateColor = 'red';
+      entryVerdict = 'NO_CHASE';
+      entrySub = '추격 금지, 자리 불량';
+    } else {
+      stateLabel = '🔴 제외';
+      stateColor = 'red';
+      entryVerdict = 'SKIP';
+      entrySub = '오늘 패스';
+    }
+
+    // 강제 규칙
+    if (state.tail === 1 && total < 85) {
+      entryVerdict = 'NO_CHASE';
+      entrySub = '윗꼬리 위험 — 추격 금지 강제';
+      if (stateColor === 'green') { stateColor = 'yellow'; stateLabel = '🟡 윗꼬리로 인한 대기'; }
+    }
+    if (highRatio >= 0.98 && dayPct > 5 && total < 90) {
+      entryVerdict = 'NO_CHASE';
+      entrySub = '고점 근처 + 상승폭 큼 — 추격 금지';
+    }
+
+    // ===== STOP VERDICT (고가 대비 기준) =====
+    let stopVerdict, stopVerdictColor;
+    if (highRatio >= 0.92 && highRatio <= 0.97) {
+      stopVerdict = '✅ 2% OK'; stopVerdictColor = 'green';
+    } else if (highRatio > 0.97) {
+      stopVerdict = '⚠️ 고점 근처'; stopVerdictColor = 'yellow';
+    } else if (highRatio >= 0.85) {
+      stopVerdict = '⚠️ 눌림권'; stopVerdictColor = 'yellow';
+    } else {
+      stopVerdict = '❌ 약세'; stopVerdictColor = 'red';
+    }
+
+    // ===== POSITION SIZE =====
+    let split;
+    if (total >= 85) split = '20 → 30 → 50만 (풀 분할)';
+    else if (total >= 70) split = '20 → 30만 (절반만)';
+    else if (total >= 55) split = '10 → 20만 (테스트)';
+    else split = '진입 비추';
+
+    // ===== MEMO =====
+    let memoParts = [];
+    if (state.pullback === 1 && highRatio >= 0.88 && highRatio <= 0.95 && state.tail === 0) memoParts.push('건강한 첫눌림');
+    if (state.sector === 1 && state.leader === 1) memoParts.push('섹터+대장 동조');
+    if (highRatio >= 0.92 && highRatio < 0.98 && dayPct >= 2) memoParts.push('고점 아래 건강한 상승');
+    if (state.time === 'early' && state.volume === 'hot') memoParts.push('장초 + 거래량 터짐');
+    if (state.volume === 'hot' && state.tail === 0) memoParts.push('에너지 살아있음');
+    if (memoParts.length === 0) memoParts.push('특이사항 없음');
+    const memo = memoParts.join(' · ');
+
+    // ===== RENDER =====
+    const card = document.getElementById('verdict-card');
+    card.className = 'verdict-card ' + stateColor;
+
+    document.getElementById('score-name').textContent = name;
+    const scoreEl = document.getElementById('score');
+    scoreEl.textContent = Math.round(total);
+    scoreEl.className = 'score-big ' + stateColor;
+
+    const stateEl = document.getElementById('state');
+    stateEl.textContent = stateLabel;
+    stateEl.className = 'state-text ' + stateColor;
+
+    document.getElementById('entry-verdict').textContent = entryVerdict;
+    document.getElementById('entry-sub').textContent = entrySub;
+
+    const rejectBlock = document.getElementById('reject-block');
+    const rejectList = document.getElementById('reject-list');
+    if (rejectReasons.length > 0 && (entryVerdict === 'NO_CHASE' || entryVerdict === 'SKIP' || entryVerdict === 'WATCH_ONLY')) {
+      rejectBlock.style.display = 'block';
+      rejectList.innerHTML = rejectReasons.map(r => `<div class="reason">${r}</div>`).join('');
+    } else {
+      rejectBlock.style.display = 'none';
+    }
+
+    // 눌림 판정 배지 (v1.3) — 마이너스 등락률일 때만 표시
+    const pullbackBadge = document.getElementById('pullback-badge');
+    pullbackBadge.classList.remove('show', 'healthy', 'deep', 'weak');
+    if (pullbackVerdict) {
+      pullbackBadge.classList.add('show', pullbackVerdict);
+      const icon = document.getElementById('pullback-badge-icon');
+      const text = document.getElementById('pullback-badge-text');
+      const sub = document.getElementById('pullback-badge-sub');
+      if (pullbackVerdict === 'healthy') {
+        icon.textContent = '✅';
+        text.textContent = '건강한 눌림 (진입 기회)';
+        sub.textContent = '섹터+대장 살아있음 · 고가 85%+';
+      } else if (pullbackVerdict === 'deep') {
+        icon.textContent = '⚠️';
+        text.textContent = '깊은 눌림 (관찰 대기)';
+        sub.textContent = '조건 일부 미충족 — 반등 확인 필요';
+      } else {
+        icon.textContent = '❌';
+        text.textContent = '약세 진행 (제외)';
+        sub.textContent = '섹터 약세 또는 구조 이탈';
+      }
+    }
+
+    document.getElementById('stop-price').textContent = stopPrice.toLocaleString() + '원';
+    document.getElementById('high-ratio').textContent = `${(highRatio*100).toFixed(1)}%`;
+    const stopEl = document.getElementById('high-ratio');
+    if (highRatio >= 0.97) stopEl.className = 'plan-value yellow';
+    else if (highRatio >= 0.92) stopEl.className = 'plan-value green';
+    else if (highRatio >= 0.85) stopEl.className = 'plan-value yellow';
+    else stopEl.className = 'plan-value red';
+
+    document.getElementById('tp1').textContent = '+3~5%';
+    document.getElementById('tp2').textContent = '+7~12%';
+    document.getElementById('runner').textContent = '강세 유지 시 최대 +25% 추적';
+    document.getElementById('split').textContent = split;
+    document.getElementById('memo').textContent = memo;
+
+    // breakdown
+    document.getElementById('sc-entry').textContent = `${Math.round(entryScore)}/35`;
+    document.getElementById('sc-stop').textContent = `${Math.round(stopScore)}/25`;
+    document.getElementById('sc-energy').textContent = `${Math.round(energyScore)}/20`;
+    document.getElementById('sc-sector').textContent = `${Math.round(sectorScore)}/10`;
+    document.getElementById('sc-time').textContent = (timeScore >= 0 ? '+' : '') + timeScore;
+    document.getElementById('sc-pull').textContent = pullbackBonus > 0 ? '+8' : '0';
+    document.getElementById('sc-risk').textContent = `${Math.round(riskPenalty)}`;
+
+    document.getElementById('bar-entry').style.width = `${(entryScore/35)*100}%`;
+    document.getElementById('bar-stop').style.width = `${(stopScore/25)*100}%`;
+    document.getElementById('bar-energy').style.width = `${(energyScore/20)*100}%`;
+    document.getElementById('bar-sector').style.width = `${(sectorScore/10)*100}%`;
+
+    // LOG
+    const d = new Date();
+    const timeStr = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    addLog({ name: name, score: Math.round(total), verdict: entryVerdict, time: timeStr });
+    // ━━ HUB에 판정 결과 전달 ━━
+    try {
+      localStorage.setItem('trinity_strike_last', JSON.stringify({
+        name, score: Math.round(total), verdict: stateLabel, ts: Date.now()
+      }));
+    } catch(e) {}
+
+    // ━━ 🔥 STRIKE MORNING FILTER v0.1 판정 ━━━━━━━━━━━━━━━━
+    if (!isETF(name)) {
+      const mf = morningFilter(total, now);
+      renderMorningFilter(mf, name, total);
+    } else {
+      const mc = document.getElementById('morning-card');
+      if (mc) mc.style.display = 'none';
+    }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    // ━━ 🌊 Wave Target 호출 (v2.1) ━━━━━━━━━━━━━━━━━━━━━━━━
+    // 진입 차단(NO_CHASE/REJECT) 여부 판단
+    const isEntryBlocked = (
+      entryVerdict.includes('NO_CHASE') ||
+      entryVerdict.includes('REJECT') ||
+      entryVerdict.includes('거부') ||
+      entryVerdict.includes('금지') ||
+      Math.round(total) < 60
+    );
+    if (selectedCode) {
+      fetchWaveTarget(selectedCode, isEntryBlocked, name);
+    } else {
+      document.getElementById('wave-card').style.display = 'none';
+    }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    document.getElementById('result').classList.add('show');
+    setTimeout(() => {
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
+  // ━━ 🌊 Wave Target Engine 연동 (v2.1) ━━━━━━━━━━━━━━━━━━━━
+  async function fetchWaveTarget(code, isBlocked, stockName) {
+    const card = document.getElementById('wave-card');
+    if (!card) return;
+
+    // 🚫 ETF/ETN 가드 (v2.1) — Trinity 원칙: 기본 제외
+    if (isETF(stockName)) {
+      card.style.display = 'none';
+      console.info(`[wave_target] ETF/ETN 제외: ${stockName}`);
+      return;
+    }
+
+    // 카드 표시 + 차단 상태 처리
+    card.style.display = 'block';
+    if (isBlocked) {
+      card.classList.add('muted');
+    } else {
+      card.classList.remove('muted');
+    }
+
+    // 로딩 표시 (간단)
+    document.getElementById('wave-current').textContent = '로딩 중...';
+    document.getElementById('wave-state').textContent = '-';
+    document.getElementById('wave-state').className = 'wave-state';
+
+    try {
+      // sector=normal 고정 (림빅 결정 사항, v2.1)
+      const url = `${RAILWAY_URL}/target/${code}?sector=normal&days=1,3,7`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // 응답 렌더링
+      renderWaveTarget(data);
+    } catch (e) {
+      console.warn('[wave_target] 호출 실패:', e);
+      document.getElementById('wave-current').textContent = '-';
+      document.getElementById('wave-state').textContent = 'ERROR';
+      document.getElementById('wave-state').className = 'wave-state';
+      // 모든 셀 - 처리
+      ['wave-t1-price','wave-t3-price','wave-t7-price',
+       'wave-t1-pct','wave-t3-pct','wave-t7-pct',
+       'wave-t1-prob','wave-t3-prob','wave-t7-prob',
+       'wave-invalid','wave-reentry',
+       'wave-invalid-pct','wave-reentry-pct'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '-';
+      });
+    }
+  }
+
+  function renderWaveTarget(data) {
+    const fmt = (n) => Number(n).toLocaleString('ko-KR');
+    const pct = (target, base) => {
+      if (!base) return '-';
+      const r = ((target - base) / base) * 100;
+      return (r >= 0 ? '+' : '') + r.toFixed(1) + '%';
+    };
+
+    // 상태
+    const stateEl = document.getElementById('wave-state');
+    stateEl.textContent = data.state || '-';
+    stateEl.className = 'wave-state ' + (data.state || '');
+
+    // 현재가
+    const current = data.current || 0;
+    document.getElementById('wave-current').textContent = fmt(current) + '원';
+
+    // 목표가 3종 매핑 (응답에서 days별로 찾기)
+    const targetMap = { 1: null, 3: null, 7: null };
+    (data.targets || []).forEach(t => {
+      if (t.days in targetMap) targetMap[t.days] = t;
+    });
+
+    // 1일/3일/7일 셀 채우기
+    [[1,'t1'],[3,'t3'],[7,'t7']].forEach(([days, key]) => {
+      const t = targetMap[days];
+      if (t) {
+        document.getElementById(`wave-${key}-price`).textContent = fmt(t.price);
+        document.getElementById(`wave-${key}-pct`).textContent = pct(t.price, current);
+        document.getElementById(`wave-${key}-prob`).textContent = `${t.probability}% · ${t.judgment || '-'}`;
+      } else {
+        document.getElementById(`wave-${key}-price`).textContent = '-';
+        document.getElementById(`wave-${key}-pct`).textContent = '-';
+        document.getElementById(`wave-${key}-prob`).textContent = '-';
+      }
+    });
+
+    // 무효가 / 재평가가
+    document.getElementById('wave-invalid').textContent = fmt(data.invalidation || 0) + '원';
+    document.getElementById('wave-invalid-pct').textContent = pct(data.invalidation, current);
+    document.getElementById('wave-reentry').textContent = fmt(data.reentry || 0) + '원';
+    document.getElementById('wave-reentry-pct').textContent = pct(data.reentry, current);
+
+    // 플래그
+    const flagsRow = document.getElementById('wave-flags-row');
+    if (data.flags && data.flags.length > 0) {
+      flagsRow.style.display = 'flex';
+      flagsRow.innerHTML = data.flags.map(f =>
+        `<span class="wave-flag">⚠ ${f}</span>`
+      ).join('');
+    } else {
+      flagsRow.style.display = 'none';
+      flagsRow.innerHTML = '';
+    }
+  }
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  document.getElementById('btn-go').addEventListener('click', evaluate);
+</script>
+
+</body>
+</html>
