@@ -2815,3 +2815,104 @@ async def judge_step1(query: str):
         "_debug_hts": o.get("hts_kor_isnm"),
         "_debug_bstp": o.get("bstp_kor_isnm"),
     }
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 📡 Trinity Auto Brief v1.0
+#    아침 브리핑 + 장마감 Quad-Core 리포트 텔레그램 자동 발송
+#    채피 설계 × 써니 구현 × 림빅 결정
+# ══════════════════════════════════════════════════════════════════════════════
+
+import datetime as _brief_dt
+import pytz as _pytz
+
+_KST = _pytz.timezone("Asia/Seoul")
+
+@app.post("/brief/morning")
+async def brief_morning():
+    """🌄 아침 브리핑 — 매일 08:00 KST Railway Cron 호출"""
+    if not TG_TOKEN or not TG_CHAT_ID:
+        raise HTTPException(status_code=500, detail="TG_TOKEN / TG_CHAT_ID 환경변수 없음")
+
+    now = _brief_dt.datetime.now(_KST).strftime("%Y-%m-%d %H:%M")
+
+    text = (
+        f"🌄 <b>Trinity Morning Brief</b>\n"
+        f"📅 {now} KST\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"⚡ <b>오늘의 Quad-Core</b>\n"
+        f"  • HD현대일렉트릭 (267260)\n"
+        f"  • SK하이닉스 (000660)\n"
+        f"  • 한미반도체 (042700)\n"
+        f"  • 이수페타시스 (007660)\n\n"
+        f"🔍 <b>관심 후보</b>\n"
+        f"  • 삼성전자 (005930)\n"
+        f"  • 주성엔지니어링 (114120)\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🔥 Trinity 가동 준비 완료\n"
+        f"판단은 림빅, 구조는 AI, 실행은 시스템"
+    )
+
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    async with httpx.AsyncClient(timeout=10) as c:
+        res = await c.post(url, json={
+            "chat_id": TG_CHAT_ID,
+            "text": text,
+            "parse_mode": "HTML"
+        })
+
+    return {"status": "sent", "tg": res.json()}
+
+
+@app.post("/brief/quad_report")
+async def brief_quad_report():
+    """📊 장마감 Quad-Core 리포트 — 매일 15:40 KST Railway Cron 호출"""
+    if not TG_TOKEN or not TG_CHAT_ID:
+        raise HTTPException(status_code=500, detail="TG_TOKEN / TG_CHAT_ID 환경변수 없음")
+
+    now = _brief_dt.datetime.now(_KST).strftime("%Y-%m-%d %H:%M")
+
+    # Quad-Core 실시간 가격 조회
+    quad_codes = [
+        ("267260", "HD현대일렉트릭"),
+        ("000660", "SK하이닉스"),
+        ("042700", "한미반도체"),
+        ("007660", "이수페타시스"),
+    ]
+
+    lines = []
+    try:
+        token = await get_token()
+        for code, label in quad_codes:
+            try:
+                p = await fetch_price(code, token)
+                chg = p.get("change_pct", 0)
+                arrow = "▲" if chg >= 0 else "▼"
+                sign  = "+" if chg >= 0 else ""
+                lines.append(f"  • {label}: {arrow} {sign}{chg:.1f}%")
+            except Exception:
+                lines.append(f"  • {label}: 조회 준비중")
+    except Exception:
+        lines = [f"  • {label}: 조회 준비중" for _, label in quad_codes]
+
+    quad_text = "\n".join(lines)
+
+    text = (
+        f"📊 <b>Quad-Core 장마감 리포트</b>\n"
+        f"📅 {now} KST\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"⚡ <b>오늘의 성과</b>\n"
+        f"{quad_text}\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🌙 수고했어요 림빅.\n"
+        f"내일도 회복 완료를 삽니다. 🔱"
+    )
+
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    async with httpx.AsyncClient(timeout=10) as c:
+        res = await c.post(url, json={
+            "chat_id": TG_CHAT_ID,
+            "text": text,
+            "parse_mode": "HTML"
+        })
+
+    return {"status": "sent", "tg": res.json()}
