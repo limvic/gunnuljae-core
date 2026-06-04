@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge Engine v1.0 — Trinity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c0f;
+    --surface:   #111318;
+    --border:    #1e2229;
+    --border-hi: #2d3340;
+    --muted:     #3a404d;
+    --text-dim:  #5a6272;
+    --text-mid:  #8a94a6;
+    --text:      #c8d0de;
+    --text-hi:   #eef1f7;
+    --gold:      #c9a84c;
+    --gold-dim:  #7d6530;
+    --green:     #3ecf8e;
+    --green-dim: #1a5c40;
+    --red:       #e05c5c;
+    --red-dim:   #5c2020;
+    --blue:      #5b8def;
+    --blue-dim:  #1e3060;
+    --amber:     #f0a040;
+    --amber-dim: #5c3c10;
+    --accent:    #c9a84c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── 배경 텍스처 ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 20%, rgba(201,168,76,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 80% 80%, rgba(62,207,142,0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── 헤더 ─── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-block {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: 1px solid var(--gold-dim);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .logo-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text-hi);
+    letter-spacing: 1px;
+  }
+
+  .logo-ver {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .header-right {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  .header-right .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ─── 메인 래퍼 ─── */
+  .main {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* ─── 미션 텍스트 ─── */
+  .mission {
+    font-family: 'DM Serif Display', serif;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    margin-bottom: 32px;
+    padding-left: 12px;
+    border-left: 2px solid var(--gold-dim);
+    line-height: 1.7;
+  }
+
+  /* ─── 검색바 ─── */
+  .search-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border-hi);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .search-wrap:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.15);
+  }
+
+  .search-label {
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    border-right: 1px solid var(--border);
+    background: rgba(201,168,76,0.04);
+    white-space: nowrap;
+  }
+
+  #searchInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 18px 20px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px;
+    color: var(--text-hi);
+    font-weight: 400;
+  }
+
+  #searchInput::placeholder { color: var(--muted); }
+
+  .search-btn {
+    padding: 0 24px;
+    background: var(--gold);
+    border: none;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: #0a0c0f;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { background: #e0bc60; }
+  .search-btn:active { transform: scale(0.98); }
+
+  /* ─── 빠른 접근 칩 ─── */
+  .quick-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 36px;
+  }
+
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-mid);
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    white-space: nowrap;
+  }
+  .chip:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+    background: rgba(201,168,76,0.05);
+  }
+
+  /* ─── 결과 카드 ─── */
+  #result { display: none; }
+
+  /* ─── 종목 헤더 카드 ─── */
+  .stock-header {
+    background: var(--surface);
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stock-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+  }
+
+  .stock-meta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .stock-name-block {}
+
+  .stock-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--text-hi);
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .stock-sub {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .stock-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+
+  .stock-sector {
+    font-size: 12px;
+    color: var(--blue);
+    background: rgba(91,141,239,0.08);
+    border: 1px solid rgba(91,141,239,0.2);
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-weight: 400;
+  }
+
+  .price-block {
+    text-align: right;
+  }
+
+  .price-main {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--text-hi);
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .price-change {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 400;
+  }
+  .price-change.up { color: var(--red); }   /* 한국 색 관례: 빨강=상승 */
+  .price-change.down { color: var(--blue); }
+
+  /* ─── 그리드 섹션 ─── */
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 20px 0 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::before {
+    content: '';
+    width: 20px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .data-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2px;
+  }
+
+  .data-cell {
+    background: var(--surface);
+    padding: 20px 20px;
+  }
+
+  .data-cell:hover {
+    background: #131620;
+  }
+
+  .cell-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .cell-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-hi);
+    line-height: 1.2;
+  }
+
+  .cell-value.na {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .cell-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* ─── 회복률 라벨 ─── */
+  .recovery-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 16px;
+    border: 1px solid;
+  }
+
+  .recovery-badge.bottom   { background: rgba(91,141,239,0.08); border-color: rgba(91,141,239,0.3); color: var(--blue); }
+  .recovery-badge.recover  { background: rgba(62,207,142,0.08); border-color: rgba(62,207,142,0.3); color: var(--green); }
+  .recovery-badge.rising   { background: rgba(201,168,76,0.08); border-color: rgba(201,168,76,0.3); color: var(--gold); }
+  .recovery-badge.chasing  { background: rgba(224,92,92,0.08);  border-color: rgba(224,92,92,0.3);  color: var(--red); }
+
+  /* ─── 밸류에이션 카드 ─── */
+  .val-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 2px;
+  }
+
+  /* ─── Judge 판정 영역 ─── */
+  .verdict-card {
+    background: var(--surface);
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-top: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .verdict-card::after {
+    content: 'JUDGE';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'DM Serif Display', serif;
+    font-size: 80px;
+    color: rgba(201,168,76,0.04);
+    pointer-events: none;
+    letter-spacing: 4px;
+  }
+
+  .verdict-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .verdict-summary {
+    font-size: 14px;
+    color: var(--text-mid);
+    line-height: 1.7;
+    font-weight: 300;
+    max-width: 600px;
+  }
+
+  .verdict-summary strong {
+    color: var(--text-hi);
+    font-weight: 500;
+  }
+
+  /* ─── 로딩 ─── */
+  #loading {
+    display: none;
+    padding: 60px 0;
+    text-align: center;
+  }
+
+  .loading-inner {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .loading-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* ─── 에러 ─── */
+  #errorBox {
+    display: none;
+    background: rgba(224,92,92,0.06);
+    border: 1px solid rgba(224,92,92,0.2);
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--red);
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  /* ─── 구분선 ─── */
+  .gap { height: 12px; }
+
+  /* ─── 환경 주석 ─── */
+  .env-note {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 48px;
+    letter-spacing: 1px;
+    line-height: 2;
+  }
+
+  /* ─── 반응형 ─── */
+  @media (max-width: 600px) {
+    header { padding: 20px 16px; }
+    .main { padding: 24px 16px 60px; }
+    .data-grid { grid-template-columns: repeat(2, 1fr); }
+    .stock-meta { flex-direction: column; }
+    .price-block { text-align: left; }
+    .stock-name { font-size: 22px; }
+    .price-main { font-size: 26px; }
+  }
+
+  /* ─── 애니메이션 ─── */
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in:nth-child(1) { animation-delay: 0.05s; }
+  .fade-in:nth-child(2) { animation-delay: 0.1s; }
+  .fade-in:nth-child(3) { animation-delay: 0.15s; }
+  .fade-in:nth-child(4) { animation-delay: 0.2s; }
+  .fade-in:nth-child(5) { animation-delay: 0.25s; }
+
+  /* ─── Future Wave Score ─── */
+  .fw-card {
+    background: var(--surface);
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 2px;
+    position: relative;
+  }
+  .fw-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #a78bfa, #60a5fa, #4ade80, #facc15, #f97316);
+  }
+  .fw-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fw-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .fw-wave-icons { font-size: 16px; letter-spacing: 2px; }
+  .fw-score-empty {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .fw-main {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 18px 28px 14px;
+  }
+  .fw-count-block {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .fw-count {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px;
+    line-height: 1;
+  }
+  .fw-count-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .fw-density-block { flex: 1; }
+  .fw-density-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .fw-density-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .fw-density-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .fw-density-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .fw-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 28px 14px;
+  }
+  .fw-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+    cursor: default;
+    font-weight: 500;
+    transition: opacity 0.2s;
+  }
+  .fw-tag:hover { opacity: 0.8; }
+  .fw-note {
+    margin: 0 28px 18px;
+    padding: 12px 14px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    border-left: 2px solid rgba(167,139,250,0.3);
+    line-height: 1.7;
+  }
+
+  /* ─── Trinity Position Card ─── */
+  .trinity-position-card {
+    background: var(--surface);
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+  .tp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 28px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tp-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .tp-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .tp-zones { display: flex; height: 6px; width: 100%; }
+  .tp-zone-seg { flex: 1; transition: opacity 0.3s; }
+  .tp-zone-seg.active { opacity: 1; }
+  .tp-zone-seg.inactive { opacity: 0.18; }
+  .tp-main {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 20px 28px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .tp-zone-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 30px;
+    line-height: 1;
+    letter-spacing: 0.5px;
+  }
+  .tp-action-block { text-align: right; }
+  .tp-action-tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 14px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .tp-action-desc {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    text-align: right;
+  }
+  .tp-rr {
+    border-top: 1px solid var(--border);
+    padding: 16px 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  .tp-rr-bars { display: flex; flex-direction: column; gap: 6px; }
+  .rr-row { display: flex; align-items: center; gap: 8px; }
+  .rr-row-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    width: 54px;
+    flex-shrink: 0;
+  }
+  .rr-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .rr-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .rr-bar-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    width: 54px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .tp-rr-ratio { text-align: center; }
+  .rr-ratio-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .rr-ratio-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .rr-ratio-sub {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .tp-seed     { --zone-color: #5b8def; }
+  .tp-wave     { --zone-color: #3ecf8e; }
+  .tp-confirm  { --zone-color: #c9a84c; }
+  .tp-extended { --zone-color: #f0a040; }
+  .tp-exhaust  { --zone-color: #e05c5c; }
+
+  /* ─── Future Wave Top 10 섹션 ─── */
+  .wave-section {
+    margin-bottom: 32px;
+  }
+
+  .wave-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .wave-title-icon { font-size: 16px; }
+
+  .wave-section-title > span:nth-child(2) {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .wave-title-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim) !important;
+    letter-spacing: 1px !important;
+    margin-left: auto;
+  }
+
+  .wave-chips {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .wave-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 10px 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+  }
+
+  .wave-chip:hover {
+    border-color: var(--gold-dim);
+    background: rgba(201,168,76,0.05);
+    transform: translateY(-1px);
+  }
+
+  .wave-chip:active { transform: scale(0.98); }
+
+  .wc-rank {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .wc-name {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px;
+    color: var(--text-hi);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .wc-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 순위별 왼쪽 보더 컬러 */
+  .wave-chip[data-rank="1"] { border-left: 2px solid #a78bfa; }
+  .wave-chip[data-rank="2"] { border-left: 2px solid #34d399; }
+  .wave-chip[data-rank="3"] { border-left: 2px solid #60a5fa; }
+  .wave-chip[data-rank="4"] { border-left: 2px solid #818cf8; }
+  .wave-chip[data-rank="5"] { border-left: 2px solid #f97316; }
+  .wave-chip[data-rank="6"] { border-left: 2px solid #facc15; }
+  .wave-chip[data-rank="7"] { border-left: 2px solid #a3e635; }
+  .wave-chip[data-rank="8"] { border-left: 2px solid #22d3ee; }
+  .wave-chip[data-rank="9"] { border-left: 2px solid #4ade80; }
+  .wave-chip[data-rank="10"] { border-left: 2px solid #38bdf8; }
+
+  .wave-motto {
+    font-family: 'DM Serif Display', serif;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text-dim);
+    text-align: right;
+    padding-right: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  @media (max-width: 600px) {
+    .wave-chips { grid-template-columns: repeat(2, 1fr); }
+  }
+
+
+  /* ─── 최근 검색 히스토리 칩 ─── */
+  .recent-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .recent-chip:hover {
+    border-color: var(--gold-dim);
+    background: rgba(201,168,76,0.05);
+  }
+  .rc-name {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    color: var(--text-hi);
+    font-weight: 500;
+  }
+  .rc-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <span class="logo-tag">TRINITY</span>
+    <span class="logo-name">Judge Engine</span>
+    <span class="logo-ver">v1.0</span>
+  </div>
+  <div class="header-right">
+    <div><span class="live-dot"></span>KIS REAL DATA</div>
+    <div id="clockDisplay">—</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <p class="mission">
+    «종목명 하나 입력 → 자동수집 → 기초 데이터 표시»<br>
+    건눌재가 발견한 후보 — 진입 전 기초 체력 검증
+  </p>
+
+  <div class="search-wrap">
+    <span class="search-label">CANDIDATE</span>
+    <input id="searchInput" type="text"
+      placeholder="종목명 또는 6자리 코드 (예: 한미반도체 / 042700)"
+      autocomplete="off" />
+    <button class="search-btn" onclick="runJudge()">VERIFY →</button>
+  </div>
+
+  <!-- 최근 검색 히스토리 -->
+  <div id="recentSection" style="display:none; margin-bottom:16px;">
+    <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-dim); letter-spacing:2px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+      <span>RECENT</span>
+      <button onclick="clearRecent()" style="background:none; border:none; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted);">CLEAR</button>
+    </div>
+    <div id="recentChips" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+  </div>
+
+  <div class="wave-section">
+    <div class="wave-section-title">
+      <span class="wave-title-icon">🌊</span>
+      <span>FUTURE WAVE TOP 10</span>
+      <span class="wave-title-sub">채피 선정 · 2026 Edition</span>
+    </div>
+    <div class="wave-chips">
+      <button class="wave-chip" onclick="setSearch('SK하이닉스')" data-rank="1" data-wave="AI · HBM · 데이터센터">
+        <span class="wc-rank">1위</span>
+        <span class="wc-name">SK하이닉스</span>
+        <span class="wc-tag">AI · HBM</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('LG디스플레이')" data-rank="2" data-wave="OLED · AI PC · XR">
+        <span class="wc-rank">2위</span>
+        <span class="wc-name">LG디스플레이</span>
+        <span class="wc-tag">OLED · XR</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('삼성전기')" data-rank="3" data-wave="MLCC · 패키징 · AI서버">
+        <span class="wc-rank">3위</span>
+        <span class="wc-name">삼성전기</span>
+        <span class="wc-tag">MLCC · 패키징</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('한미반도체')" data-rank="4" data-wave="HBM · 반도체 장비">
+        <span class="wc-rank">4위</span>
+        <span class="wc-name">한미반도체</span>
+        <span class="wc-tag">HBM · 장비</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('이수페타시스')" data-rank="5" data-wave="AI서버 · 고다층 PCB">
+        <span class="wc-rank">5위</span>
+        <span class="wc-name">이수페타시스</span>
+        <span class="wc-tag">PCB · AI서버</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('HD현대일렉트릭')" data-rank="6" data-wave="전력 · 변압기 · 인프라">
+        <span class="wc-rank">6위</span>
+        <span class="wc-name">HD현대일렉트릭</span>
+        <span class="wc-tag">전력 · 인프라</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('LS ELECTRIC')" data-rank="7" data-wave="전력망 · 스마트그리드">
+        <span class="wc-rank">7위</span>
+        <span class="wc-name">LS ELECTRIC</span>
+        <span class="wc-tag">스마트그리드</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('두산로보틱스')" data-rank="8" data-wave="로봇 · 자동화 · 협동로봇">
+        <span class="wc-rank">8위</span>
+        <span class="wc-name">두산로보틱스</span>
+        <span class="wc-tag">로봇 · 휴머노이드</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('NAVER')" data-rank="9" data-wave="AI 플랫폼 · 검색 · 데이터">
+        <span class="wc-rank">9위</span>
+        <span class="wc-name">NAVER</span>
+        <span class="wc-tag">AI 플랫폼</span>
+      </button>
+      <button class="wave-chip" onclick="setSearch('현대오토에버')" data-rank="10" data-wave="SDV · 자율주행 · 차량OS">
+        <span class="wc-rank">10위</span>
+        <span class="wc-name">현대오토에버</span>
+        <span class="wc-tag">SDV · 자율주행</span>
+      </button>
+    </div>
+    <div class="wave-motto">🌊 파도를 읽는 자가, 미래를 갖질 것이다!</div>
+  </div>
+
+  <div id="loading">
+    <div class="loading-inner">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">FETCHING KIS DATA</div>
+      <div class="loading-sub" id="loadingStep">TOKEN → INQUIRE-PRICE</div>
+    </div>
+  </div>
+
+  <div id="errorBox"></div>
+
+  <div id="result"></div>
+
+  <div class="env-note">
+    Judge Engine v1.0 · 판단은 인간, 구조는 AI, 실행은 시스템<br>
+    KIS API REAL MODE · 가짜값 사용 금지 · 이번 버전: 자동수집 정확도 검증
+  </div>
+
+</div>
+
+<script>
+// ─── 설정 ───────────────────────────────────────────────────────────────
+const BASE = 'https://fastapi-production-f631.up.railway.app';
+
+const STOCK_MAP = {
+  // ── Quad-Core ─────────────────────────────────────────────────────────
+  '삼성전자':           '005930',
+  'SK하이닉스':         '000660',
+  '한미반도체':         '042700',
+  'HD현대일렉트릭':     '267260',
+  '이수페타시스':       '007660',
+  // ── 반도체 / AI 인프라 ──────────────────────────────────────────────
+  '주성엔지니어링':     '036930',
+  '리노공업':           '058470',
+  '이오테크닉스':       '039030',
+  'ISC':                '095340',
+  '파크시스템스':       '140860',
+  '솔브레인':           '357780',
+  '삼성전기':           '009150',
+  // ── 전력인프라 / 방산 / 조선 ────────────────────────────────────────
+  'LG디스플레이':       '034220',
+  '두산에너빌리티':     '034020',
+  '한화에어로스페이스': '012450',
+  'HD한국조선해양':     '009540',
+  '삼성중공업':         '010140',
+  'HD현대중공업':       '329180',
+  '한화오션':           '042660',
+  '효성중공업':         '298040',
+  'LS ELECTRIC':        '010120',
+  '한국전력':           '015760',
+  // ── 대형주 ─────────────────────────────────────────────────────────
+  '현대차':             '005380',
+  '기아':               '000270',
+  '현대모비스':         '012330',
+  'NAVER':              '035420',
+  '카카오':             '035720',
+  'KB금융':             '105560',
+  '신한지주':           '055550',
+  '하나금융지주':       '086790',
+  '삼성바이오로직스':   '207940',
+  '셀트리온':           '068270',
+  'LG에너지솔루션':     '373220',
+  '삼성SDI':            '006400',
+  '포스코퓨처엠':       '003670',
+  'POSCO홀딩스':        '005490',
+  'LG화학':             '051910',
+  'LG전자':             '066570',
+  'SK이노베이션':       '096770',
+  'SK텔레콤':           '017670',
+  'SK스퀘어':           '402340',
+  'SK':                 '034730',
+  '삼성물산':           '028260',
+  '삼성생명':           '032830',
+  '고려아연':           '010130',
+  '포스코인터내셔널':   '047050',
+  'HMM':                '011200',
+  '두산':               '000150',
+  'HD현대':             '267250',
+  '미래에셋증권':       '006800',
+  '두산로보틱스':       '454910',
+  '현대오토에버':       '307950',
+};
+
+// ─── 최근 검색 히스토리 ────────────────────────────────────────────────────
+const MAX_RECENT = 8;
+let recentSearches = JSON.parse(localStorage.getItem('judge_recent') || '[]');
+
+function saveRecent(query, code) {
+  // 중복 제거
+  recentSearches = recentSearches.filter(r => r.code !== code);
+  // 앞에 추가
+  recentSearches.unshift({ query, code, time: Date.now() });
+  // 최대 8개
+  if (recentSearches.length > MAX_RECENT) recentSearches = recentSearches.slice(0, MAX_RECENT);
+  localStorage.setItem('judge_recent', JSON.stringify(recentSearches));
+  renderRecentChips();
+}
+
+function clearRecent() {
+  recentSearches = [];
+  localStorage.removeItem('judge_recent');
+  renderRecentChips();
+}
+
+function renderRecentChips() {
+  const section = document.getElementById('recentSection');
+  const container = document.getElementById('recentChips');
+  if (!container) return;
+
+  if (recentSearches.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  container.innerHTML = recentSearches.map(r => `
+    <button class="recent-chip" onclick="setSearch('${r.query}')">
+      <span class="rc-name">${r.query}</span>
+      <span class="rc-code">${r.code}</span>
+    </button>
+  `).join('');
+}
+
+// 초기 렌더
+renderRecentChips();
+
+// ─── 시계 ───────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const h = pad(now.getHours()), m = pad(now.getMinutes()), s = pad(now.getSeconds());
+  const isMarket = now.getDay() >= 1 && now.getDay() <= 5
+                   && ((now.getHours()*60+now.getMinutes()) >= 9*60)
+                   && ((now.getHours()*60+now.getMinutes()) < 15*60+30);
+  document.getElementById('clockDisplay').innerHTML =
+    `${h}:${m}:${s} KST &nbsp;·&nbsp; ${isMarket ? '<span style="color:#3ecf8e">장중</span>' : '<span style="color:#5a6272">장외</span>'}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── 검색 입력 ──────────────────────────────────────────────────────────
+function setSearch(name) {
+  document.getElementById('searchInput').value = name;
+  runJudge();
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runJudge();
+});
+
+// ─── 코드 해석 ──────────────────────────────────────────────────────────
+function resolveCode(query) {
+  const q = query.trim();
+  // 1) 6자리 코드 직접 입력
+  if (/^\d{6}$/.test(q)) return q;
+  // 2) 정확 일치
+  if (STOCK_MAP[q]) return STOCK_MAP[q];
+  // 3) 공백 무시 정확 일치
+  const qClean = q.replace(/\s/g, '');
+  for (const [name, code] of Object.entries(STOCK_MAP)) {
+    if (name.replace(/\s/g, '') === qClean) return code;
+  }
+  // 4) 포함 일치 (짧은 이름 우선)
+  const sorted = Object.entries(STOCK_MAP).sort((a,b) => a[0].length - b[0].length);
+  for (const [name, code] of sorted) {
+    if (name.replace(/\s/g, '').includes(qClean)) return code;
+  }
+  return null;
+}
+
+// ─── 숫자 포맷 ──────────────────────────────────────────────────────────
+function fmtPrice(n) {
+  if (!n || n === 0) return '—';
+  return Number(n).toLocaleString('ko-KR') + '원';
+}
+
+function fmtLargeNum(n) {
+  // /judge mcap은 이미 억원 단위
+  if (!n || n === 0) return '준비중';
+  if (n >= 10000) return (n / 10000).toFixed(1) + '조원';
+  return Math.round(n).toLocaleString() + '억원';
+}
+
+function fmtFloat(v, digits=2) {
+  if (v === null || v === undefined || v === 0) return '준비중';
+  return Number(v).toFixed(digits);
+}
+
+// ─── Future Wave Map ────────────────────────────────────────────────────
+const WAVE_TAGS = {
+  'AI':       { label:'AI',        color:'#a78bfa', desc:'AI 인프라·모델·에이전트' },
+  'HBM':      { label:'HBM',       color:'#818cf8', desc:'High Bandwidth Memory' },
+  '데이터센터':{ label:'데이터센터', color:'#60a5fa', desc:'AI 서버·클라우드 인프라' },
+  'AGI인프라': { label:'AGI인프라', color:'#38bdf8', desc:'차세대 AI 컴퓨팅' },
+  'OLED':     { label:'OLED',       color:'#34d399', desc:'차세대 디스플레이' },
+  'AIPC':     { label:'AI PC',      color:'#4ade80', desc:'온디바이스 AI 기기' },
+  '전장':     { label:'전장',        color:'#86efac', desc:'차량용 전장·디스플레이' },
+  'XR':       { label:'XR',         color:'#fbbf24', desc:'확장현실·공간컴퓨팅' },
+  'MLCC':     { label:'MLCC',       color:'#f59e0b', desc:'AI 서버 수동부품' },
+  '패키징':   { label:'패키징',      color:'#fb923c', desc:'반도체 어드밴스드 패키징' },
+  'PCB':      { label:'PCB',        color:'#f97316', desc:'고다층 기판·AI서버' },
+  '전력':     { label:'전력',        color:'#facc15', desc:'전력망·데이터센터 전력' },
+  '전기화':   { label:'전기화',      color:'#fde047', desc:'산업·모빌리티 전기화' },
+  '스마트그리드':{ label:'스마트그리드',color:'#a3e635', desc:'차세대 전력망' },
+  '로봇':     { label:'로봇',        color:'#4ade80', desc:'협동로봇·휴머노이드' },
+  '휴머노이드':{ label:'휴머노이드',  color:'#22d3ee', desc:'범용 AI 로봇' },
+  '자동화':   { label:'자동화',      color:'#06b6d4', desc:'산업 자동화·스마트팩토리' },
+  'SDV':      { label:'SDV',        color:'#38bdf8', desc:'소프트웨어 정의 차량' },
+  '자율주행': { label:'자율주행',    color:'#60a5fa', desc:'레벨4+ 자율주행' },
+  '바이오':   { label:'바이오',      color:'#f472b6', desc:'AI신약·정밀의료' },
+  '에너지':   { label:'에너지',      color:'#fb7185', desc:'신재생·에너지저장' },
+  '우주':     { label:'우주',        color:'#c084fc', desc:'뉴스페이스·위성' },
+  'AI플랫폼': { label:'AI플랫폼',    color:'#a78bfa', desc:'한국형 AI 서비스' },
+  '검색':     { label:'검색',        color:'#818cf8', desc:'AI 검색·추천' },
+};
+
+const FUTURE_WAVE_MAP = {
+  // ── Quad-Core ────────────────────────────────────────────────────
+  '005930': { waves: ['AI','데이터센터','패키징'],              note: '반도체 생태계의 중심축' },
+  '000660': { waves: ['AI','HBM','데이터센터','AGI인프라'],     note: 'AI 시대의 곡괭이. 엔비디아가 금광이면 하이닉스는 곡괭이 판매상.' },
+  '042700': { waves: ['HBM','패키징','AI'],                    note: '하이닉스보다 위험하지만 폭발력 있음.' },
+  '267260': { waves: ['전력','데이터센터','전기화'],             note: 'AI는 결국 전기를 먹는다.' },
+  '007660': { waves: ['AI','PCB','데이터센터'],                 note: 'AI 서버 한 대 늘어날 때마다 따라가는 구조.' },
+  // ── 반도체 / AI 인프라 ─────────────────────────────────────────
+  '036930': { waves: ['AI','패키징','HBM'],                    note: '반도체 장비·공정의 조용한 수혜주' },
+  '058470': { waves: ['AI','패키징'],                          note: '정밀 부품의 숨은 강자' },
+  '009150': { waves: ['AI','MLCC','패키징','전장'],             note: '조용한 AI 수혜주.' },
+  '039030': { waves: ['AI','패키징'],                          note: '레이저 공정의 핵심' },
+  '095340': { waves: ['AI','패키징','HBM'],                    note: '소켓·테스트 인프라' },
+  '140860': { waves: ['AI','패키징'],                          note: '원자력 현미경·AFM' },
+  '357780': { waves: ['AI','패키징','HBM'],                    note: '반도체 소재 국산화' },
+  // ── 전력인프라 / 방산 / 조선 ──────────────────────────────────
+  '034220': { waves: ['OLED','AIPC','전장','XR'],              note: '시장은 아직 의심 중. 반전 파도가 오면 크게 움직인다.' },
+  '034020': { waves: ['에너지','전력','자동화'],                note: '원전·가스터빈·수소의 교차점' },
+  '012450': { waves: ['로봇','우주','AI'],                     note: '방산·우주·로봇의 복합 파도' },
+  '009540': { waves: ['에너지','전기화'],                      note: 'LNG·친환경 선박 전환' },
+  '010140': { waves: ['에너지','AI'],                          note: '드릴십·해양플랜트 부활' },
+  '329180': { waves: ['에너지','전기화'],                      note: '초대형 컨테이너·LNG' },
+  '042660': { waves: ['에너지','전기화'],                      note: '방산·LNG 이중 수혜' },
+  '298040': { waves: ['전력','스마트그리드','데이터센터'],       note: '전력 변압기의 숨은 강자' },
+  '010120': { waves: ['전력','스마트그리드','데이터센터'],       note: '전력판의 인프라 기업.' },
+  '015760': { waves: ['전력','에너지','스마트그리드'],          note: '에너지 전환의 국가 인프라' },
+  // ── 대형주 ────────────────────────────────────────────────────
+  '005380': { waves: ['SDV','자율주행','전기화','로봇'],        note: '자동차가 플랫폼이 되는 시대' },
+  '000270': { waves: ['SDV','전기화','자율주행'],               note: '전기차·PBV 전환 가속' },
+  '012330': { waves: ['SDV','자율주행','전장'],                 note: '미래차 부품의 핵심' },
+  '035420': { waves: ['AI플랫폼','검색','AI'],                  note: '한국형 AI 플랫폼 가능성.' },
+  '035720': { waves: ['AI플랫폼','AI'],                        note: 'AI 전환 중의 플랫폼' },
+  '207940': { waves: ['바이오','AI'],                          note: 'AI신약·바이오 CDMO' },
+  '068270': { waves: ['바이오','AI'],                          note: '바이오시밀러 글로벌 확장' },
+  '373220': { waves: ['에너지','전기화'],                       note: '전기차 배터리 패권 경쟁' },
+  '006400': { waves: ['에너지','전기화','전장'],                note: '전고체·미래 배터리' },
+  '003670': { waves: ['에너지','전기화'],                      note: '양극재·배터리 소재' },
+  // ── 채피 Future Wave Top 10 추가 ──────────────────────────────────
+  '454910': { waves: ['로봇','휴머노이드','자동화'],             note: '림빅이 영화 보며 가장 자주 상상하는 미래. 협동로봇 국내 1위.' },
+  '307950': { waves: ['SDV','자율주행','AI'],                   note: '자동차가 바퀴 달린 컴퓨터가 되는 과정. 현대차 소프트웨어 핵심.' },
+  '086790': { waves: ['AI','바이오'],                           note: '금융 AI 전환' },
+  '011200': { waves: ['에너지','전기화'],                       note: 'LNG·컨테이너 해운' },
+};
+
+function getFutureWave(code) {
+  return FUTURE_WAVE_MAP[code] || null;
+}
+
+function renderFutureWave(code, stockName) {
+  const data = getFutureWave(code);
+  if (!data || !data.waves || data.waves.length === 0) {
+    return `<div class="fw-card">
+      <div class="fw-header">
+        <span class="fw-label">FUTURE WAVE SCORE</span>
+        <span class="fw-score-empty">데이터 준비중</span>
+      </div>
+    </div>`;
+  }
+
+  const waveCount = data.waves.length;
+  const density = waveCount >= 4 ? 'Strong' : waveCount >= 3 ? 'Moderate' : waveCount >= 2 ? 'Developing' : 'Single';
+  const densityColor = waveCount >= 4 ? '#a78bfa' : waveCount >= 3 ? '#60a5fa' : waveCount >= 2 ? '#4ade80' : '#94a3b8';
+  const waveIcons = '🌊'.repeat(Math.min(waveCount, 5));
+
+  const tagHtml = data.waves.map(w => {
+    const tag = WAVE_TAGS[w] || { label: w, color: '#94a3b8', desc: '' };
+    return `<span class="fw-tag" style="background:${tag.color}18; color:${tag.color}; border-color:${tag.color}40;" title="${tag.desc}">${tag.label}</span>`;
+  }).join('');
+
+  // 바 너비
+  const barW = Math.min(waveCount / 5 * 100, 100);
+
+  return `<div class="fw-card">
+    <div class="fw-header">
+      <span class="fw-label">FUTURE WAVE SCORE</span>
+      <span class="fw-wave-icons">${waveIcons}</span>
+    </div>
+    <div class="fw-main">
+      <div class="fw-count-block">
+        <span class="fw-count" style="color:${densityColor}">${waveCount}</span>
+        <span class="fw-count-sub">Waves Connected</span>
+      </div>
+      <div class="fw-density-block">
+        <div class="fw-density-label">WAVE DENSITY</div>
+        <div class="fw-density-bar">
+          <div class="fw-density-fill" style="width:${barW}%; background:${densityColor};"></div>
+        </div>
+        <div class="fw-density-text" style="color:${densityColor}">${density}</div>
+      </div>
+    </div>
+    <div class="fw-tags">${tagHtml}</div>
+    <div class="fw-note">${data.note}</div>
+  </div>`;
+}
+
+// ─── Trinity Position 존 정의 ────────────────────────────────────────────
+const TRINITY_ZONES = [
+  {
+    name: 'Seed Zone',     range: [0,  20], cls: 'tp-seed',
+    color: '#5b8def',
+    tag: '진입 검토',      tagBg: 'rgba(91,141,239,0.15)',  tagColor: '#5b8def',
+    actions: ['저점권 위치', '거래량 확인 필수', '파동 형성 대기'],
+    verdict: '저점권 — 진입 검토 가능. 거래량과 파동 형성 확인 후 타이밍 진입.'
+  },
+  {
+    name: 'Wave Zone',     range: [20, 40], cls: 'tp-wave',
+    color: '#3ecf8e',
+    tag: '관찰 가능',      tagBg: 'rgba(62,207,142,0.15)', tagColor: '#3ecf8e',
+    actions: ['회복 초기 구간', '안눌상 확인 권장', '분할 접근 고려'],
+    verdict: '회복 진행 — 파동 초입. 안눌상/Strike에서 타이밍 정밀 확인 권장.'
+  },
+  {
+    name: 'Confirm Zone',  range: [40, 60], cls: 'tp-confirm',
+    color: '#c9a84c',
+    tag: '확인 후 진입',   tagBg: 'rgba(201,168,76,0.15)', tagColor: '#c9a84c',
+    actions: ['회복 완료 구간', 'CONFIRM 상태 대기', '눌림 시 기회'],
+    verdict: '회복 완료 구간 — Trinity 진입 핵심 존. CONFIRM 상태 확인 후 진입.'
+  },
+  {
+    name: 'Extended Zone', range: [60, 80], cls: 'tp-extended',
+    color: '#f0a040',
+    tag: '추격 주의',      tagBg: 'rgba(240,160,64,0.15)', tagColor: '#f0a040',
+    actions: ['상승 진행 중', '눌림목 대기 전략', '신규 추격 자제'],
+    verdict: '상당한 상승 진행 — 추격보다 눌림목 대기. 기존 포지션 수익 관리.'
+  },
+  {
+    name: 'Exhaust Zone',  range: [80, 100], cls: 'tp-exhaust',
+    color: '#e05c5c',
+    tag: '진입 금지',      tagBg: 'rgba(224,92,92,0.15)',  tagColor: '#e05c5c',
+    actions: ['고점 인근', '추격 금지', '눌림 대기 또는 패스'],
+    verdict: '고점권 — 추격 금지. 큰 하락 여력 존재. 눌림 대기 또는 다음 기회.'
+  },
+];
+
+function getTrinityZone(bandPos) {
+  if (bandPos === null) return null;
+  return TRINITY_ZONES.find(z => bandPos >= z.range[0] && bandPos <= z.range[1])
+      || TRINITY_ZONES[TRINITY_ZONES.length - 1];
+}
+
+function renderTrinityPosition(bandPos, recovery, low52, high52, price) {
+  const zone = getTrinityZone(bandPos);
+  if (!zone || bandPos === null) {
+    return `<div style="padding:32px 28px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; font-size:12px;">
+      TRINITY POSITION — 52주 데이터 준비중
+    </div>`;
+  }
+
+  // R/R 계산
+  const upside   = high52  > price ? ((high52  - price) / price * 100) : 0;
+  const downside = low52   > 0     ? ((price  - low52)  / price * 100) : 0;
+  const rrRatio  = downside > 0    ? (upside / downside)               : 0;
+  const rrGood   = rrRatio >= 1.0;
+
+  // 바 너비 (최대 100%)
+  const maxBar   = Math.max(upside, downside, 1);
+  const upW      = Math.min(upside   / maxBar * 100, 100).toFixed(1);
+  const downW    = Math.min(downside / maxBar * 100, 100).toFixed(1);
+
+  // 존 바 세그먼트
+  const segs = TRINITY_ZONES.map(z => {
+    const active = z.name === zone.name;
+    return `<div class="tp-zone-seg ${active ? 'active' : 'inactive'}"
+                 style="background:${z.color};"></div>`;
+  }).join('');
+
+  // R/R 등급 색상
+  const rrColor = rrRatio >= 2 ? '#3ecf8e' : rrRatio >= 1 ? '#c9a84c' : '#e05c5c';
+  const rrGrade = rrRatio >= 2 ? '양호' : rrRatio >= 1 ? '주의' : '불량';
+
+  return `
+    <div class="${zone.cls}">
+      <div class="tp-header">
+        <span class="tp-label">TRINITY POSITION</span>
+        <span class="tp-pct" style="color:${zone.color}">${bandPos.toFixed(1)}%</span>
+      </div>
+
+      <div class="tp-zones">${segs}</div>
+
+      <div class="tp-main">
+        <div>
+          <div class="tp-zone-name" style="color:${zone.color}">${zone.name}</div>
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:3px;">
+            ${zone.actions.map(a =>
+              `<div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);">· ${a}</div>`
+            ).join('')}
+          </div>
+        </div>
+        <div class="tp-action-block">
+          <div class="tp-action-tag"
+               style="background:${zone.tagBg}; color:${zone.tagColor}; border:1px solid ${zone.tagColor}40;">
+            ${zone.tag}
+          </div>
+          <div class="tp-action-desc">
+            회복률 +${(recovery||0).toFixed(1)}%<br>
+            ${bandPos.toFixed(1)}% / ${TRINITY_ZONES.map(z=>z.name.split(' ')[0]).join(' → ')}
+          </div>
+        </div>
+      </div>
+
+      <div class="tp-rr">
+        <div class="tp-rr-bars">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-dim); letter-spacing:2px; margin-bottom:8px;">RISK / REWARD</div>
+          <div class="rr-row">
+            <span class="rr-row-label" style="color:#3ecf8e">UPSIDE</span>
+            <div class="rr-bar-track">
+              <div class="rr-bar-fill" style="width:${upW}%; background:#3ecf8e;"></div>
+            </div>
+            <span class="rr-bar-val" style="color:#3ecf8e">+${upside.toFixed(1)}%</span>
+          </div>
+          <div class="rr-row">
+            <span class="rr-row-label" style="color:#e05c5c">DOWNSIDE</span>
+            <div class="rr-bar-track">
+              <div class="rr-bar-fill" style="width:${downW}%; background:#e05c5c;"></div>
+            </div>
+            <span class="rr-bar-val" style="color:#e05c5c">-${downside.toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="tp-rr-ratio">
+          <div class="rr-ratio-label">R/R RATIO</div>
+          <div class="rr-ratio-value" style="color:${rrColor}">${rrRatio.toFixed(2)}</div>
+          <div class="rr-ratio-sub" style="color:${rrColor}">${rrGrade}</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted); margin-top:6px; line-height:1.6">
+            고점 ${high52 > 0 ? ((high52/10000)|0)+'만' : '—'} / 저점 ${low52 > 0 ? ((low52/10000)|0)+'만' : '—'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ─── 밴드 위치 색상 ─────────────────────────────────────────────────────
+function bandColor(pct) {
+  if (pct <= 25)  return '#5b8def';
+  if (pct <= 50)  return '#3ecf8e';
+  if (pct <= 75)  return '#c9a84c';
+  return '#e05c5c';
+}
+
+// ─── 회복률 라벨 ────────────────────────────────────────────────────────
+function recoveryLabel(pct) {
+  if (pct < 10)   return { cls:'bottom',  icon:'🔵', text:'바닥권',   desc:'저점 인근 위치' };
+  if (pct < 70)   return { cls:'recover', icon:'🟢', text:'회복 진행', desc:'회복 구간 내 진행 중' };
+  if (pct < 150)  return { cls:'rising',  icon:'🟡', text:'상승 진행', desc:'상당한 회복 완료' };
+  return           { cls:'chasing', icon:'🔴', text:'⚠ 추격주의',   desc:`+${pct.toFixed(0)}% 고점 추격 위험` };
+}
+
+// ─── 메인 Judge 실행 ────────────────────────────────────────────────────
+async function runJudge() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) return;
+
+  const code = resolveCode(query);
+  if (!code) {
+    showError(`"${query}" — 종목을 찾을 수 없습니다.\n\n방법 1: 6자리 종목코드 직접 입력 (예: 042700)\n방법 2: 정확한 종목명 입력 (예: 한미반도체)\n\n※ STOCK_MAP에 없는 종목은 코드 직접 입력 가능합니다.`);
+    return;
+  }
+
+  showLoading(true);
+  hideError();
+  document.getElementById('result').style.display = 'none';
+
+  try {
+    setLoadingStep('KIS TOKEN 확인 중...');
+    
+    // /judge/{code} 엔드포인트 — Judge Engine 전용
+    setLoadingStep('INQUIRE-PRICE 조회 중...');
+    const res = await fetch(`${BASE}/judge/${code}`, {
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`KIS API 오류 (${res.status}) — ${errText.slice(0,100)}`);
+    }
+
+    const d = await res.json();
+    if (!d || d.price === undefined || d.price === null) throw new Error('데이터 없음 — KIS 응답 이상');
+
+    setLoadingStep('데이터 파싱 완료');
+    await new Promise(r => setTimeout(r, 300));
+
+    showLoading(false);
+    renderResult(query, code, d);
+
+  } catch (err) {
+    showLoading(false);
+    showError(`조회 실패: ${err.message}`);
+  }
+}
+
+// ─── 렌더 ───────────────────────────────────────────────────────────────
+function renderResult(query, code, d) {
+  // /judge 응답 필드: code,name,sector,price,mcap(억),per,pbr,w52_low,w52_high,recovery
+  const price     = d.price     || 0;
+  const prevClose = 0;                         // /judge 미포함
+  const high52    = d.w52_high  || 0;
+  const low52     = d.w52_low   || 0;
+  const mcap      = d.mcap      || 0;          // 단위: 억원
+  const per       = (d.per  && d.per  > 0) ? d.per  : null;
+  const pbr       = (d.pbr  && d.pbr  > 0) ? d.pbr  : null;
+  const name      = d.name      || query;
+  const sector    = d.sector    || '—';
+  const changePct = d.change_pct || 0;         // 장외: 0
+  const changeAmt = d.change_amt || 0;         // 장외: 0
+
+  // 계산
+  let bandPos   = null;
+  let recovery  = null;
+  if (high52 > 0 && low52 > 0 && high52 > low52) {
+    bandPos  = ((price - low52) / (high52 - low52) * 100);
+    recovery = ((price - low52) / low52 * 100);
+  }
+
+  const isUp   = changePct >= 0;
+  const chgStr = `${isUp ? '▲' : '▼'} ${Math.abs(changeAmt).toLocaleString()}원  (${isUp ? '+' : ''}${changePct.toFixed(2)}%)`;
+
+  const recInfo = recovery !== null ? recoveryLabel(recovery) : null;  // PRICE grid용
+  const bColor  = bandPos  !== null ? bandColor(bandPos) : '#5a6272';
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
+  // Trinity Zone 기반 판정 문장
+  const zone = getTrinityZone(bandPos);
+  let verdictText = '';
+  if (zone && bandPos !== null) {
+    const upside  = high52 > price ? ((high52 - price) / price * 100).toFixed(1) : '0.0';
+    const downside= low52  > 0     ? ((price - low52)  / price * 100).toFixed(1) : '0.0';
+    verdictText = `<strong>${name}</strong> — <strong style="color:${zone.color}">${zone.name}</strong> (${bandPos.toFixed(1)}%). ${zone.verdict} · 상승여력 +${upside}% / 하락여력 -${downside}%`;
+  } else {
+    verdictText = `<strong>${name}</strong> 기초 데이터 수집 완료. 52주 데이터 확보 시 Trinity Position 판정이 활성화됩니다.`;
+  }
+
+  const html = `
+    <div class="fade-in">
+      <div class="stock-header">
+        <div class="stock-meta">
+          <div class="stock-name-block">
+            <div class="stock-name">${name}</div>
+            <div class="stock-sub">
+              <span class="stock-code">${code}</span>
+              <span class="stock-sector">${sector}</span>
+            </div>
+          </div>
+          <div class="price-block">
+            <div class="price-main">${fmtPrice(price)}</div>
+            <div class="price-change ${isUp ? 'up' : 'down'}">${chgStr}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-in">
+      <div class="section-title">VALUATION &amp; SIZE</div>
+      <div class="val-row">
+        <div class="data-cell">
+          <div class="cell-label">시가총액</div>
+          <div class="cell-value ${!mcap ? 'na' : ''}">${mcap ? fmtLargeNum(mcap) : '준비중'}</div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">PER</div>
+          <div class="cell-value ${!per ? 'na' : ''}">${per ? fmtFloat(per) + 'x' : '준비중'}</div>
+          <div class="cell-sub">주가수익비율</div>
+        </div>
+        <div class="data-cell" style="display:none"></div>
+      </div>
+      <div class="val-row">
+        <div class="data-cell">
+          <div class="cell-label">PBR</div>
+          <div class="cell-value ${!pbr ? 'na' : ''}">${pbr ? fmtFloat(pbr) + 'x' : '준비중'}</div>
+          <div class="cell-sub">주가순자산비율</div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">전일종가</div>
+          <div class="cell-value">${fmtPrice(prevClose)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-in">
+      <div class="section-title">PRICE &amp; 52W POSITION</div>
+      <div class="data-grid">
+        <div class="data-cell">
+          <div class="cell-label">현재가</div>
+          <div class="cell-value">${fmtPrice(price)}</div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">등락률</div>
+          <div class="cell-value" style="font-size:15px; color:${isUp ? 'var(--red)' : 'var(--blue)'}">
+            ${changePct ? (isUp ? '+' : '') + changePct.toFixed(2) + '%' : '장외'}
+          </div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">52주 저점</div>
+          <div class="cell-value" style="font-size:15px">${fmtPrice(low52)}</div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">52주 고점</div>
+          <div class="cell-value" style="font-size:15px">${fmtPrice(high52)}</div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">저점대비 회복률</div>
+          <div class="cell-value" style="font-size:15px; color:${recInfo ? 'var(--gold)' : 'var(--text-dim)'}">
+            ${recovery !== null ? '+' + recovery.toFixed(1) + '%' : '준비중'}
+          </div>
+        </div>
+        <div class="data-cell">
+          <div class="cell-label">밴드 위치</div>
+          <div class="cell-value" style="font-size:15px; color:${bColor}">
+            ${bandPos !== null ? bandPos.toFixed(1) + '%' : '준비중'}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-in">
+      <div class="trinity-position-card">
+        ${renderTrinityPosition(bandPos, recovery, low52, high52, price)}
+      </div>
+    </div>
+
+    <div class="fade-in">
+      <div id="futureWaveContainer"></div>
+    </div>
+
+    <div class="fade-in">
+      <div class="verdict-card">
+        <div class="verdict-label">JUDGE SUMMARY · ${timeStr}</div>
+        <div class="verdict-summary">${verdictText}</div>
+      </div>
+    </div>
+  `;
+
+  const el = document.getElementById('result');
+  el.innerHTML = html;
+  el.style.display = 'block';
+
+  // Future Wave 주입 (코드 기반)
+  const fwContainer = document.getElementById('futureWaveContainer');
+  if (fwContainer) {
+    fwContainer.innerHTML = renderFutureWave(code, name);
+  }
+
+  // 결과로 자동 스크롤
+  setTimeout(() => {
+    const resultEl = document.getElementById('result');
+    if (resultEl) {
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 100);
+
+  // 최근 검색 저장
+  saveRecent(query, code);
+}
+
+// ─── UI 헬퍼 ────────────────────────────────────────────────────────────
+function showLoading(v) {
+  document.getElementById('loading').style.display = v ? 'block' : 'none';
+}
+function setLoadingStep(t) {
+  document.getElementById('loadingStep').textContent = t;
+}
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('errorBox').style.display = 'none';
+}
+</script>
+</body>
+</html>
