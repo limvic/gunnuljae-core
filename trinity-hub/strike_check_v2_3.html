@@ -1817,7 +1817,7 @@
     listEl.innerHTML = '';
 
     try {
-      const res = await fetch(`${RAILWAY_URL}/top30_v2`, { signal: AbortSignal.timeout(10000) });
+      const res = await fetch(`${RAILWAY_URL}/top30`, { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       if (d.status !== 'ok') throw new Error('조회 실패');
