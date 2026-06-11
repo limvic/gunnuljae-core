@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>🔱 Trinity HUB v3.0</title>
+<style>
+:root{
+  --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
+  --text:#dfe6f3; --text2:#8b97b0; --text3:#566179;
+  --teal:#00d4ff; --purple:#b884ff; --orange:#ff8a00; --yellow:#ffcc00;
+  --fire:#ff5500; --green:#00ff88; --red:#ff3a3a;
+  --mono:'JetBrains Mono','Roboto Mono',monospace;
+  --display:'Rajdhani','Pretendard',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Pretendard','Noto Sans KR',sans-serif;font-size:14px;padding-bottom:40px;}
+.wrap{max-width:560px;margin:0 auto;}
+
+/* ━━ HEADER ━━ */
+header{padding:18px 16px 10px;}
+.hd-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.hd-title{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:1px;
+  background:linear-gradient(90deg,var(--teal),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hd-sub{font-family:var(--mono);font-size:8.5px;letter-spacing:3px;color:var(--text3);margin-top:2px;}
+.hd-clock{text-align:right;font-family:var(--mono);}
+.hd-time{font-size:17px;font-weight:700;}
+.hd-date{font-size:9px;color:var(--text3);margin-top:2px;}
+
+/* 시장 온도 */
+.temp-bar{margin:12px 16px 0;display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 14px;}
+.temp-pill{font-family:var(--mono);font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap;}
+.temp-attack{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
+.temp-neutral{background:rgba(255,204,0,.08);color:var(--yellow);border:1px solid rgba(255,204,0,.3);}
+.temp-defense{background:rgba(255,58,58,.1);color:var(--red);border:1px solid rgba(255,58,58,.3);}
+.temp-detail{font-family:var(--mono);font-size:10.5px;color:var(--text2);line-height:1.5;flex:1;}
+.warm-btn{font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(0,212,255,.07);
+  border:1px solid rgba(0,212,255,.3);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;}
+.warm-btn.done{color:var(--green);border-color:rgba(0,255,136,.3);}
+
+/* 카운트 스트립 */
+.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 16px 0;}
+.cnt{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 6px;text-align:center;cursor:pointer;}
+.cnt-num{font-family:var(--mono);font-size:19px;font-weight:700;}
+.cnt-lbl{font-size:9px;color:var(--text3);margin-top:1px;letter-spacing:.5px;}
+.cnt-scan .cnt-num{color:var(--purple);} .cnt-judge .cnt-num{color:var(--yellow);} .cnt-wave .cnt-num{color:var(--teal);}
+
+/* ━━ 섹션 공통 ━━ */
+section{margin-top:22px;}
+.sec-head{display:flex;align-items:baseline;gap:8px;padding:0 16px 8px;}
+.sec-num{font-family:var(--display);font-size:17px;font-weight:700;}
+.sec-q{font-size:10px;color:var(--text3);}
+.s-scan .sec-num{color:var(--purple);} .s-judge .sec-num{color:var(--yellow);}
+.s-strike .sec-num{color:var(--orange);} .s-wave .sec-num{color:var(--teal);}
+.panel{margin:0 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px;}
+
+/* ━━ 1. 발견 ━━ */
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:11px;padding:7px 10px;cursor:pointer;font-size:12px;}
+.chip .g{font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 5px;border-radius:5px;}
+.gA{background:rgba(0,255,136,.12);color:var(--green);} .gB{background:rgba(255,204,0,.12);color:var(--yellow);}
+.gC{background:rgba(255,138,0,.12);color:var(--orange);} .gD,.gF{background:rgba(255,58,58,.12);color:var(--red);}
+.gq{background:rgba(139,151,176,.12);color:var(--text3);}
+.chip .x{color:var(--text3);font-size:13px;padding:0 2px;}
+.scan-row{display:flex;gap:7px;margin-top:10px;}
+.scan-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:9px 11px;color:var(--text);font-size:13px;outline:none;}
+.btn{font-family:var(--mono);font-size:11px;border-radius:10px;padding:9px 12px;cursor:pointer;border:1px solid;white-space:nowrap;}
+.btn-purple{color:var(--purple);border-color:rgba(184,132,255,.35);background:rgba(184,132,255,.07);}
+.btn-yellow{color:var(--yellow);border-color:rgba(255,204,0,.35);background:rgba(255,204,0,.06);}
+.btn-teal{color:var(--teal);border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.06);}
+.btn-ghost{color:var(--text2);border-color:var(--border);background:transparent;}
+.scan-tools{display:flex;gap:7px;margin-top:8px;}
+.scan-tools .btn{flex:1;text-align:center;}
+
+/* ━━ 2. 판단 카드 ━━ */
+.jcard{min-height:120px;}
+.j-empty{color:var(--text3);font-size:12px;text-align:center;padding:34px 0;}
+.j-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.j-name{font-size:19px;font-weight:700;}
+.j-code{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
+.j-grade{font-family:var(--display);font-size:34px;font-weight:700;line-height:1;}
+.j-grade small{display:block;font-size:9px;color:var(--text3);font-weight:400;letter-spacing:1px;text-align:right;}
+.j-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px;}
+.jm{background:var(--surface2);border-radius:11px;padding:9px 8px;text-align:center;}
+.jm-v{font-family:var(--mono);font-size:16px;font-weight:700;}
+.jm-l{font-size:8.5px;color:var(--text3);margin-top:2px;letter-spacing:1px;}
+.j-verdict{margin-top:12px;font-size:12.5px;line-height:1.55;background:var(--surface2);
+  border-left:3px solid var(--yellow);border-radius:0 10px 10px 0;padding:9px 11px;color:var(--text2);}
+.j-verdict b{color:var(--text);}
+.j-act{display:flex;gap:8px;margin-top:11px;}
+.j-state{flex:1;text-align:center;font-family:var(--mono);font-size:12px;font-weight:700;border-radius:11px;padding:10px;}
+.st-go{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
+.st-watch{background:rgba(255,204,0,.07);color:var(--yellow);border:1px solid rgba(255,204,0,.25);}
+.st-no{background:rgba(255,58,58,.08);color:var(--red);border:1px solid rgba(255,58,58,.25);}
+
+/* ━━ 3. 실행 ━━ */
+.sig-empty{color:var(--text3);font-size:12px;text-align:center;padding:20px 0;}
+.sig{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:11px;padding:10px 12px;margin-bottom:7px;}
+.sig-ico{font-size:18px;}
+.sig-body{flex:1;font-size:12px;line-height:1.45;}
+.sig-meta{font-family:var(--mono);font-size:9px;color:var(--text3);}
+
+/* ━━ 4. 보유 ━━ */
+.hold{display:flex;align-items:center;gap:9px;background:var(--surface2);border-radius:12px;padding:10px 11px;margin-bottom:7px;}
+.h-info{flex:1;min-width:0;}
+.h-name{font-size:13.5px;font-weight:700;}
+.h-sub{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:2px;}
+.h-num{text-align:right;font-family:var(--mono);}
+.h-price{font-size:13px;font-weight:700;}
+.h-pl{font-size:10px;margin-top:1px;}
+.up{color:var(--red);} .down{color:#4d8dff;} /* 한국식: 상승 빨강 */
+.h-pill{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:5px 8px;border-radius:8px;white-space:nowrap;}
+.hp-keep{background:rgba(0,255,136,.1);color:var(--green);}
+.hp-warn{background:rgba(255,204,0,.1);color:var(--yellow);}
+.hp-out{background:rgba(255,58,58,.12);color:var(--red);}
+.hp-q{background:rgba(139,151,176,.1);color:var(--text3);}
+.h-x{color:var(--text3);padding:4px 6px;cursor:pointer;font-size:14px;}
+.hold-add{display:flex;gap:7px;margin-top:9px;}
+.hold-add input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:9px 10px;color:var(--text);font-size:12.5px;outline:none;min-width:0;}
+.hi-name{flex:1.4;} .hi-buy{flex:1;}
+
+/* ━━ 5. 시스템 ━━ */
+details.sys{margin:22px 16px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+details.sys summary{padding:13px 14px;font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text3);
+  cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
+details.sys summary::-webkit-details-marker{display:none;}
+.sys-body{padding:0 14px 14px;}
+.sys-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;}
+.sys-grid .btn{text-align:center;}
+.feed{max-height:200px;overflow-y:auto;}
+.fi{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11.5px;}
+.fi:last-child{border:none;}
+.fi-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--teal);}
+.fi-t{color:var(--text2);line-height:1.45;flex:1;}
+.fi-m{font-family:var(--mono);font-size:8.5px;color:var(--text3);}
+.feed-none{color:var(--text3);font-size:11px;text-align:center;padding:14px 0;}
+
+footer{margin-top:34px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--text3);line-height:2;}
+footer b{color:var(--text2);}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);
+  border:1px solid var(--border);border-radius:12px;padding:10px 16px;font-size:12px;transition:transform .25s;z-index:99;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.spin{opacity:.55;pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="hd-top">
+    <div>
+      <div class="hd-title">🔱 TRINITY</div>
+      <div class="hd-sub">DECISION CENTER · v3.0</div>
+    </div>
+    <div class="hd-clock">
+      <div class="hd-time" id="clock">--:--:--</div>
+      <div class="hd-date" id="cdate">--</div>
+    </div>
+  </div>
+</header>
+
+<!-- 시장 온도 -->
+<div class="temp-bar">
+  <div class="temp-pill temp-neutral" id="tempPill">🟡 측정 중</div>
+  <div class="temp-detail" id="tempDetail">지수 불러오는 중…</div>
+  <button class="warm-btn" id="warmBtn" onclick="warmup()">🔌 웜업</button>
+</div>
+
+<!-- 카운트 -->
+<div class="counts">
+  <div class="cnt cnt-scan" onclick="scrollToSec('secScan')"><div class="cnt-num" id="cntScan">0</div><div class="cnt-lbl">후보</div></div>
+  <div class="cnt cnt-judge" onclick="scrollToSec('secJudge')"><div class="cnt-num" id="cntGo">0</div><div class="cnt-lbl">진입 가능</div></div>
+  <div class="cnt cnt-wave" onclick="scrollToSec('secWave')"><div class="cnt-num" id="cntHold">0</div><div class="cnt-lbl">보유 관리</div></div>
+</div>
+
+<!-- 1. 발견 -->
+<section class="s-scan" id="secScan">
+  <div class="sec-head"><span class="sec-num">1. 발견 / SCAN</span><span class="sec-q">— 무엇을 볼 것인가?</span></div>
+  <div class="panel">
+    <div class="chips" id="chips"></div>
+    <div class="scan-row">
+      <input id="addWatch" placeholder="종목명 또는 코드 추가 (예: 한미반도체)" onkeydown="if(event.key==='Enter')addCandidate()">
+      <button class="btn btn-purple" onclick="addCandidate()">＋ 추가</button>
+    </div>
+    <div class="scan-tools">
+      <button class="btn btn-ghost" onclick="presetTop10()">🌊 채피 Top10 채우기</button>
+      <button class="btn btn-purple" id="scanBtn" onclick="scanAll()">🔍 전체 스캔 (Grade 갱신)</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 판단 -->
+<section class="s-judge" id="secJudge">
+  <div class="sec-head"><span class="sec-num">2. 판단 / JUDGE</span><span class="sec-q">— 지금 상태가 좋은가?</span></div>
+  <div class="panel jcard" id="judgeCard">
+    <div class="j-empty">위 후보를 탭하면 MRI 진단서가 여기 나옵니다 🩻</div>
+  </div>
+</section>
+
+<!-- 3. 실행 -->
+<section class="s-strike" id="secStrike">
+  <div class="sec-head"><span class="sec-num">3. 실행 / STRIKE</span><span class="sec-q">— 지금 진입 가능한가?</span></div>
+  <div class="panel">
+    <div id="sigList"><div class="sig-empty">신호 없음 — 장중 BREAK·FIRE 신호가 여기 모입니다</div></div>
+    <div class="scan-tools" style="margin-top:9px;">
+      <button class="btn btn-yellow" onclick="go('strike_check_v2_3.html')">⚡ Strike Check 열기</button>
+    </div>
+    <div class="scan-tools" style="margin-top:7px;">
+      <button class="btn btn-ghost" onclick="openHantu()">🏦 한투 MTS</button>
+      <button class="btn btn-ghost" onclick="openToss()">💸 토스</button>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 보유 -->
+<section class="s-wave" id="secWave">
+  <div class="sec-head"><span class="sec-num">4. 보유 / WAVE</span><span class="sec-q">— 계속 들고 갈 이유가 있는가?</span></div>
+  <div class="panel">
+    <div id="holdList"></div>
+    <div class="hold-add">
+      <input class="hi-name" id="hName" placeholder="종목명/코드">
+      <input class="hi-buy" id="hBuy" placeholder="매수가" inputmode="numeric">
+      <button class="btn btn-teal" onclick="addHold()">담기</button>
+    </div>
+    <div class="scan-tools">
+      <button class="btn btn-teal" id="holdBtn" onclick="refreshHolds()">🌊 손절선 감시 갱신 (MRI)</button>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 시스템 (접힘 · 엔진은 여기 숨음) -->
+<details class="sys">
+  <summary><span>⚙ SYSTEM · 엔진룸</span><span>▾</span></summary>
+  <div class="sys-body">
+    <div class="sys-grid">
+      <button class="btn btn-ghost" onclick="go('trinity_v1_3.html')">🔱 Trinity 건눌재</button>
+      <button class="btn btn-ghost" onclick="go('ignition_v1_3.html')">🔥 Ignition</button>
+      <button class="btn btn-ghost" onclick="go('block_reset_engine_v2_6.html')">🧨 Block Reset</button>
+      <button class="btn btn-ghost" onclick="go('candidate_v2_2.html')">👁 Candidate</button>
+      <button class="btn btn-ghost" onclick="go('../judge_engine_v1-3.html')">🎯 Judge 상세</button>
+      <button class="btn btn-ghost" onclick="go('trinity_hub_v1_0.html')">🗂 구형 HUB(v2.0)</button>
+    </div>
+    <div class="feed" id="feed"><div class="feed-none">신호 로그 없음</div></div>
+  </div>
+</details>
+
+<footer>
+  <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.0 🔱
+</footer>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ━━━━━━━━━ 상수 (Railway URL — hub v2.0과 동일, 추측 금지) ━━━━━━━━━
+const RAIL_MAIN = 'https://fastapi-production-f631.up.railway.app';
+const RAIL_CAND = 'https://candidate-angine-production.up.railway.app';
+
+// ━━━━━━━━━ 상태 ━━━━━━━━━
+const LS_WATCH = 'trinity3_watch';   // [{code,name,grade}]
+const LS_HOLD  = 'trinity3_hold';    // [{code,name,buy,price,stop,state}]
+let watch = load(LS_WATCH, []);
+let holds = load(LS_HOLD, []);
+let judgeCache = {};                  // code → 마지막 /judge 응답
+function load(k,d){ try{return JSON.parse(localStorage.getItem(k))||d;}catch{return d;} }
+function save(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
+
+// ━━━━━━━━━ 유틸 ━━━━━━━━━
+const $ = id => document.getElementById(id);
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function go(file){ window.location.href=file; }
+function scrollToSec(id){ $(id).scrollIntoView({behavior:'smooth'}); }
+function won(n){ return n==null?'--':Number(n).toLocaleString('ko-KR'); }
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+// ━━━━━━━━━ 시계 ━━━━━━━━━
+function tick(){
+  const n=new Date(), k=new Date(n.getTime()+n.getTimezoneOffset()*60000+9*3600000);
+  $('clock').textContent=[k.getHours(),k.getMinutes(),k.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  const d=['일','월','화','수','목','금','토'][k.getDay()];
+  $('cdate').textContent=`${k.getFullYear()}.${String(k.getMonth()+1).padStart(2,'0')}.${String(k.getDate()).padStart(2,'0')} (${d})`;
+}
+setInterval(tick,1000); tick();
+
+// ━━━━━━━━━ 시장 온도 (/index_snapshot — v2.0과 동일 엔드포인트) ━━━━━━━━━
+async function fetchTemp(){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/index_snapshot`,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok) throw 0;
+    const d = await r.json();
+    const ks = d.kospi?.change_pct, kq = d.kosdaq?.change_pct;
+    const avg = (Number(ks||0)+Number(kq||0))/2;
+    const pill = $('tempPill');
+    if(avg >= 0.5){ pill.className='temp-pill temp-attack'; pill.textContent='🟢 공격 가능'; }
+    else if(avg <= -0.5){ pill.className='temp-pill temp-defense'; pill.textContent='🔴 방어'; }
+    else { pill.className='temp-pill temp-neutral'; pill.textContent='🟡 중립'; }
+    const f = (x)=>{ if(x==null) return '<span style="color:var(--text3)">--</span>';
+      const v=Number(x), c=v>0?'#ff5d5d':(v<0?'#5b9bff':'var(--text2)');
+      return `<b style="color:${c}">${v>0?'+':''}${v.toFixed(2)}%</b>`; };
+    $('tempDetail').innerHTML = `KOSPI ${f(ks)} · KOSDAQ ${f(kq)}<br>NASDAQ ${f(d.nasdaq?.change_pct)} · S&P ${f((d.sp500||d.snp500)?.change_pct)}`;
+  }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; }
+}
+
+// ━━━━━━━━━ 웜업 (v2.0과 동일 대상) ━━━━━━━━━
+async function warmup(){
+  const b=$('warmBtn'); b.classList.add('spin'); b.textContent='⏳';
+  try{
+    await fetch(`${RAIL_MAIN}/stock/005930`,{signal:AbortSignal.timeout(15000)});
+    await fetch(`${RAIL_CAND}/candidates?limit=1`,{signal:AbortSignal.timeout(10000)}).catch(()=>{});
+    b.textContent='✅ 완료'; b.classList.add('done'); toast('서버 웜업 완료');
+    fetchTemp();
+  }catch{ b.textContent='⚠ 실패'; toast('웜업 실패 — Railway 확인'); }
+  b.classList.remove('spin');
+  setTimeout(()=>{b.textContent='🔌 웜업'; b.classList.remove('done');},20000);
+}
+
+// ━━━━━━━━━ 1. 발견 ━━━━━━━━━
+const TOP10 = [
+  {code:'000660',name:'SK하이닉스'},{code:'034220',name:'LG디스플레이'},
+  {code:'009150',name:'삼성전기'},{code:'042700',name:'한미반도체'},
+  {code:'007660',name:'이수페타시스'},{code:'267260',name:'HD현대일렉트릭'},
+  {code:'010120',name:'LS ELECTRIC'},{code:'454910',name:'두산로보틱스'},
+  {code:'035420',name:'NAVER'},{code:'307950',name:'현대오토에버'}
+];
+function renderChips(){
+  const el=$('chips');
+  if(!watch.length){ el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:6px 2px;">후보가 비었습니다 — 추가하거나 채피 Top10을 불러오세요</div>'; }
+  else el.innerHTML = watch.map((w,i)=>`
+    <div class="chip" onclick="loadJudge('${w.code}')">
+      <span class="g ${w.grade?('g'+w.grade):'gq'}">${w.grade||'?'}</span>
+      <span>${w.name}</span>
+      <span class="x" onclick="event.stopPropagation();rmWatch(${i})">✕</span>
+    </div>`).join('');
+  $('cntScan').textContent = watch.length;
+  updateGoCount(); save(LS_WATCH, watch);
+}
+function rmWatch(i){ watch.splice(i,1); renderChips(); }
+function presetTop10(){
+  TOP10.forEach(t=>{ if(!watch.some(w=>w.code===t.code)) watch.push({...t,grade:null}); });
+  renderChips(); toast('채피 Top10 추가 — 전체 스캔 ㄱㄱ');
+}
+async function addCandidate(){
+  const q = $('addWatch').value.trim(); if(!q) return;
+  $('addWatch').value=''; toast('확인 중…');
+  const d = await fetchJudge(q);
+  if(!d){ toast('종목을 찾지 못했어요'); return; }
+  if(watch.some(w=>w.code===d.code)){ toast('이미 후보에 있어요'); return; }
+  watch.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, grade:d.mri?.grade||null});
+  renderChips(); renderJudge(d);
+}
+async function scanAll(){
+  if(!watch.length){ toast('후보가 없어요'); return; }
+  const b=$('scanBtn'); b.classList.add('spin'); b.textContent='⏳ 스캔 중…';
+  let done=0;
+  for(const w of watch){
+    const d = await fetchJudge(w.code);
+    if(d){ w.grade = d.mri?.grade||w.grade; if(d.name&&d.name!==d.code) w.name=d.name; done++; renderChips(); }
+    await sleep(400); // KIS 예의
+  }
+  b.classList.remove('spin'); b.textContent='🔍 전체 스캔 (Grade 갱신)';
+  toast(`스캔 완료 — ${done}/${watch.length}`); addFeed(`🔍 전체 스캔 ${done}종목 완료`);
+}
+function updateGoCount(){
+  const n = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')).length;
+  $('cntGo').textContent = n;
+}
+
+// ━━━━━━━━━ 2. 판단 (오늘 만든 /judge + mri SSOT) ━━━━━━━━━
+async function fetchJudge(q){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/judge/${encodeURIComponent(q)}`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    if(d.code) judgeCache[d.code]=d;
+    updateGoCount();
+    return d;
+  }catch{ return null; }
+}
+async function loadJudge(q){
+  $('judgeCard').innerHTML='<div class="j-empty">⏳ MRI 촬영 중…</div>';
+  scrollToSec('secJudge');
+  const d = await fetchJudge(q);
+  if(!d){ $('judgeCard').innerHTML='<div class="j-empty">조회 실패 — 웜업 후 다시 시도해주세요</div>'; return; }
+  renderJudge(d);
+}
+function renderJudge(d){
+  const m = d.mri;
+  const name = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
+  const chg = d.change_pct==null?'':` <span class="${d.change_pct>=0?'up':'down'}">${d.change_pct>0?'+':''}${d.change_pct}%</span>`;
+  if(!m){
+    $('judgeCard').innerHTML = `
+      <div class="j-top"><div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div></div>
+      <div class="j-verdict">MRI 데이터 없음${d.mri_error?(' — <b>'+d.mri_error+'</b>'):''} · 장 전이거나 서버 웜업이 필요할 수 있어요</div>`;
+    return;
+  }
+  const gc = {'A':'var(--green)','B':'var(--yellow)','C':'var(--orange)'}[m.grade]||'var(--red)';
+  const stopPct = m.risk_pct!=null? ('-'+m.risk_pct+'%') : '--';
+  const stateCls = m.tradeable ? 'st-go' : ((m.grade==='C')?'st-watch':'st-no');
+  const stateTxt = m.tradeable ? '✅ '+(m.action_label||'진입 후보') : '👁 '+(m.action_label||'관찰');
+  $('judgeCard').innerHTML = `
+    <div class="j-top">
+      <div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div>
+      <div class="j-grade" style="color:${gc}">${m.grade}<small>${m.grade_label||''}</small></div>
+    </div>
+    <div class="j-metrics">
+      <div class="jm"><div class="jm-v" style="color:var(--teal)">${m.rr??'--'}</div><div class="jm-l">R/R</div></div>
+      <div class="jm"><div class="jm-v" style="color:var(--red)">${stopPct}</div><div class="jm-l">STOP ${won(m.stop)}</div></div>
+      <div class="jm"><div class="jm-v" style="color:var(--purple)">${(m.recommended_mode||m.mode||'--').toUpperCase()}</div><div class="jm-l">MODE</div></div>
+    </div>
+    <div class="j-verdict">🩻 <b>${m.verdict||'-'}</b></div>
+    <div class="j-act">
+      <div class="j-state ${stateCls}">${stateTxt}</div>
+      <button class="btn btn-yellow" onclick="go('../judge_engine_v1-3.html')">상세 ›</button>
+    </div>`;
+}
+
+// ━━━━━━━━━ 3. 실행 — 엔진 신호 수신 (Ignition·Block은 무대 뒤) ━━━━━━━━━
+let _b=0,_c=0,_s=0;
+const sigs=[];
+function pushSig(ico,text){
+  const k=new Date(Date.now()+ (new Date().getTimezoneOffset()*60000) + 9*3600000);
+  const ts=`${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
+  sigs.unshift({ico,text,ts}); if(sigs.length>6) sigs.pop();
+  $('sigList').innerHTML = sigs.map(s=>`
+    <div class="sig"><div class="sig-ico">${s.ico}</div>
+      <div class="sig-body">${s.text}</div><div class="sig-meta">${s.ts}</div></div>`).join('');
+  addFeed(s0(sigs[0]));
+}
+function s0(s){return s.ico+' '+s.text;}
+function pollSignals(){
+  try{ const d=JSON.parse(localStorage.getItem('trinity_block_last')||'null');
+    if(d&&d.ts&&d.ts!==_b){ _b=d.ts;
+      if((d.fire||0)>0) pushSig('🔥',`급락 회복 신호 <b>FIRE ${d.fire}건</b> · SHOCK ${d.shock||0}건`);
+      else if((d.shock||0)>0) pushSig('🚨',`급락 충격 SHOCK ${d.shock}건 감지`); } }catch{}
+  try{ const d=JSON.parse(localStorage.getItem('trinity_candidate_last')||'null');
+    if(d&&d.ts&&d.ts!==_c){ _c=d.ts;
+      if((d.fire||0)>0) pushSig('🔥',`후보 FIRE <b>${d.fire}건</b>`);
+      else if((d.armed||0)>0) pushSig('🔒',`후보 ARMED ${d.armed}건 · 총 ${d.total||'-'}개`); } }catch{}
+  try{ const d=JSON.parse(localStorage.getItem('trinity_strike_last')||'null');
+    if(d&&d.ts&&d.ts!==_s){ _s=d.ts;
+      const e=d.score>=85?'🟢':d.score>=70?'🟡':'🔴';
+      pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`); } }catch{}
+}
+setInterval(pollSignals,2000);
+
+// ━━━━━━━━━ 4. 보유 — MRI 손절선 감시 ━━━━━━━━━
+function holdState(h){
+  if(h.price==null||h.stop==null) return ['hp-q','확인 필요'];
+  if(h.price < h.stop) return ['hp-out','🔴 손절선 이탈'];
+  if((h.price-h.stop)/h.price < 0.03) return ['hp-warn','🟡 주의·근접'];
+  return ['hp-keep','🟢 유지'];
+}
+function renderHolds(){
+  const el=$('holdList');
+  if(!holds.length){ el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:4px 2px 8px;">보유 종목을 담으면 MRI 손절선으로 감시합니다</div>'; }
+  else el.innerHTML = holds.map((h,i)=>{
+    const pl = (h.price!=null&&h.buy)? ((h.price-h.buy)/h.buy*100) : null;
+    const plTxt = pl==null?'':`<div class="h-pl ${pl>=0?'up':'down'}">${pl>0?'+':''}${pl.toFixed(2)}%</div>`;
+    const [cls,txt]=holdState(h);
+    return `<div class="hold">
+      <div class="h-info"><div class="h-name">${h.name}</div>
+        <div class="h-sub">매수 ${won(h.buy)} · STOP ${won(h.stop)}</div></div>
+      <div class="h-num"><div class="h-price">${won(h.price)}</div>${plTxt}</div>
+      <div class="h-pill ${cls}">${txt}</div>
+      <div class="h-x" onclick="rmHold(${i})">✕</div>
+    </div>`;
+  }).join('');
+  $('cntHold').textContent = holds.length;
+  save(LS_HOLD, holds);
+}
+function rmHold(i){ holds.splice(i,1); renderHolds(); }
+async function addHold(){
+  const q=$('hName').value.trim(), buy=parseInt($('hBuy').value.replace(/,/g,''),10);
+  if(!q||!buy){ toast('종목과 매수가를 입력해주세요'); return; }
+  toast('확인 중…');
+  const d=await fetchJudge(q);
+  if(!d){ toast('종목을 찾지 못했어요'); return; }
+  holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy,
+              price:d.price??null, stop:d.mri?.stop??null});
+  $('hName').value=''; $('hBuy').value='';
+  renderHolds(); toast('보유 감시 시작 🌊');
+}
+async function refreshHolds(){
+  if(!holds.length){ toast('보유 종목이 없어요'); return; }
+  const b=$('holdBtn'); b.classList.add('spin'); b.textContent='⏳ 감시 갱신 중…';
+  for(const h of holds){
+    const d=await fetchJudge(h.code);
+    if(d){ h.price=d.price??h.price; h.stop=d.mri?.stop??h.stop; renderHolds(); }
+    await sleep(400);
+  }
+  b.classList.remove('spin'); b.textContent='🌊 손절선 감시 갱신 (MRI)';
+  const out=holds.filter(h=>holdState(h)[0]==='hp-out').length;
+  toast(out?`⚠ 손절선 이탈 ${out}종목!`:'전 종목 점검 완료');
+  addFeed(`🌊 보유 ${holds.length}종목 손절선 점검 — 이탈 ${out}건`);
+}
+
+// ━━━━━━━━━ 증권·뱅킹 앱 바로 실행 (Android intent) ━━━━━━━━━
+function openToss(){
+  window.location.href='intent://open#Intent;scheme=supertoss;package=viva.republica.toss;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dviva.republica.toss;end';
+}
+function openHantu(){
+  window.location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.truefriend.neosmartarenewal;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.truefriend.neosmartarenewal;end';
+}
+
+// ━━━━━━━━━ 시스템 피드 ━━━━━━━━━
+const flog=[];
+function addFeed(text){
+  const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  const ts=`${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
+  flog.unshift({text,ts}); if(flog.length>15) flog.pop();
+  $('feed').innerHTML=flog.map(f=>`<div class="fi"><div class="fi-dot"></div><div class="fi-t">${f.text}</div><div class="fi-m">${f.ts}</div></div>`).join('');
+}
+
+// ━━━━━━━━━ 부팅 ━━━━━━━━━
+renderChips(); renderHolds(); fetchTemp();
+addFeed('🔱 Trinity HUB v3.0 — 결정 중심 모드 온라인');
+setInterval(fetchTemp, 90000);
+</script>
+</body>
+</html>
