@@ -1,3 +1,4 @@
+# redeploy 2026.06.11 — Day 2 MRI
 """
 Trinity Core Engine v5.1
 KIS API → 실데이터 + 건눌재 점수 + 다중 타임프레임
