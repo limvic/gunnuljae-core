@@ -283,6 +283,23 @@ body{padding-bottom:74px;}
 
 .temp-ready{background:rgba(255,159,28,.1);border:1px solid rgba(255,159,28,.35);color:var(--yellow);}
 .temp-pill small{font-size:9px;opacity:.75;font-weight:600;margin-left:3px;}
+
+/* ━━ v3.7: 🎯 Focus Card + STRIKE 설명 엔진 ━━ */
+.focus{margin:12px 16px 0;display:flex;align-items:center;gap:14px;cursor:pointer;
+  padding:13px 16px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(245,185,66,.10),rgba(245,185,66,.03));
+  border:1px solid rgba(245,185,66,.35);box-shadow:0 0 24px rgba(245,185,66,.07);}
+.fc-tag{flex:none;font-family:var(--mono);font-size:10px;font-weight:800;color:#f5b942;
+  border:1px solid rgba(245,185,66,.45);border-radius:999px;padding:5px 10px;letter-spacing:1px;}
+.fc-name{font-size:17px;font-weight:800;}
+.fc-sub{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;}
+.fc-why{font-size:10.5px;color:#caa84e;margin-top:3px;}
+@media (min-width:640px){ .focus{margin:12px 0 0;} .fc-name{font-size:19px;} }
+.sh-pattern{font-family:var(--mono);font-size:12.5px;font-weight:800;color:var(--yellow);margin:2px 0;}
+.sh-reason{font-size:11px;color:var(--text2);margin-bottom:7px;}
+.sh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 14px;max-width:300px;}
+.sh-cell small{font-size:9px;color:var(--text3);display:block;}
+.sh-cell b{font-family:var(--mono);font-size:13px;}
 </style>
 </head>
 <body>
@@ -307,7 +324,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.6 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v3.7 UTOPIA</div>
     </div>
   <div class="finder">
     <span class="f-ico">🔎</span>
@@ -329,6 +346,8 @@ body{padding-bottom:74px;}
   <div class="temp-detail" id="tempDetail">지수 불러오는 중…</div>
   <button class="warm-btn" id="warmBtn" onclick="warmup()">🔌 웜업</button>
 </div>
+
+<div id="focusCard" style="display:none" class="focus"></div>
 
 <!-- 카운트 -->
 <div class="counts">
@@ -409,7 +428,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.6 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.7 UTOPIA 🔱
 </footer>
 
   </div>
@@ -516,7 +535,7 @@ function renderChips(){
       ${(sp||rr)?`<div class="c-bot">${sp}${rr}</div>`:''}
     </div>`;}).join('');
   $('cntScan').textContent = watch.length;
-  updateGoCount(); save(LS_WATCH, watch); syncSentinelWatch();
+  updateGoCount(); save(LS_WATCH, watch); syncSentinelWatch(); renderFocus();
 }
 function rmWatch(i){ watch.splice(i,1); renderChips(); }
 function presetTop10(){
@@ -694,6 +713,35 @@ function showGoList(){
     }).join('');
 }
 
+
+// 🎯 TODAY — 우선순위: 오늘 Strike BREAK(85+) > Judge 진입가능 중 최고 R/R > 스캔 최고 R/R
+function pickFocus(){
+  try{
+    const s=JSON.parse(localStorage.getItem('trinity_strike_last')||'null');
+    if(s&&s.score>=85){
+      const k=new Date(s.ts+(new Date().getTimezoneOffset()*60000)+9*3600000), nk=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+      if(k.toDateString()===nk.toDateString())
+        return {name:s.name, sub:`BREAK · ${s.score}점${s.pattern?(' · '+s.pattern):''}`, why:'진입 구간 접근 — Strike 신호', code:null};
+    }
+  }catch{}
+  const go = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'))
+    .sort((a,b)=>(b.mri.rr||0)-(a.mri.rr||0))[0];
+  if(go){ const w=watch.find(x=>x.code===go.code);
+    return {name:(w?.name)||go.name||go.code, sub:`${go.mri.grade||''} · R/R ${go.mri.rr??'--'} · ${go.mri.action_label||'진입 후보'}`, why:'오늘 최우선 관찰 — Judge 진입 가능', code:go.code}; }
+  const best = watch.filter(w=>w.rr!=null).sort((a,b)=>(b.rr||0)-(a.rr||0))[0];
+  if(best) return {name:best.name, sub:`${best.grade||'?'} · R/R ${best.rr}`, why:'스캔 최고 R/R — 관찰 1순위', code:best.code};
+  return null;
+}
+function renderFocus(){
+  const el=$('focusCard'); if(!el) return;
+  const f=pickFocus();
+  if(!f){ el.style.display='none'; return; }
+  el.innerHTML=`<div class="fc-tag">🎯 TODAY</div>
+    <div class="fc-body"><div class="fc-name">${f.name}</div>
+    <div class="fc-sub">${f.sub}</div><div class="fc-why">${f.why}</div></div>`;
+  el.style.display='flex';
+  el.onclick=()=>{ if(f.code) loadJudge(f.code); };
+}
 // ━━━━━━━━━ 🛰 Trinity Sentinel 동기화 (v3.1) ━━━━━━━━━
 // HUB가 주인, 서버는 복제본 — 워치/보유가 바뀔 때마다 보초에게 자동 전달.
 // HUB를 열기만 해도 1회 동기화 → Railway 재배포로 서버 명단이 증발해도 자동 복구.
@@ -828,13 +876,20 @@ function renderStrikeHero(d){
   if(!d||d.score==null){ return; }
   const sc=Number(d.score), col=sc>=85?'var(--green)':sc>=70?'var(--yellow)':'var(--red)';
   const deg=Math.max(0,Math.min(100,sc))*3.6;
-  const opt=[['패턴',d.pattern],['트리거',d.trigger],['손절가',d.stop&&won(d.stop)],['목표가',d.target&&won(d.target)]]
-    .filter(x=>x[1]).map(x=>`<div class="sh-kv"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+  // 가격 4종: 있는 실측값만 그린다
+  const kv=[['진입',d.entry],['손절',d.stop],['목표1',d.target1??d.target],['목표2',d.target2]]
+    .filter(x=>x[1]!=null)
+    .map(x=>`<div class="sh-cell"><small>${x[0]}</small><b>${won(x[1])}</b></div>`).join('');
   $('strikeHero').innerHTML=`
     <div class="sh-ring" style="background:conic-gradient(${col} ${deg}deg, rgba(255,255,255,.06) 0)">
       <div class="sh-core"><b>${sc}</b><small>/100</small></div></div>
-    <div class="sh-body"><div class="sh-name">${d.name||''}</div>
-      <div class="sh-verdict" style="color:${col}">${d.verdict||''}</div>${opt}</div>`;
+    <div class="sh-body">
+      <div class="sh-name">${d.name||''}</div>
+      ${d.pattern?`<div class="sh-pattern">${d.pattern}</div>`:''}
+      <div class="sh-verdict" style="color:${col}">${d.verdict||''}</div>
+      ${d.reason?`<div class="sh-reason">${d.reason}</div>`:''}
+      ${kv?`<div class="sh-grid">${kv}</div>`:''}
+    </div>`;
   $('strikeHero').style.display='flex';
 }
 function pushSig(ico,text){
@@ -860,7 +915,7 @@ function pollSignals(){
     if(d&&d.ts&&d.ts!==_s){ _s=d.ts;
       const e=d.score>=85?'🟢':d.score>=70?'🟡':'🔴';
       pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`);
-      renderStrikeHero(d); } }catch{}
+      renderStrikeHero(d); renderFocus(); } }catch{}
 }
 setInterval(pollSignals,2000);
 
@@ -948,7 +1003,8 @@ function addFeed(text){
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
-addFeed('🔱 Trinity HUB v3.6 — 지수 6종 · 스캔 박제(새로고침 생존)');
+renderFocus();
+addFeed('🔱 Trinity HUB v3.7 — 정보가 아니라 행동이 보인다');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
