@@ -27,6 +27,21 @@ header{padding:18px 16px 10px;}
 .hd-time{font-size:17px;font-weight:700;}
 .hd-date{font-size:9px;color:var(--text3);margin-top:2px;}
 
+/* 🔎 Name Finder — 토스 대응: 코드 → 이름. 어두운 HUB 속 유일한 밝은 띠 */
+.finder{display:flex;align-items:center;gap:8px;margin-top:12px;
+  background:linear-gradient(135deg,#fdf6e3,#f7ecd4);border-radius:13px;padding:9px 12px;
+  box-shadow:0 2px 14px rgba(245,185,66,.18);}
+.finder .f-ico{font-size:14px;}
+.finder input{flex:0 0 88px;background:transparent;border:none;outline:none;
+  font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:2px;color:#3a2f14;}
+.finder input::placeholder{color:#b3a37c;font-size:11px;letter-spacing:0;font-weight:400;}
+.finder .f-name{flex:1;font-size:16px;font-weight:800;color:#5c4a1a;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:19px;}
+.finder .f-name.miss{font-size:11px;font-weight:500;color:#a08c5a;}
+.finder .f-add{flex:none;background:#3a2f14;color:#fdf6e3;border:none;border-radius:9px;
+  font-size:11px;font-weight:700;padding:6px 10px;display:none;}
+.finder .f-add.on{display:block;}
+
 /* 시장 온도 */
 .temp-bar{margin:12px 16px 0;display:flex;align-items:center;gap:10px;
   background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 14px;}
@@ -155,12 +170,19 @@ footer b{color:var(--text2);}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.0</div>
+      <div class="hd-sub">DECISION CENTER · v3.2</div>
     </div>
     <div class="hd-clock">
       <div class="hd-time" id="clock">--:--:--</div>
       <div class="hd-date" id="cdate">--</div>
     </div>
+  </div>
+  <div class="finder">
+    <span class="f-ico">🔎</span>
+    <input id="fCode" type="tel" inputmode="numeric" maxlength="6" placeholder="코드 6자리"
+           oninput="finderInput(this)">
+    <span class="f-name" id="fName">코드를 치면 이름이 떠요</span>
+    <button class="f-add" id="fAdd" onclick="finderAdd()">＋후보</button>
   </div>
 </header>
 
@@ -335,6 +357,7 @@ function renderChips(){
     <div class="chip" onclick="loadJudge('${w.code}')">
       <span class="g ${w.grade?('g'+w.grade):'gq'}">${w.grade||'?'}</span>
       <span>${w.name}</span>
+      ${/^\d{6}$/.test(w.name)?`<span class="x" title="이름 짓기" onclick="event.stopPropagation();renameChip(${i})">✏</span>`:''}
       <span class="x" onclick="event.stopPropagation();rmWatch(${i})">✕</span>
     </div>`).join('');
   $('cntScan').textContent = watch.length;
@@ -349,10 +372,70 @@ async function addCandidate(){
   const q = $('addWatch').value.trim(); if(!q) return;
   $('addWatch').value=''; toast('확인 중…');
   const d = await fetchJudge(q);
-  if(!d){ toast('종목을 찾지 못했어요'); return; }
+  if(!d){ toast('종목을 찾지 못했어요 — 코드 6자리로 시도해보세요'); return; }
   if(watch.some(w=>w.code===d.code)){ toast('이미 후보에 있어요'); return; }
-  watch.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, grade:d.mri?.grade||null});
+  // 이름 해석: 서버 응답 재귀탐색 → 이름캐시 → 입력값(이름으로 추가한 경우) → 직접 입력
+  let nm = digName(d) || nameCache[d.code] || ((q!==d.code && !/^\d{6}$/.test(q)) ? q : '');
+  if(!nm){
+    nm = (prompt(`${d.code} 종목명을 알려주세요 (예: 예스티)`)||'').trim() || d.code;
+  }
+  if(nm !== d.code){ nameCache[d.code]=nm; saveNameCache(); }
+  watch.push({code:d.code, name:nm, grade:d.mri?.grade||null});
   renderChips(); renderJudge(d);
+}
+// ━━━━━━━━━ 🔎 Name Finder (v3.2) — 토스 대응: 코드 → 이름 ━━━━━━━━━
+// 캐시 키는 단독 Finder 페이지와 공유. 칩 이름짓기 → 보초 names 동기화까지 한 몸.
+const NAMECACHE_KEY='trinity_name_cache';
+const nameCache = JSON.parse(localStorage.getItem(NAMECACHE_KEY)||'{}');
+const saveNameCache = ()=>localStorage.setItem(NAMECACHE_KEY,JSON.stringify(nameCache));
+const NAME_KEYS=['name','stock_name','hts_kor_isnm','kor_name','stk_name'];
+function digName(o,dep=0){
+  if(!o||typeof o!=='object'||dep>4) return '';
+  for(const k of NAME_KEYS){const v=o[k];
+    if(typeof v==='string'&&v.trim()&&!/^\d{6}$/.test(v.trim())) return v.trim();}
+  for(const v of Object.values(o)){
+    if(typeof v==='object'){const r=digName(v,dep+1); if(r) return r;}}
+  return '';
+}
+let _fCode='';
+function finderInput(el){
+  el.value=el.value.replace(/\D/g,'').slice(0,6);
+  if(el.value.length===6) finderLookup(el.value);
+  else { $('fName').textContent='코드를 치면 이름이 떠요'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); }
+}
+async function finderLookup(code){
+  _fCode=code;
+  const out=$('fName'), add=$('fAdd');
+  if(nameCache[code]){ out.textContent=nameCache[code]; out.className='f-name'; add.classList.add('on'); return; }
+  out.textContent='실측 중…'; out.className='f-name miss'; add.classList.remove('on');
+  const d = await fetchJudge(code);
+  const nm = d ? digName(d) : '';
+  if(nm){ nameCache[code]=nm; saveNameCache();
+    out.textContent=nm; out.className='f-name'; add.classList.add('on'); }
+  else{
+    out.textContent='미확인 — 여기를 탭해 직접 입력'; out.className='f-name miss';
+    out.onclick=()=>{ const n=(prompt(`${code} 종목명 입력 (예: 예스티)`)||'').trim();
+      if(n){ nameCache[code]=n; saveNameCache(); out.textContent=n; out.className='f-name'; add.classList.add('on'); }
+      out.onclick=null; };
+    if(d){ add.classList.add('on'); } // 데이터는 있으니 이름만 지으면 후보 추가 가능
+  }
+}
+async function finderAdd(){
+  if(!_fCode) return;
+  if(watch.some(w=>w.code===_fCode)){ toast('이미 후보에 있어요'); return; }
+  const d = judgeCache[_fCode] || await fetchJudge(_fCode);
+  if(!d){ toast('데이터를 못 가져왔어요'); return; }
+  watch.push({code:_fCode, name:nameCache[_fCode]||_fCode, grade:d.mri?.grade||null});
+  renderChips(); toast(`${nameCache[_fCode]||_fCode} 후보 추가`);
+  $('fCode').value=''; $('fName').textContent='코드를 치면 이름이 떠요'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+}
+function renameChip(i){
+  const w=watch[i];
+  const n=(prompt(`${w.code} 종목명 입력`, w.name!==w.code?w.name:'')||'').trim();
+  if(!n) return;
+  w.name=n; nameCache[w.code]=n; saveNameCache();
+  _swSig='';            // 시그니처 리셋 → 보초에 새 이름 강제 동기화
+  renderChips(); toast(`이름 저장 — 보초에도 전달됩니다`);
 }
 async function scanAll(){
   if(!watch.length){ toast('후보가 없어요'); return; }
