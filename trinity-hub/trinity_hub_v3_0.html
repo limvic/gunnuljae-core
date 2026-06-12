@@ -37,7 +37,7 @@ header{padding:18px 16px 10px;}
 .temp-attack{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
 .temp-neutral{background:rgba(255,204,0,.08);color:var(--yellow);border:1px solid rgba(255,204,0,.3);}
 .temp-defense{background:rgba(255,58,58,.1);color:var(--red);border:1px solid rgba(255,58,58,.3);}
-.temp-detail{font-family:var(--mono);font-size:9.5px;color:var(--text2);line-height:1.5;flex:1;display:flex;flex-wrap:wrap;gap:2px 12px;}
+.temp-detail{font-family:var(--mono);font-size:9.5px;color:var(--text2);line-height:1.6;flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px;}
 .warm-btn{font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(0,212,255,.07);
   border:1px solid rgba(0,212,255,.3);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;}
 .warm-btn.done{color:var(--green);border-color:rgba(0,255,136,.3);}
@@ -199,7 +199,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
   .hd-top .hd-clock{order:3;flex:none;}
   .temp-bar{margin:0 0 14px;min-height:60px;display:flex;flex-wrap:wrap;}
   .temp-pill{font-size:17px;text-align:center;padding:11px 12px;border-radius:15px;text-transform:uppercase;}
-  .temp-detail{font-size:12.5px;line-height:1.7;gap:2px 18px;}
+  .temp-detail{font-size:12px;line-height:1.7;display:flex;flex-wrap:wrap;gap:2px 16px;}
   .counts{margin:0 0 22px;grid-template-columns:repeat(3,1fr);gap:14px;}
   .cnt{padding:18px 10px;border-radius:16px;background:linear-gradient(180deg,rgba(13,22,41,.88),rgba(8,14,27,.9));}
   .cnt-num{font-size:38px;}.cnt-lbl{font-size:11px;}
@@ -307,7 +307,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.5 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v3.6 UTOPIA</div>
     </div>
   <div class="finder">
     <span class="f-ico">🔎</span>
@@ -409,7 +409,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.5 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.6 UTOPIA 🔱
 </footer>
 
   </div>
@@ -468,7 +468,12 @@ async function fetchTemp(){
     else if(avg > -0.5){ pill.className='temp-pill temp-neutral'; pill.innerHTML='⚪ WATCH <small>관망</small>'; }
     else { pill.className='temp-pill temp-defense'; pill.innerHTML='🔴 DEFENSE <small>방어</small>'; }
     const f = (x)=> x==null?'--':`<b class="${x>=0?'up':'down'}">${x>0?'+':''}${Number(x).toFixed(2)}%</b>`;
-    $('tempDetail').innerHTML = `<span>KOSPI ${f(ks)}</span><span>KOSDAQ ${f(kq)}</span><span>NASDAQ ${f(d.nasdaq?.change_pct)}</span><span>S&P ${f((d.sp500||d.snp500)?.change_pct)}</span>`;
+    const vix = d.vix, fx = d.usdkrw;
+    const vixTxt = vix?.price!=null ? `${Number(vix.price).toFixed(1)} ${f(vix.change_pct)}` : '--';
+    const fxTxt  = fx?.price!=null ? `${Math.round(fx.price).toLocaleString()}원 ${f(fx.change_pct)}` : '--';
+    $('tempDetail').innerHTML =
+      `<span>KOSPI ${f(ks)}</span><span>KOSDAQ ${f(kq)}</span><span>NASDAQ ${f(d.nasdaq?.change_pct)}</span>`+
+      `<span>S&P ${f((d.sp500||d.snp500)?.change_pct)}</span><span>VIX ${vixTxt}</span><span>환율 ${fxTxt}</span>`;
   }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; }
 }
 
@@ -498,8 +503,9 @@ function renderChips(){
   if(!watch.length){ el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:6px 2px;">후보가 비었습니다 — 추가하거나 채피 Top10을 불러오세요</div>'; }
   else el.innerHTML = watch.map((w,i)=>{
     const d = judgeCache[w.code], m = d?.mri;
-    const rr = m?.rr!=null ? `<span class="c-rr">R/R <b>${m.rr}</b></span>` : '';
-    const sp = d?.spark ? sparkSVG(d.spark) : '';
+    const rrV = m?.rr ?? w.rr, spV = d?.spark || w.spark;
+    const rr = rrV!=null ? `<span class="c-rr">R/R <b>${rrV}</b></span>` : '';
+    const sp = spV ? sparkSVG(spV) : '';
     return `<div class="chip" onclick="loadJudge('${w.code}')">
       <div class="c-top">
         <span class="g ${w.grade?('g'+w.grade):'gq'}">${w.grade||'?'}</span>
@@ -530,7 +536,7 @@ async function addCandidate(){
     nm = (prompt(`${d.code} 종목명을 알려주세요 (예: 예스티)`)||'').trim() || d.code;
   }
   if(nm !== d.code){ nameCache[d.code]=nm; saveNameCache(); }
-  watch.push({code:d.code, name:nm, grade:d.mri?.grade||null});
+  watch.push({code:d.code, name:nm, grade:d.mri?.grade||null, rr:d.mri?.rr??null, spark:d.spark||null});
   renderChips(); renderJudge(d);
 }
 // ━━━━━━━━━ 🔎 Name Finder (v3.2) — 토스 대응: 코드 → 이름 ━━━━━━━━━
@@ -644,7 +650,8 @@ async function scanAll(){
   let done=0;
   for(const w of watch){
     const d = await fetchJudge(w.code);
-    if(d){ w.grade = d.mri?.grade||w.grade; if(d.name&&d.name!==d.code) w.name=d.name; done++; renderChips(); }
+    if(d){ w.grade = d.mri?.grade||w.grade; w.rr = d.mri?.rr??w.rr; w.spark = d.spark||w.spark;
+           if(d.name&&d.name!==d.code) w.name=d.name; done++; renderChips(); }
     await sleep(400); // KIS 예의
   }
   b.classList.remove('spin'); b.textContent='🔍 전체 스캔 (Grade 갱신)';
@@ -863,7 +870,8 @@ function holdState(h){
   if(h.price < h.stop) return ['hp-out','🔴 이탈'];
   if((h.price-h.stop)/h.price < 0.03) return ['hp-warn','🟡 주의'];
   const j = judgeCache[h.code];
-  if(j?.mri?.tradeable && (j.mri.action_label||'').includes('진입')) return ['hp-add','🔵 추가 가능'];
+  const addable = j ? (j.mri?.tradeable && (j.mri.action_label||'').includes('진입')) : h.addable;
+  if(addable) return ['hp-add','🔵 추가 가능'];
   return ['hp-keep','🟢 유지'];
 }
 function holdSummary(){
@@ -909,7 +917,9 @@ async function refreshHolds(){
   const b=$('holdBtn'); b.classList.add('spin'); b.textContent='⏳ 감시 갱신 중…';
   for(const h of holds){
     const d=await fetchJudge(h.code);
-    if(d){ h.price=d.price??h.price; h.stop=d.mri?.stop??h.stop; h.spark=d.spark||h.spark; if(d.name&&d.name!==d.code) h.name=d.name; renderHolds(); }
+    if(d){ h.price=d.price??h.price; h.stop=d.mri?.stop??h.stop; h.spark=d.spark||h.spark;
+           h.addable = !!(d.mri?.tradeable && (d.mri.action_label||'').includes('진입'));
+           if(d.name&&d.name!==d.code) h.name=d.name; renderHolds(); }
     await sleep(400);
   }
   b.classList.remove('spin'); b.textContent='🌊 손절선 감시 갱신 (MRI)';
@@ -938,7 +948,7 @@ function addFeed(text){
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
-addFeed('🔱 Trinity HUB v3.5 — 후보 전시장 · 보유 전략판 온라인');
+addFeed('🔱 Trinity HUB v3.6 — 지수 6종 · 스캔 박제(새로고침 생존)');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
