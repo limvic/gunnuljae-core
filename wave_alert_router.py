@@ -1,9 +1,14 @@
 # wave_alert_router.py
 # ─────────────────────────────────────────────────────────────────────────────
-# Wave Alert Engine v2.1  (이름 폴백 강화)
+# Wave Alert Engine v2.2  (이름 폴백 강화 + 배포 확인용 version 노출)
 # 목적: Universe 종목을 5개 항목 가중점수(Wave Score 0~100)로 평가해
 #       후보별 score + reason 을 통째로 내려준다. 컷(느슨70/보통80/엄격90)은
 #       프론트 슬라이더에서 결정 → 백엔드는 점수만, 필터는 클라.
+#
+# v2.1 → v2.2 변경 (2026.06.12 저녁):
+#   - 064350(현대로템) 실전 누락 확인(17:45·19:22 알림) → FALLBACK_NAMES 등록
+#   - /wave-alert/ping 에 version·fallback_names·resolve_name_injected 노출
+#     → 배포 적용 여부를 URL 한 번으로 실측 가능
 #
 # v2.0 → v2.1 변경 (2026.06.12):
 #   - [버그] 텔레그램 알림에 "024110 / 024110"처럼 이름이 코드로 표시되는 증상.
@@ -73,10 +78,13 @@ FUTURE_WAVE = {
 
 # ── 이름 최후 폴백표 (KIS·universe·resolve_name 모두 실패 시) ─────────────────
 # ⚠️ 실측 확인된 누락 종목만 등록. 추측 금지.
-#    2026.06.12 실전 누락: 024110 (KIS 빈 이름 실측 확인)
+#    2026.06.12 실전 누락: 024110(16:30 알림) · 064350(17:45·19:22 알림)
 FALLBACK_NAMES = {
     "024110": "기업은행",
+    "064350": "현대로템",
 }
+
+ENGINE_VERSION = "2.2"   # /wave-alert/ping 에 노출 → 배포 확인용
 
 # ── main_safe 주입 슬롯 ──────────────────────────────────────────────────────
 _DEPS = {
@@ -376,10 +384,13 @@ async def wave_alert_run():
 
 @router.get("/wave-alert/ping")
 async def wave_alert_ping():
-    """주입/환경 상태만 빠르게 점검 (가짜값 없음)."""
+    """주입/환경 상태만 빠르게 점검 (가짜값 없음). version으로 배포 확인."""
     return {
+        "version":        ENGINE_VERSION,
         "ready":          _ready(),
         "universe_count": len(_DEPS.get("universe") or []),
         "telegram_set":   bool(_DEPS.get("tg_token") and _DEPS.get("tg_chat_id")),
         "future_wave_mapped": len(FUTURE_WAVE),
+        "fallback_names": FALLBACK_NAMES,
+        "resolve_name_injected": bool(_DEPS.get("resolve_name")),
     }
