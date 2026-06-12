@@ -219,7 +219,7 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
   background:linear-gradient(135deg,#fdf6e3,#f7ecd4);border-radius:13px;padding:9px 12px;
   box-shadow:0 2px 14px rgba(245,185,66,.18);}
 .finder .f-ico{font-size:14px;}
-.finder input{flex:0 0 88px;background:transparent;border:none;outline:none;
+.finder input{flex:0 0 118px;background:transparent;border:none;outline:none;
   font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:2px;color:#3a2f14;}
 .finder input::placeholder{color:#b3a37c;font-size:11px;letter-spacing:0;font-weight:400;}
 .finder .f-name{flex:1;font-size:16px;font-weight:800;color:#5c4a1a;letter-spacing:-.02em;
@@ -274,9 +274,9 @@ body{padding-bottom:74px;}
   </div>
   <div class="finder">
     <span class="f-ico">🔎</span>
-    <input id="fCode" type="tel" inputmode="numeric" maxlength="6" placeholder="코드 6자리"
-           oninput="finderInput(this)">
-    <span class="f-name" id="fName">코드를 치면 이름이 떠요</span>
+    <input id="fCode" type="search" placeholder="코드 ⇄ 이름"
+           oninput="finderInput(this)" onkeydown="if(event.key==='Enter')finderInput(this,true)">
+    <span class="f-name" id="fName">코드 ⇄ 이름 — 어느 쪽이든 치세요</span>
     <button class="f-add" id="fAdd" onclick="finderAdd()">＋후보</button>
   </div>
 </header>
@@ -468,8 +468,9 @@ function presetTop10(){
   renderChips(); toast('채피 Top10 추가 — 전체 스캔 ㄱㄱ');
 }
 async function addCandidate(){
-  const q = $('addWatch').value.trim(); if(!q) return;
+  let q = $('addWatch').value.trim(); if(!q) return;
   $('addWatch').value=''; toast('확인 중…');
+  if(!/^\d{6}$/.test(q)){ const c=nameToCode(q); if(c) q=c; }   // 이름 → 코드 사전 우선
   const d = await fetchJudge(q);
   if(!d){ toast('종목을 찾지 못했어요 — 코드 6자리로 시도해보세요'); return; }
   if(watch.some(w=>w.code===d.code)){ toast('이미 후보에 있어요'); return; }
@@ -496,11 +497,62 @@ function digName(o,dep=0){
     if(typeof v==='object'){const r=digName(v,dep+1); if(r) return r;}}
   return '';
 }
+// 시드 사전 (실측 확신 종목만 — 잘못된 코드는 잘못된 매매로 이어지므로 보수적으로)
+const SEED_NAMES = {
+"005930":"삼성전자","005935":"삼성전자우","000660":"SK하이닉스","005380":"현대차","000270":"기아",
+"005490":"POSCO홀딩스","035420":"NAVER","035720":"카카오","051910":"LG화학","373220":"LG에너지솔루션",
+"006400":"삼성SDI","207940":"삼성바이오로직스","068270":"셀트리온","105560":"KB금융","055550":"신한지주",
+"086790":"하나금융지주","316140":"우리금융지주","024110":"기업은행","138040":"메리츠금융지주","071050":"한국금융지주",
+"032830":"삼성생명","000810":"삼성화재","012330":"현대모비스","028260":"삼성물산","010130":"고려아연",
+"042660":"한화오션","010140":"삼성중공업","064350":"현대로템","012450":"한화에어로스페이스","047810":"한국항공우주",
+"079550":"LIG넥스원","272210":"한화시스템","000720":"현대건설","034020":"두산에너빌리티","000150":"두산",
+"042700":"한미반도체","009150":"삼성전기","034220":"LG디스플레이","066570":"LG전자","003550":"LG",
+"267260":"HD현대일렉트릭","010120":"LS ELECTRIC","086280":"현대글로비스","011200":"HMM","003490":"대한항공",
+"017670":"SK텔레콤","030200":"KT","032640":"LG유플러스","033780":"KT&G","097950":"CJ제일제당",
+"090430":"아모레퍼시픽","051900":"LG생활건강","307950":"현대오토에버","018260":"삼성에스디에스","036570":"엔씨소프트",
+"259960":"크래프톤","352820":"하이브","086520":"에코프로","247540":"에코프로비엠","196170":"알테오젠",
+"058470":"리노공업","095340":"ISC","007660":"이수페타시스","454910":"두산로보틱스","122640":"예스티",
+"015760":"한국전력","010950":"S-Oil","096770":"SK이노베이션","034730":"SK","004020":"현대제철",
+"009830":"한화솔루션","011170":"롯데케미칼","011070":"LG이노텍","402340":"SK스퀘어","323410":"카카오뱅크",
+"326030":"SK바이오팜","302440":"SK바이오사이언스","000100":"유한양행","128940":"한미약품","039490":"키움증권"
+};
+// 시드를 캐시에 합류 (사용자가 직접 지은 이름이 항상 우선)
+for(const c in SEED_NAMES){ if(!nameCache[c]) nameCache[c]=SEED_NAMES[c]; }
+saveNameCache();
+// 이름 → 코드 (정확일치 > 시작일치 > 포함)
+function nameToCode(q){
+  const n = q.replace(/\s+/g,'').toLowerCase(); if(!n) return null;
+  let starts=null, incl=null;
+  for(const [code,nm] of Object.entries(nameCache)){
+    const m = nm.replace(/\s+/g,'').toLowerCase();
+    if(m===n) return code;
+    if(!starts && m.startsWith(n)) starts=code;
+    if(!incl && m.includes(n)) incl=code;
+  }
+  return starts || incl;
+}
 let _fCode='';
-function finderInput(el){
-  el.value=el.value.replace(/\D/g,'').slice(0,6);
-  if(el.value.length===6) finderLookup(el.value);
-  else { $('fName').textContent='코드를 치면 이름이 떠요'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); }
+function finderInput(el,force){
+  const q = el.value.trim();
+  const digits = q.replace(/\D/g,'');
+  if(/^\d+$/.test(q)){                       // 코드 모드
+    if(digits.length===6) finderLookup(digits);
+    else { $('fName').textContent='코드 ⇄ 이름'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); }
+    return;
+  }
+  if(q.length<2 && !force){                  // 이름 모드 (2글자부터)
+    $('fName').textContent='이름을 치면 코드가 떠요'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return;
+  }
+  const code = nameToCode(q);                // 이름 → 코드
+  if(code){
+    _fCode = code;
+    $('fName').textContent = `${nameCache[code]} → ${code}`;
+    $('fName').className='f-name'; $('fAdd').classList.add('on');
+  }else{
+    _fCode='';
+    $('fName').textContent='사전에 없는 이름 — 코드로 한 번 등록하면 다음부터 이름으로 찾아져요';
+    $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+  }
 }
 async function finderLookup(code){
   _fCode=code;
@@ -526,7 +578,7 @@ async function finderAdd(){
   if(!d){ toast('데이터를 못 가져왔어요'); return; }
   watch.push({code:_fCode, name:nameCache[_fCode]||_fCode, grade:d.mri?.grade||null});
   renderChips(); toast(`${nameCache[_fCode]||_fCode} 후보 추가`);
-  $('fCode').value=''; $('fName').textContent='코드를 치면 이름이 떠요'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+  $('fCode').value=''; $('fName').textContent='코드 ⇄ 이름'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
 }
 function renameChip(i){
   const w=watch[i];
@@ -732,9 +784,10 @@ function renderHolds(){
 }
 function rmHold(i){ holds.splice(i,1); renderHolds(); }
 async function addHold(){
-  const q=$('hName').value.trim(), buy=parseInt($('hBuy').value.replace(/,/g,''),10);
+  let q=$('hName').value.trim(); const buy=parseInt($('hBuy').value.replace(/,/g,''),10);
   if(!q||!buy){ toast('종목과 매수가를 입력해주세요'); return; }
   toast('확인 중…');
+  if(!/^\d{6}$/.test(q)){ const c=nameToCode(q); if(c) q=c; }   // 이름 → 코드 사전 우선
   const d=await fetchJudge(q);
   if(!d){ toast('종목을 찾지 못했어요'); return; }
   holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy,
