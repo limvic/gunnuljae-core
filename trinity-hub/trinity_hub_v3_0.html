@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v3.0</title>
+<title>🔱 Trinity HUB v3.3 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -27,21 +27,6 @@ header{padding:18px 16px 10px;}
 .hd-time{font-size:17px;font-weight:700;}
 .hd-date{font-size:9px;color:var(--text3);margin-top:2px;}
 
-/* 🔎 Name Finder — 토스 대응: 코드 → 이름. 어두운 HUB 속 유일한 밝은 띠 */
-.finder{display:flex;align-items:center;gap:8px;margin-top:12px;
-  background:linear-gradient(135deg,#fdf6e3,#f7ecd4);border-radius:13px;padding:9px 12px;
-  box-shadow:0 2px 14px rgba(245,185,66,.18);}
-.finder .f-ico{font-size:14px;}
-.finder input{flex:0 0 88px;background:transparent;border:none;outline:none;
-  font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:2px;color:#3a2f14;}
-.finder input::placeholder{color:#b3a37c;font-size:11px;letter-spacing:0;font-weight:400;}
-.finder .f-name{flex:1;font-size:16px;font-weight:800;color:#5c4a1a;letter-spacing:-.02em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:19px;}
-.finder .f-name.miss{font-size:11px;font-weight:500;color:#a08c5a;}
-.finder .f-add{flex:none;background:#3a2f14;color:#fdf6e3;border:none;border-radius:9px;
-  font-size:11px;font-weight:700;padding:6px 10px;display:none;}
-.finder .f-add.on{display:block;}
-
 /* 시장 온도 */
 .temp-bar{margin:12px 16px 0;display:flex;align-items:center;gap:10px;
   background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 14px;}
@@ -49,7 +34,7 @@ header{padding:18px 16px 10px;}
 .temp-attack{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
 .temp-neutral{background:rgba(255,204,0,.08);color:var(--yellow);border:1px solid rgba(255,204,0,.3);}
 .temp-defense{background:rgba(255,58,58,.1);color:var(--red);border:1px solid rgba(255,58,58,.3);}
-.temp-detail{font-family:var(--mono);font-size:10.5px;color:var(--text2);line-height:1.5;flex:1;}
+.temp-detail{font-family:var(--mono);font-size:9.5px;color:var(--text2);line-height:1.5;flex:1;}
 .warm-btn{font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(0,212,255,.07);
   border:1px solid rgba(0,212,255,.3);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;}
 .warm-btn.done{color:var(--green);border-color:rgba(0,255,136,.3);}
@@ -127,7 +112,6 @@ section{margin-top:22px;}
 .h-price{font-size:13px;font-weight:700;}
 .h-pl{font-size:10px;margin-top:1px;}
 .up{color:var(--red);} .down{color:#4d8dff;} /* 한국식: 상승 빨강 */
-.spark{flex:none;margin:0 8px 0 4px;opacity:.9;}
 .h-pill{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:5px 8px;border-radius:8px;white-space:nowrap;}
 .hp-keep{background:rgba(0,255,136,.1);color:var(--green);}
 .hp-warn{background:rgba(255,204,0,.1);color:var(--yellow);}
@@ -161,16 +145,127 @@ footer b{color:var(--text2);}
   border:1px solid var(--border);border-radius:12px;padding:10px 16px;font-size:12px;transition:transform .25s;z-index:99;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 .spin{opacity:.55;pointer-events:none;}
+
+
+/* ━━━━━━━━━ UTOPIA v3.3 — responsive command center skin ━━━━━━━━━ */
+:root{
+  --utopia-bg1:#020711; --utopia-bg2:#071426; --glass:rgba(11,19,35,.72);
+  --neon-blue:#00d4ff; --neon-gold:#ffcc55; --neon-green:#00ff99;
+}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(0,212,255,.18), transparent 28%),
+    radial-gradient(circle at 85% 12%, rgba(184,132,255,.12), transparent 30%),
+    linear-gradient(180deg,var(--utopia-bg1),#030813 45%,#02050b);
+}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background-image:linear-gradient(rgba(0,212,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);
+  background-size:48px 48px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),transparent 85%);}
+.utopia-shell{width:100%;}
+.side{display:none;}
+.panel,.temp-bar,.cnt,details.sys{backdrop-filter:blur(18px);background:linear-gradient(180deg,rgba(13,22,41,.86),rgba(8,14,27,.88));box-shadow:0 16px 40px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.035);} 
+.panel{position:relative;overflow:hidden;}
+.panel::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.45),transparent);opacity:.55;}
+.chip,.hold,.sig,.jm{box-shadow:inset 0 1px 0 rgba(255,255,255,.025);} 
+
+@media (min-width:640px){
+  body{font-size:15px;padding-bottom:24px;overflow-x:hidden;}
+  .utopia-shell{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:190px minmax(0,1fr);gap:0;min-height:100vh;}
+  .side{display:flex;position:sticky;top:0;height:100vh;align-self:start;flex-direction:column;align-items:center;padding:28px 18px;background:linear-gradient(180deg,rgba(4,16,32,.86),rgba(5,10,20,.72));border-right:1px solid rgba(0,212,255,.16);box-shadow:18px 0 60px rgba(0,0,0,.22);}
+  .side-logo{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:42px;background:radial-gradient(circle,rgba(184,132,255,.28),rgba(0,212,255,.08) 55%,rgba(0,0,0,.15));border:1px solid rgba(184,132,255,.35);box-shadow:0 0 36px rgba(184,132,255,.22), inset 0 0 28px rgba(0,212,255,.12);}
+  .side-name{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:1px;margin-top:12px;color:#eaf6ff;}
+  .side-role{font-family:var(--mono);font-size:10px;color:var(--purple);border:1px solid rgba(184,132,255,.25);padding:4px 10px;border-radius:999px;margin-top:5px;background:rgba(184,132,255,.08);}
+  .side-nav{width:100%;margin-top:34px;display:grid;gap:9px;}
+  .side-nav a{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text2);font-size:13px;border:1px solid transparent;border-radius:12px;padding:12px 13px;}
+  .side-nav a.active,.side-nav a:hover{color:var(--teal);background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.18);box-shadow:inset 3px 0 0 rgba(0,212,255,.55);} 
+  .side-foot{margin-top:auto;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.7;}
+  .wrap{max-width:1260px;width:100%;padding:0 28px 36px;margin:0;}
+  header{padding:28px 0 14px;display:grid;grid-template-columns:1fr 270px;gap:20px;align-items:start;}
+  .hd-title{font-size:38px;letter-spacing:2px;text-shadow:0 0 28px rgba(0,212,255,.28);}
+  .hd-sub{font-size:10px;letter-spacing:4px;}
+  .hd-clock{background:rgba(13,22,41,.7);border:1px solid rgba(0,212,255,.14);border-radius:16px;padding:13px 16px;box-shadow:0 12px 28px rgba(0,0,0,.18);} 
+  .hd-time{font-size:27px;color:#f2f7ff;}.hd-date{font-size:11px;}
+  .finder{grid-column:1 / -1;margin-top:0;max-width:520px;justify-self:end;opacity:.94;}
+  .temp-bar{margin:0 0 14px;min-height:72px;display:grid;grid-template-columns:170px minmax(0,1fr) 100px;}
+  .temp-pill{font-size:17px;text-align:center;padding:11px 12px;border-radius:15px;text-transform:uppercase;}
+  .temp-detail{font-size:13px;line-height:1.7;columns:2;column-gap:28px;}
+  .counts{margin:0 0 22px;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .cnt{padding:18px 10px;border-radius:16px;background:linear-gradient(180deg,rgba(13,22,41,.88),rgba(8,14,27,.9));}
+  .cnt-num{font-size:38px;}.cnt-lbl{font-size:11px;}
+  section{margin-top:30px;}
+  .sec-head{padding:0 0 12px;}
+  .sec-num{font-size:27px;}.sec-q{font-size:13px;}
+  .panel{margin:0;border-radius:20px;padding:20px;}
+  .chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+  .chip{min-height:72px;align-items:flex-start;flex-direction:column;justify-content:center;border-radius:16px;padding:13px 14px;position:relative;background:linear-gradient(180deg,rgba(17,30,55,.86),rgba(10,17,32,.92));}
+  .chip .g{font-size:13px;padding:3px 8px;}.chip .x{position:absolute;right:10px;top:8px;}
+  .scan-row,.scan-tools{max-width:760px;}
+  .j-name{font-size:26px}.j-grade{font-size:58px;}
+  .j-metrics{gap:12px}.jm{padding:17px 12px;border-radius:16px}.jm-v{font-size:25px}.jm-l{font-size:10px}
+  .j-verdict{font-size:14px;padding:14px 16px;}.j-state{font-size:15px;padding:14px;}
+  .sig{min-height:62px;border-radius:15px;padding:14px 16px;}.sig-ico{font-size:25px}.sig-body{font-size:15px}.sig-meta{font-size:11px;}
+  .hold{min-height:76px;border-radius:16px;padding:14px 16px;}
+  .h-name{font-size:17px}.h-sub{font-size:11px}.h-price{font-size:18px}.h-pl{font-size:12px}.h-pill{font-size:12px;padding:7px 11px;}
+  details.sys{margin:30px 0 0;border-radius:18px;}
+  .sys-grid{grid-template-columns:repeat(3,1fr);}
+  footer{font-size:11px;margin-top:28px;}
+}
+
+
+/* ━━ v3.3 이식: Name Finder + spark ━━ */
+/* 🔎 Name Finder — 토스 대응: 코드 → 이름. 어두운 HUB 속 유일한 밝은 띠 */
+.finder{display:flex;align-items:center;gap:8px;margin-top:12px;
+  background:linear-gradient(135deg,#fdf6e3,#f7ecd4);border-radius:13px;padding:9px 12px;
+  box-shadow:0 2px 14px rgba(245,185,66,.18);}
+.finder .f-ico{font-size:14px;}
+.finder input{flex:0 0 88px;background:transparent;border:none;outline:none;
+  font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:2px;color:#3a2f14;}
+.finder input::placeholder{color:#b3a37c;font-size:11px;letter-spacing:0;font-weight:400;}
+.finder .f-name{flex:1;font-size:16px;font-weight:800;color:#5c4a1a;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:19px;}
+.finder .f-name.miss{font-size:11px;font-weight:500;color:#a08c5a;}
+.finder .f-add{flex:none;background:#3a2f14;color:#fdf6e3;border:none;border-radius:9px;
+  font-size:11px;font-weight:700;padding:6px 10px;display:none;}
+.finder .f-add.on{display:block;}
+.spark{flex:none;margin:0 8px 0 4px;opacity:.9;}
+
+/* ━━ v3.3.1: 모바일 하단 네비 (사이드바 대체) ━━ */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:90;display:flex;
+  background:linear-gradient(180deg,rgba(6,14,28,.92),rgba(4,10,20,.97));
+  backdrop-filter:blur(12px);border-top:1px solid rgba(0,212,255,.18);
+  padding:7px 4px calc(7px + env(safe-area-inset-bottom));}
+.bnav a{flex:1;text-align:center;text-decoration:none;color:var(--text2);
+  font-size:9.5px;line-height:1.5;}
+.bnav a .bi{display:block;font-size:17px;}
+.bnav a:active{color:var(--teal);}
+body{padding-bottom:74px;}
+@media (min-width:640px){ .bnav{display:none;} body{padding-bottom:24px;} }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="utopia-shell">
+  <aside class="side">
+    <div class="side-logo">🔱</div>
+    <div class="side-name">림빅</div>
+    <div class="side-role">MASTER</div>
+    <nav class="side-nav">
+      <a href="#" class="active" onclick="scrollToSec('secScan');return false;">🏠 대시보드</a>
+      <a href="#" onclick="scrollToSec('secScan');return false;">🔍 발견 SCAN</a>
+      <a href="#" onclick="scrollToSec('secJudge');return false;">🎯 판단 JUDGE</a>
+      <a href="#" onclick="scrollToSec('secStrike');return false;">⚡ 실행 STRIKE</a>
+      <a href="#" onclick="scrollToSec('secWave');return false;">🌊 보유 WAVE</a>
+      <a href="#" onclick="document.querySelector('details.sys').open=true;document.querySelector('details.sys').scrollIntoView({behavior:'smooth'});return false;">⚙ 시스템</a>
+    </nav>
+    <div class="side-foot">TRINITY<br>Built for Disciplined Traders</div>
+  </aside>
+  <div class="wrap">
 
 <header>
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.2</div>
+      <div class="hd-sub">DECISION CENTER · v3.3 UTOPIA</div>
     </div>
     <div class="hd-clock">
       <div class="hd-time" id="clock">--:--:--</div>
@@ -231,8 +326,6 @@ footer b{color:var(--text2);}
     <div id="sigList"><div class="sig-empty">신호 없음 — 장중 BREAK·FIRE 신호가 여기 모입니다</div></div>
     <div class="scan-tools" style="margin-top:9px;">
       <button class="btn btn-yellow" onclick="go('strike_check_v2_3.html')">⚡ Strike Check 열기</button>
-    </div>
-    <div class="scan-tools" style="margin-top:7px;">
       <button class="btn btn-ghost" onclick="openHantu()">🏦 한투 MTS</button>
       <button class="btn btn-ghost" onclick="openToss()">💸 토스</button>
     </div>
@@ -273,10 +366,18 @@ footer b{color:var(--text2);}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.0 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.3 UTOPIA 🔱
 </footer>
 
+  </div>
 </div>
+<nav class="bnav">
+  <a href="#" onclick="scrollToSec('secScan');return false;"><span class="bi">🔍</span>SCAN</a>
+  <a href="#" onclick="scrollToSec('secJudge');return false;"><span class="bi">🎯</span>JUDGE</a>
+  <a href="#" onclick="scrollToSec('secStrike');return false;"><span class="bi">⚡</span>STRIKE</a>
+  <a href="#" onclick="scrollToSec('secWave');return false;"><span class="bi">🌊</span>WAVE</a>
+  <a href="#" onclick="const s=document.querySelector('details.sys');s.open=true;s.scrollIntoView({behavior:'smooth'});return false;"><span class="bi">⚙</span>SYSTEM</a>
+</nav>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -322,9 +423,7 @@ async function fetchTemp(){
     if(avg >= 0.5){ pill.className='temp-pill temp-attack'; pill.textContent='🟢 공격 가능'; }
     else if(avg <= -0.5){ pill.className='temp-pill temp-defense'; pill.textContent='🔴 방어'; }
     else { pill.className='temp-pill temp-neutral'; pill.textContent='🟡 중립'; }
-    const f = (x)=>{ if(x==null) return '<span style="color:var(--text3)">--</span>';
-      const v=Number(x), c=v>0?'#ff5d5d':(v<0?'#5b9bff':'var(--text2)');
-      return `<b style="color:${c}">${v>0?'+':''}${v.toFixed(2)}%</b>`; };
+    const f = (x)=> x==null?'--':(x>0?'+':'')+Number(x).toFixed(2)+'%';
     $('tempDetail').innerHTML = `KOSPI ${f(ks)} · KOSDAQ ${f(kq)}<br>NASDAQ ${f(d.nasdaq?.change_pct)} · S&P ${f((d.sp500||d.snp500)?.change_pct)}`;
   }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; }
 }
@@ -526,7 +625,7 @@ async function sentinelBoot(){
   }catch(e){ addFeed('🛰 보초 상태 조회 실패 — 웜업 필요할 수 있어요'); }
 }
 
-// ━━━━━━━━━ 2. 판단 (오늘 만든 /judge + mri SSOT) ━━━━━━━━━
+// ━━━━━━━━━ 2. 판단// ━━━━━━━━━ 2. 판단 (오늘 만든 /judge + mri SSOT) ━━━━━━━━━
 async function fetchJudge(q){
   try{
     const r = await fetch(`${RAIL_MAIN}/judge/${encodeURIComponent(q)}`,{signal:AbortSignal.timeout(12000)});
@@ -561,6 +660,7 @@ function renderJudge(d){
   $('judgeCard').innerHTML = `
     <div class="j-top">
       <div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div>
+      ${sparkSVG(d.spark)}
       <div class="j-grade" style="color:${gc}">${m.grade}<small>${m.grade_label||''}</small></div>
     </div>
     <div class="j-metrics">
@@ -675,7 +775,7 @@ function addFeed(text){
 
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
-addFeed('🔱 Trinity HUB v3.0 — 결정 중심 모드 온라인');
+addFeed('🔱 Trinity HUB v3.3 UTOPIA — 채피 외형 × 써니 기능 합체');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
