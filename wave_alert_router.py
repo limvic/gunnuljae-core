@@ -1,9 +1,19 @@
 # wave_alert_router.py
 # ─────────────────────────────────────────────────────────────────────────────
-# Wave Alert Engine v2.0  (Wave Score 도입)
+# Wave Alert Engine v2.1  (이름 폴백 강화)
 # 목적: Universe 종목을 5개 항목 가중점수(Wave Score 0~100)로 평가해
 #       후보별 score + reason 을 통째로 내려준다. 컷(느슨70/보통80/엄격90)은
 #       프론트 슬라이더에서 결정 → 백엔드는 점수만, 필터는 클라.
+#
+# v2.0 → v2.1 변경 (2026.06.12):
+#   - [버그] 텔레그램 알림에 "024110 / 024110"처럼 이름이 코드로 표시되는 증상.
+#     원인: KIS hts_kor_isnm 빈 값 + universe 이름도 코드/빈값인 경우
+#           기존 2단 폴백(KIS→universe)이 모두 코드로 떨어짐.
+#   - [수정] 이름 4단 폴백으로 확장:
+#       ① KIS 실측 이름 → ② universe 이름 → ③ main_safe 주입 resolve_name
+#       → ④ 파일 내 FALLBACK_NAMES → ⑤ 최후 코드
+#     · resolve_name 주입은 선택(기본 None) — main_safe 수정 없이도 기존과 동일 동작.
+#     · 최종적으로 코드로 떨어지면 [NAME-MISS] 경고 로그 → 다음 누락 즉시 발견.
 #
 # v1.0 → v2.0 변경:
 #   - (구) 게이트마다 통과/탈락 하드필터, 통과분만 alert
@@ -61,6 +71,13 @@ FUTURE_WAVE = {
     # 두산로보틱스(8위) 등 코드 미확정분은 의도적으로 비움 → 중립 처리
 }
 
+# ── 이름 최후 폴백표 (KIS·universe·resolve_name 모두 실패 시) ─────────────────
+# ⚠️ 실측 확인된 누락 종목만 등록. 추측 금지.
+#    2026.06.12 실전 누락: 024110 (KIS 빈 이름 실측 확인)
+FALLBACK_NAMES = {
+    "024110": "기업은행",
+}
+
 # ── main_safe 주입 슬롯 ──────────────────────────────────────────────────────
 _DEPS = {
     "get_token":        None,
@@ -70,6 +87,7 @@ _DEPS = {
     "is_market_open":   None,
     "build_headers":    None,
     "fetch_daily_rows": None,
+    "resolve_name":     None,   # 선택 주입: main_safe 3단 폴백(HUB 박제→JUDGE_STOCK_MAP)
     "tg_token":         "",
     "tg_chat_id":       "",
     "kst":              None,
@@ -79,8 +97,10 @@ _DEPS = {
 
 def register_wave_alert(*, get_token, fetch_price, judge_52w, send_telegram,
                         is_market_open, build_headers, fetch_daily_rows,
-                        tg_token, tg_chat_id, kst, universe):
-    """main_safe.py 기동 시 1회 호출하여 검증된 의존성 주입."""
+                        tg_token, tg_chat_id, kst, universe,
+                        resolve_name=None):
+    """main_safe.py 기동 시 1회 호출하여 검증된 의존성 주입.
+    resolve_name: code -> 이름 또는 None. 선택 인자 — 안 넘기면 기존과 동일 동작."""
     _DEPS.update(
         get_token=get_token,
         fetch_price=fetch_price,
@@ -89,12 +109,14 @@ def register_wave_alert(*, get_token, fetch_price, judge_52w, send_telegram,
         is_market_open=is_market_open,
         build_headers=build_headers,
         fetch_daily_rows=fetch_daily_rows,
+        resolve_name=resolve_name,
         tg_token=tg_token,
         tg_chat_id=tg_chat_id,
         kst=kst,
         universe=universe,
     )
-    logger.info(f"[WAVE-ALERT] 의존성 주입 완료 — universe={len(universe)}종목")
+    logger.info(f"[WAVE-ALERT] 의존성 주입 완료 — universe={len(universe)}종목 "
+                f"resolve_name={'주입됨' if resolve_name else '미주입(폴백표만 사용)'}")
 
 
 def _ready() -> bool:
@@ -105,6 +127,36 @@ def _ready() -> bool:
 
 def _clamp(x, lo=0.0, hi=1.0):
     return lo if x < lo else hi if x > hi else x
+
+
+# ── 이름 4단 폴백 ─────────────────────────────────────────────────────────────
+def _resolve_display_name(kis_name: str, universe_name: str, code: str) -> str:
+    """① KIS 실측 → ② universe 이름 → ③ 주입 resolve_name → ④ FALLBACK_NAMES → ⑤ 코드.
+    '이름이 코드와 동일'인 값은 이름으로 취급하지 않는다."""
+    def _valid(n):
+        n = (n or "").strip()
+        return n if (n and n != code) else ""
+
+    name = _valid(kis_name) or _valid(universe_name)
+    if name:
+        return name
+
+    resolver = _DEPS.get("resolve_name")
+    if resolver:
+        try:
+            name = _valid(resolver(code))
+            if name:
+                return name
+        except Exception as e:
+            logger.warning(f"[NAME-RESOLVER-FAIL] {code} -> {e}")
+
+    name = _valid(FALLBACK_NAMES.get(code))
+    if name:
+        return name
+
+    logger.warning(f"[NAME-MISS] {code} — 모든 폴백 실패, 코드로 표시됨. "
+                   f"FALLBACK_NAMES 또는 universe 이름 보강 필요.")
+    return code
 
 
 # ── Wave Score 계산 (5항목 가중) ──────────────────────────────────────────────
@@ -177,10 +229,9 @@ async def _check_one(name: str, code: str, token: str) -> tuple:
     change_pct = float(p.get("change_pct", 0))
     cur_price  = int(p.get("price", 0))
     cur_vol    = int(p.get("volume", 0))
-    # 이름: KIS 실시간 종목명 우선 → 코드뿐이면 큐레이트 유니버스 이름 → 최후 코드
-    # (KIS hts_kor_isnm가 빈 값으로 오는 종목 대응: 035420 NAVER 등)
-    p_name = (p.get("name") or "").strip()
-    disp_name = (p_name if (p_name and p_name != code) else "") or name or code
+    # 이름 4단 폴백: KIS 실측 → universe → 주입 resolve_name → FALLBACK_NAMES → 코드
+    # (KIS hts_kor_isnm 빈 값 대응: 035420 NAVER · 024110 기업은행 실측 사례)
+    disp_name = _resolve_display_name(p.get("name"), name, code)
 
     # KIS 부하 가드: +1% 미만은 일봉 호출 전 컷 (점수 미달 확실)
     if change_pct < PRE_SCAN_FLOOR:
