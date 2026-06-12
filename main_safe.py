@@ -3376,6 +3376,7 @@ SENTINEL_PAUSE_BETWEEN = 0.5        # 종목 간 호출 간격 (KIS 예의)
 _sentinel = {
     "watch":     [],     # ["005930", ...]
     "holdings":  [],     # [{"code": "042700", "buy_price": 123400}, ...]
+    "names":     {},     # {"005930": "삼성전자"} — HUB가 전달한 이름 (KIS 빈 이름 대비)
     "alert_log": {},     # {"005930|CANDIDATE": "2026-06-12"} — 당일 중복 방지
     "last_scan": None,   # ISO 시각 (상태 확인용)
     "alerts_sent_today": 0,
@@ -3391,6 +3392,7 @@ def _sentinel_disk_load():
             d = _sentinel_json.load(f)
         _sentinel["watch"]     = list(d.get("watch", []))
         _sentinel["holdings"]  = list(d.get("holdings", []))
+        _sentinel["names"]     = dict(d.get("names", {}))
         _sentinel["alert_log"] = dict(d.get("alert_log", {}))
         print(f"[SENTINEL] 📂 저장소 복원 — watch {len(_sentinel['watch'])} · holdings {len(_sentinel['holdings'])}")
     except FileNotFoundError:
@@ -3404,6 +3406,7 @@ def _sentinel_disk_save():
             _sentinel_json.dump({
                 "watch": _sentinel["watch"],
                 "holdings": _sentinel["holdings"],
+                "names": _sentinel["names"],
                 "alert_log": _sentinel["alert_log"],
             }, f, ensure_ascii=False)
     except Exception as e:
@@ -3422,6 +3425,19 @@ def load_holdings() -> list:
 def save_holdings(holds: list):
     _sentinel["holdings"] = holds
     _sentinel_disk_save()
+
+def _sentinel_name(code: str, raw_name: str = "") -> str:
+    """이름 3단 폴백: KIS 실측 → HUB가 전달한 이름 → JUDGE_STOCK_MAP → 코드.
+    KIS가 hts_kor_isnm을 빈 값으로 주는 경우(NAVER 전례)에도 알림에 이름이 나오게."""
+    if raw_name and raw_name != code:
+        return raw_name
+    n = _sentinel["names"].get(code, "")
+    if n:
+        return n
+    for nm, c in JUDGE_STOCK_MAP.items():
+        if c == code:
+            return nm
+    return code
 
 # ── 중복 알림 정책 (채피 스펙 3) ─────────────────────────────────────────────
 def _sentinel_today() -> str:
@@ -3468,8 +3484,9 @@ async def _sentinel_check_watch(code: str):
         if _sentinel_should_alert(code, "CANDIDATE"):
             stop = sup.get("stop")
             risk = sup.get("risk_pct")
+            disp = _sentinel_name(code, sup.get("name") or "")
             lines = [
-                f"🎯 <b>진입 후보 — {sup.get('name', code)}</b>",
+                f"🎯 <b>진입 후보 — {disp}</b>",
                 f"Grade <b>{grade}</b> · R/R <b>{rr}</b>",
                 f"현재가 {sup.get('price', 0):,}원",
             ]
@@ -3491,7 +3508,7 @@ async def _sentinel_check_holding(h: dict):
     sup = await support_zone(code, mode="balance")
     price = sup.get("price", 0)
     stop  = sup.get("stop")
-    name  = sup.get("name", code)
+    name  = _sentinel_name(code, sup.get("name") or "")
     if not price or not stop:
         return   # 실측 불가 → 추측 알림 금지 (vwap=null 원칙과 동일)
     buy = h.get("buy_price", 0)
@@ -3550,7 +3567,8 @@ async def sentinel_loop():
 # ── API — HUB v3 동기화 + 운영 확인 ──────────────────────────────────────────
 @app.get("/sentinel/watch")
 async def sentinel_watch_get():
-    return {"watch": load_watchlist(), "count": len(load_watchlist())}
+    w = load_watchlist()
+    return {"watch": w, "names": {c: _sentinel_name(c) for c in w}, "count": len(w)}
 
 @app.post("/sentinel/watch")
 async def sentinel_watch_set(payload: dict = Body(...)):
@@ -3563,12 +3581,19 @@ async def sentinel_watch_set(payload: dict = Body(...)):
         c = str(c).strip()
         if len(c) == 6 and c.isdigit() and c not in clean:
             clean.append(c)
-    save_watchlist(clean)
+    names = payload.get("names") or {}
+    if isinstance(names, dict):
+        for c, n in names.items():
+            c, n = str(c).strip(), str(n).strip()
+            if len(c) == 6 and c.isdigit() and n and n != c:
+                _sentinel["names"][c] = n
+    save_watchlist(clean)   # names도 함께 디스크 저장됨
     return {"ok": True, "watch": clean, "count": len(clean)}
 
 @app.get("/sentinel/holding")
 async def sentinel_holding_get():
-    return {"holdings": load_holdings(), "count": len(load_holdings())}
+    hs = [{**h, "name": _sentinel_name(h.get("code", ""))} for h in load_holdings()]
+    return {"holdings": hs, "count": len(hs)}
 
 @app.post("/sentinel/holding")
 async def sentinel_holding_set(payload: dict = Body(...)):
@@ -3584,6 +3609,9 @@ async def sentinel_holding_set(payload: dict = Body(...)):
                 bp = int(h.get("buy_price", 0) or 0)
             except (TypeError, ValueError):
                 bp = 0
+            nm = str(h.get("name", "")).strip()
+            if nm and nm != code:
+                _sentinel["names"][code] = nm
             clean.append({"code": code, "buy_price": bp})
     save_holdings(clean)
     return {"ok": True, "holdings": clean, "count": len(clean)}
