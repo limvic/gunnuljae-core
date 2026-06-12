@@ -2954,15 +2954,16 @@ async def judge_step1(query: str):
         w52l, w52h, w52_source = w52l_raw, w52h_raw, "price_api_raw_" + str(w52_src)
 
     raw_name = (o.get("hts_kor_isnm") or "").strip()
-    name_out = raw_name if raw_name else code
+    name_out = raw_name if raw_name else _sentinel_name(code)  # 빈 이름 → HUB 박제 이름/종목맵 폴백
     sector_raw = (o.get("bstp_kor_isnm") or "").strip()
 
     # ── v2.0 Day 2: MRI 3축 동승 (Grade · R/R · Mode) ─────────────────────
     # SSOT 원칙: 재계산 금지 — /support와 '같은 함수'를 내부 호출해 같은 숫자만 사용.
     # MRI가 실패해도 Judge 본 기능은 유지 (mri=null + 사유 노출, 조용히 안 넘김).
-    mri, mri_error = None, None
+    mri, mri_error, spark = None, None, None
     try:
         sup = await support_zone(code, mode="balance")
+        spark = sup.get("spark")
         mri = {
             "grade": sup["grade"], "grade_label": sup["grade_label"],
             "rr": sup["rr"], "rr_target": sup["rr_target"],
@@ -2992,6 +2993,7 @@ async def judge_step1(query: str):
         "w52_high": w52h,
         "recovery": round((price - w52l) / w52l * 100, 1) if w52l else 0,
         "w52_source": w52_source,
+        "spark": spark,                   # 최근 30일 종가 — HUB 미니 차트용
         "mri": mri,                       # v2.0 — Grade·R/R·Mode 3축 (SSOT)
         "mri_error": mri_error,           # 실패 시 사유 노출 (실측 우선 원칙)
         "_debug_hts": o.get("hts_kor_isnm"),
@@ -3298,6 +3300,7 @@ async def support_zone(query: str, mode: str = "balance"):
         "code": code, "name": name, "sector": sector,
         "mode": mode, "mode_label": SUPPORT_MODE_LABEL[mode],
         "price": price, "prev_close": prev_close,
+        "spark": list(reversed(closes[:30])),   # 최근 30일 종가 (이미 받은 일봉 재활용 — KIS 추가 호출 0)
         "vwap": vwap, "vwap_source": vwap_src,
         "above_vwap": (vwap is not None and price >= vwap),
         # 핵심 결과 — 3축: Grade(자리) · R/R(효율) · Mode(손절폭)
