@@ -173,7 +173,7 @@ footer b{color:var(--text2);}
 <!-- 카운트 -->
 <div class="counts">
   <div class="cnt cnt-scan" onclick="scrollToSec('secScan')"><div class="cnt-num" id="cntScan">0</div><div class="cnt-lbl">후보</div></div>
-  <div class="cnt cnt-judge" onclick="scrollToSec('secJudge')"><div class="cnt-num" id="cntGo">0</div><div class="cnt-lbl">진입 가능</div></div>
+  <div class="cnt cnt-judge" onclick="showGoList()"><div class="cnt-num" id="cntGo">0</div><div class="cnt-lbl">진입 가능</div></div>
   <div class="cnt cnt-wave" onclick="scrollToSec('secWave')"><div class="cnt-num" id="cntHold">0</div><div class="cnt-lbl">보유 관리</div></div>
 </div>
 
@@ -337,7 +337,7 @@ function renderChips(){
       <span class="x" onclick="event.stopPropagation();rmWatch(${i})">✕</span>
     </div>`).join('');
   $('cntScan').textContent = watch.length;
-  updateGoCount(); save(LS_WATCH, watch);
+  updateGoCount(); save(LS_WATCH, watch); syncSentinelWatch();
 }
 function rmWatch(i){ watch.splice(i,1); renderChips(); }
 function presetTop10(){
@@ -368,6 +368,68 @@ async function scanAll(){
 function updateGoCount(){
   const n = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')).length;
   $('cntGo').textContent = n;
+}
+function goList(){
+  return Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'));
+}
+function showGoList(){
+  const list = goList();
+  scrollToSec('secJudge');
+  if(!list.length){
+    $('judgeCard').innerHTML='<div class="j-empty">진입 가능 종목 없음 — 🔍 전체 스캔으로 Grade를 갱신해보세요</div>';
+    return;
+  }
+  $('judgeCard').innerHTML =
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">✅ 진입 가능 '+list.length+'종목 — 탭하면 MRI 카드</div>' +
+    list.map(d=>{
+      const nm = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
+      return `<div class="hold" onclick="loadJudge('${d.code}')" style="cursor:pointer;">
+        <div class="h-info"><div class="h-name">${nm}</div>
+          <div class="h-sub">Grade ${d.mri.grade} · R/R ${d.mri.rr??'-'} · STOP ${won(d.mri.stop)}</div></div>
+        <div class="h-num"><div class="h-price">${won(d.price)}</div></div>
+        <div class="h-pill hp-keep">진입 후보</div>
+      </div>`;
+    }).join('');
+}
+
+// ━━━━━━━━━ 🛰 Trinity Sentinel 동기화 (v3.1) ━━━━━━━━━
+// HUB가 주인, 서버는 복제본 — 워치/보유가 바뀔 때마다 보초에게 자동 전달.
+// HUB를 열기만 해도 1회 동기화 → Railway 재배포로 서버 명단이 증발해도 자동 복구.
+let _swT=null,_shT=null,_swSig='',_shSig='';
+function syncSentinelWatch(){
+  const sig = watch.map(w=>w.code).join(',');
+  if(sig===_swSig) return;                      // 코드 변동 없으면 침묵 (grade 갱신 등)
+  clearTimeout(_swT);
+  _swT=setTimeout(async()=>{
+    try{
+      const r=await fetch(`${RAIL_MAIN}/sentinel/watch`,{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({codes:watch.map(w=>w.code), names:Object.fromEntries(watch.filter(w=>w.name&&w.name!==w.code).map(w=>[w.code,w.name]))})});
+      const d=await r.json();
+      if(d.ok){ _swSig=sig; addFeed(`🛰 보초 워치 동기화 — ${d.count}종목`); }
+    }catch(e){ addFeed('🛰 보초 워치 동기화 실패 — 네트워크 확인'); }
+  },1500);
+}
+function syncSentinelHold(){
+  const sig = holds.map(h=>h.code+':'+(h.buy||0)).join(',');
+  if(sig===_shSig) return;
+  clearTimeout(_shT);
+  _shT=setTimeout(async()=>{
+    try{
+      const r=await fetch(`${RAIL_MAIN}/sentinel/holding`,{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({holdings:holds.map(h=>({code:h.code,buy_price:h.buy||0,name:h.name||''}))})});
+      const d=await r.json();
+      if(d.ok){ _shSig=sig; addFeed(`🛰 보초 보유 동기화 — ${d.count}종목 손절선 감시`); }
+    }catch(e){ addFeed('🛰 보초 보유 동기화 실패 — 네트워크 확인'); }
+  },1500);
+}
+async function sentinelBoot(){
+  try{
+    const r=await fetch(`${RAIL_MAIN}/sentinel/status`,{signal:AbortSignal.timeout(8000)});
+    const d=await r.json();
+    addFeed(`🛰 보초 ${d.market_open_now?'순찰 중':'장외 대기'} · 오늘 알림 ${d.alerts_sent_today}건 · 서버 워치 ${d.watch_count}/보유 ${d.holdings_count}`);
+  }catch(e){ addFeed('🛰 보초 상태 조회 실패 — 웜업 필요할 수 있어요'); }
 }
 
 // ━━━━━━━━━ 2. 판단 (오늘 만든 /judge + mri SSOT) ━━━━━━━━━
@@ -471,7 +533,7 @@ function renderHolds(){
     </div>`;
   }).join('');
   $('cntHold').textContent = holds.length;
-  save(LS_HOLD, holds);
+  save(LS_HOLD, holds); syncSentinelHold();
 }
 function rmHold(i){ holds.splice(i,1); renderHolds(); }
 async function addHold(){
@@ -517,7 +579,7 @@ function addFeed(text){
 }
 
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
-renderChips(); renderHolds(); fetchTemp();
+renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 addFeed('🔱 Trinity HUB v3.0 — 결정 중심 모드 온라인');
 setInterval(fetchTemp, 90000);
 </script>
