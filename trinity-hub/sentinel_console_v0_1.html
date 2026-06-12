@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>🛰 Sentinel Console v0.1</title>
+<style>
+:root{
+  --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
+  --text:#dfe6f3; --text2:#8b97b0; --text3:#566179;
+  --teal:#00d4ff; --green:#00ff88; --yellow:#ffcc00; --red:#ff3a3a; --purple:#b884ff;
+  --mono:'JetBrains Mono','Roboto Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Pretendard',-apple-system,sans-serif;
+  padding:16px 14px 60px;max-width:560px;margin:0 auto}
+h1{font-size:1.15rem;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+h1 .v{font-family:var(--mono);font-size:.7rem;color:var(--text3);font-weight:400}
+.motto{font-size:.72rem;color:var(--text3);margin:4px 0 14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:14px;margin-bottom:14px}
+.card h2{font-size:.8rem;color:var(--text2);letter-spacing:.06em;margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:center}
+.card h2 .cnt{font-family:var(--mono);color:var(--teal);font-size:.75rem}
+/* 상태 줄 */
+#statline{font-family:var(--mono);font-size:.72rem;line-height:1.7;color:var(--text2);
+  word-break:break-all}
+#statline b{color:var(--green);font-weight:600}
+#statline .off{color:var(--text3)}
+/* 입력 줄 */
+.inrow{display:flex;gap:8px;margin-bottom:10px}
+input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:11px 12px;font-size:.9rem;font-family:var(--mono);min-width:0}
+input::placeholder{color:var(--text3);font-family:'Pretendard',sans-serif;font-size:.8rem}
+input:focus{outline:none;border-color:var(--teal)}
+button{border:none;border-radius:10px;padding:11px 14px;font-size:.85rem;font-weight:600;
+  cursor:pointer;background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+button:active{transform:scale(.97)}
+.btn-add{color:var(--teal);border-color:rgba(0,212,255,.35)}
+.btn-sync{width:100%;background:rgba(0,212,255,.1);color:var(--teal);
+  border:1px solid rgba(0,212,255,.4);padding:13px;font-size:.9rem;border-radius:11px}
+.btn-sync.dirty{background:rgba(255,204,0,.12);color:var(--yellow);border-color:rgba(255,204,0,.45)}
+/* 칩 */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:20px}
+.chip{display:flex;align-items:center;gap:7px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:999px;padding:7px 7px 7px 13px;
+  font-family:var(--mono);font-size:.78rem}
+.chip .nm{color:var(--text);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .cd{color:var(--text3);font-size:.68rem}
+.chip .x{width:22px;height:22px;border-radius:50%;background:rgba(255,58,58,.12);
+  color:var(--red);display:flex;align-items:center;justify-content:center;font-size:.75rem;
+  border:none;padding:0}
+.chip .bp{color:var(--purple);font-size:.7rem}
+.empty{font-size:.75rem;color:var(--text3);padding:4px 2px}
+/* 토스트 */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:11px 18px;border-radius:999px;font-size:.82rem;transition:transform .25s;
+  z-index:9;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.foot{font-size:.68rem;color:var(--text3);text-align:center;margin-top:18px;line-height:1.8}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<h1>🛰 Sentinel Console <span class="v">v0.1</span></h1>
+<div class="motto">"림빅이 종목을 찾지 않게 만든다." — 보초에게 명단을 넘기는 곳</div>
+
+<div class="card">
+  <h2>보초 상태 <button onclick="loadStatus()" style="font-size:.72rem;padding:6px 10px">새로고침</button></h2>
+  <div id="statline">불러오는 중…</div>
+</div>
+
+<div class="card">
+  <h2>🎯 워치리스트 <span class="cnt" id="wCnt">0</span></h2>
+  <div class="inrow">
+    <input id="wIn" placeholder="6자리 코드 (예: 005930)" inputmode="numeric" maxlength="6">
+    <button class="btn-add" onclick="addWatch()">담기</button>
+  </div>
+  <div class="chips" id="wChips"></div>
+  <button class="btn-sync" id="wSync" onclick="syncWatch()">📡 보초에게 워치 전달</button>
+</div>
+
+<div class="card">
+  <h2>🌊 보유 (손절선 감시) <span class="cnt" id="hCnt">0</span></h2>
+  <div class="inrow">
+    <input id="hIn" placeholder="코드" inputmode="numeric" maxlength="6" style="flex:.8">
+    <input id="hBp" placeholder="매수가 (원)" inputmode="numeric" style="flex:1">
+    <button class="btn-add" onclick="addHold()">담기</button>
+  </div>
+  <div class="chips" id="hChips"></div>
+  <button class="btn-sync" id="hSync" onclick="syncHold()">📡 보초에게 보유 전달</button>
+</div>
+
+<div class="foot">
+  전달 즉시 90초 순찰에 합류 · 조건: Grade A/B + R/R≥1.5 + tradeable<br>
+  자동주문 없음 — 알림 후 판단·실행은 림빅 🔱
+</div>
+
+<div id="toast"></div>
+
+<script>
+const RAIL = 'https://fastapi-production-f631.up.railway.app';
+let watch = [], holds = [];
+
+// ── 토스트 ──
+let tT;
+function toast(m){
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  clearTimeout(tT); tT = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// ── 상태 ──
+async function loadStatus(){
+  const el = document.getElementById('statline');
+  el.textContent = '불러오는 중…';
+  try{
+    const r = await fetch(RAIL + '/sentinel/status');
+    const d = await r.json();
+    const mk = d.market_open_now ? '<b>장중 — 순찰 중</b>' : '<span class="off">장외 대기</span>';
+    const scan = d.last_scan ? d.last_scan.slice(11,19) : '아직 없음';
+    el.innerHTML =
+      `${mk} · 알림 오늘 <b>${d.alerts_sent_today}</b>건<br>` +
+      `워치 ${d.watch_count} · 보유 ${d.holdings_count} · 최근 순찰 ${scan}`;
+  }catch(e){ el.textContent = '연결 실패 — 네트워크 또는 배포 상태를 확인하세요'; }
+}
+
+// ── 서버에서 현재 명단 복원 ──
+async function loadLists(){
+  try{
+    const [w, h] = await Promise.all([
+      fetch(RAIL + '/sentinel/watch').then(r=>r.json()),
+      fetch(RAIL + '/sentinel/holding').then(r=>r.json()),
+    ]);
+    watch = (w.watch || []).map(c => ({code:c, name:''}));
+    holds = (h.holdings || []).map(x => ({code:x.code, buy_price:x.buy_price, name:''}));
+    renderW(); renderH();
+    watch.forEach(fillName); holds.forEach(fillName);
+  }catch(e){ /* 서버 명단 없음 — 빈 상태로 시작 */ }
+}
+
+// 종목명은 /judge로 실측 (추측 금지)
+async function fillName(item){
+  try{
+    const r = await fetch(RAIL + '/judge/' + item.code);
+    if(!r.ok) return;
+    const d = await r.json();
+    item.name = d.name || '';
+    renderW(); renderH();
+  }catch(e){}
+}
+
+// ── 워치 ──
+function renderW(){
+  const box = document.getElementById('wChips');
+  document.getElementById('wCnt').textContent = watch.length;
+  box.innerHTML = watch.length ? watch.map((w,i)=>
+    `<div class="chip"><span class="nm">${w.name || w.code}</span>` +
+    `<span class="cd">${w.code}</span>` +
+    `<button class="x" onclick="rmW(${i})">✕</button></div>`).join('')
+    : '<div class="empty">비어 있음 — 보초가 빈 초소를 지키는 중</div>';
+}
+function addWatch(){
+  const inp = document.getElementById('wIn');
+  const c = inp.value.trim();
+  if(!/^\d{6}$/.test(c)) return toast('6자리 숫자 코드만');
+  if(watch.some(w=>w.code===c)) return toast('이미 담겨 있어요');
+  const item = {code:c, name:''};
+  watch.push(item); inp.value=''; renderW(); fillName(item); markDirty('w');
+}
+function rmW(i){ watch.splice(i,1); renderW(); markDirty('w'); }
+async function syncWatch(){
+  try{
+    const r = await fetch(RAIL + '/sentinel/watch', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({codes: watch.map(w=>w.code)})
+    });
+    const d = await r.json();
+    if(d.ok){ toast(`📡 워치 ${d.count}종목 전달 — 다음 순찰부터 감시`); clearDirty('w'); loadStatus(); }
+    else toast('전달 실패 — 응답 확인');
+  }catch(e){ toast('전달 실패 — 네트워크 확인'); }
+}
+
+// ── 보유 ──
+function renderH(){
+  const box = document.getElementById('hChips');
+  document.getElementById('hCnt').textContent = holds.length;
+  box.innerHTML = holds.length ? holds.map((h,i)=>
+    `<div class="chip"><span class="nm">${h.name || h.code}</span>` +
+    `<span class="cd">${h.code}</span>` +
+    (h.buy_price ? `<span class="bp">${h.buy_price.toLocaleString()}원</span>` : '') +
+    `<button class="x" onclick="rmH(${i})">✕</button></div>`).join('')
+    : '<div class="empty">비어 있음</div>';
+}
+function addHold(){
+  const ci = document.getElementById('hIn'), bi = document.getElementById('hBp');
+  const c = ci.value.trim();
+  const bp = parseInt((bi.value||'').replace(/[^\d]/g,''), 10) || 0;
+  if(!/^\d{6}$/.test(c)) return toast('6자리 숫자 코드만');
+  if(holds.some(h=>h.code===c)) return toast('이미 담겨 있어요');
+  const item = {code:c, buy_price:bp, name:''};
+  holds.push(item); ci.value=''; bi.value=''; renderH(); fillName(item); markDirty('h');
+}
+function rmH(i){ holds.splice(i,1); renderH(); markDirty('h'); }
+async function syncHold(){
+  try{
+    const r = await fetch(RAIL + '/sentinel/holding', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({holdings: holds.map(h=>({code:h.code, buy_price:h.buy_price}))})
+    });
+    const d = await r.json();
+    if(d.ok){ toast(`📡 보유 ${d.count}종목 전달 — 손절선 감시 시작`); clearDirty('h'); loadStatus(); }
+    else toast('전달 실패 — 응답 확인');
+  }catch(e){ toast('전달 실패 — 네트워크 확인'); }
+}
+
+// ── 미전달 상태 표시 (서버와 다르면 노란 버튼) ──
+function markDirty(k){
+  const b = document.getElementById(k+'Sync');
+  b.classList.add('dirty');
+  b.textContent = '📡 변경됨 — 보초에게 전달하세요';
+}
+function clearDirty(k){
+  const b = document.getElementById(k+'Sync');
+  b.classList.remove('dirty');
+  b.textContent = k==='w' ? '📡 보초에게 워치 전달' : '📡 보초에게 보유 전달';
+}
+
+// 부팅
+loadStatus(); loadLists();
+setInterval(loadStatus, 60000);
+</script>
+</body>
+</html>
