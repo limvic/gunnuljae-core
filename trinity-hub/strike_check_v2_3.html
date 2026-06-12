@@ -1174,9 +1174,6 @@
     <button class="btn btn-go" id="btn-go">진단 ▶</button>
   </div>
 
-  <!-- SUPPORT ALERT -->
-  <div id="supportZoneContainer" style="margin:14px 0;"></div>
-
   <!-- RESULT -->
   <div class="result" id="result">
     <div class="verdict-card" id="verdict-card">
@@ -1708,9 +1705,6 @@
       statusEl.style.color = 'var(--green)';
       statusEl.textContent = `✅ ${d.name} · ${(d.price||0).toLocaleString()}원 (${pctStr}%) · 자동입력 완료`;
 
-      // 🛡️ Support Alert 진단 주입 (Strike = tight · 스캘핑)
-      loadSupportZone(code, 'tight');
-
       // ── TOP30에서 탭했을 때: 자동으로 판정 실행 ──
       if (autoEval) {
         setTimeout(() => {
@@ -1725,65 +1719,6 @@
     } finally {
       btn.disabled = false; btn.style.opacity = '1';
     }
-  }
-
-  // ════════════ 🛡️ Support Alert 카드 (Judge·Strike 공용) ════════════
-  async function loadSupportZone(code, supMode) {
-    const cont = document.getElementById('supportZoneContainer');
-    if (!cont) return;
-    const m = supMode || 'tight';
-    cont.innerHTML = '<div style="padding:14px;color:#8b95a5;font-size:13px;text-align:center">🛡️ 지지·손절 분석 중…</div>';
-    try {
-      const r = await fetch(`${RAILWAY_URL}/support/${encodeURIComponent(code)}?mode=${m}`);
-      if (!r.ok) { cont.innerHTML = ''; return; }
-      cont.innerHTML = renderSupportZone(await r.json());
-    } catch (e) { cont.innerHTML = ''; }
-  }
-
-  function renderSupportZone(d) {
-    const C = {A:'#16e0b0', B:'#46d67f', C:'#ffb347', D:'#ff5d6c'};
-    const KO = {A:'철옹성', B:'회복가능', C:'관찰', D:'회피'};
-    const MN = {tight:'스캘핑', balance:'단타', loose:'스윙'};
-    const g = d.grade || 'C';
-    const col = d.data_pending ? '#6b7689' : (C[g] || '#ffb347');
-    const won = n => n==null ? '—' : Number(n).toLocaleString('ko-KR');
-    const rrCol = r => r==null ? '#5a6573' : (r>=1.5 ? '#46d67f' : (r<1 ? '#ff5d6c' : '#e6edf3'));
-    const mr = d.mode_rr || {};
-    const rows = ['tight','balance','loose'].map(m => {
-      const o = mr[m] || {}; const rec = d.recommended_mode === m;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;margin-top:5px;font-size:13px;background:${rec?'rgba(216,177,90,.12)':'rgba(255,255,255,.03)'};${rec?'border:1px solid rgba(216,177,90,.4)':''}">
-        <span style="width:88px;font-weight:700">${MN[m]}${rec?' <span style="color:#d8b15a;font-size:11px">★</span>':''}<span style="display:block;font-size:10px;color:#5a6573;font-weight:400">${m}</span></span>
-        <span style="flex:1;text-align:right;color:#8b95a5;font-family:monospace;font-size:11.5px">−${o.risk_pct??'—'}%</span>
-        <span style="width:54px;text-align:right;font-weight:800;font-family:monospace;font-size:15px;color:${rrCol(o.rr)}">${o.rr==null?'—':o.rr}</span>
-      </div>`;
-    }).join('');
-    const _now = new Date();
-    const _stamp = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')} ${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
-    return `<div style="background:#121925;border:1px solid ${col};border-radius:16px;overflow:hidden">
-      <div style="padding:11px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #1f2937;background:rgba(0,0,0,.25)">
-        <span style="font-size:15px;font-weight:800;color:#e6edf3">${d.name||d.code}<span style="font-size:11px;color:#5a6573;font-family:monospace;font-weight:400;margin-left:6px">${d.code||''}</span></span>
-        <span style="font-size:11.5px;color:#8b95a5;font-family:monospace;white-space:nowrap">🛡️ ${_stamp}</span>
-      </div>
-      <div style="padding:14px 16px;display:flex;align-items:center;gap:13px;border-bottom:1px solid #1f2937">
-        <div style="flex-shrink:0;width:62px;height:62px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${col}22;color:${col};font-weight:900">
-          <span style="font-size:26px;line-height:1">${g}</span><span style="font-size:10px;margin-top:2px">${KO[g]||''}</span></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;letter-spacing:1px;color:#5a6573;font-weight:700">🛡️ SUPPORT ALERT</div>
-          <div style="font-size:16px;font-weight:800;color:${col};margin:2px 0 3px">${d.action_label||''}</div>
-          <div style="font-size:12px;color:#8b95a5;line-height:1.4">${(d.card&&d.card.verdict)||d.guard_note||''}</div>
-        </div>
-      </div>
-      <div style="padding:14px 16px;font-size:13px;color:#e6edf3">
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#8b95a5">1차 지지</span><span style="font-family:monospace">${won(d.support1)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#8b95a5">2차 지지</span><span style="font-family:monospace">${won(d.support2)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0 4px;border-top:1px dashed #1f2937;margin-top:4px"><span style="color:#ff5d6c">손절선${d.stop_basis?' · '+d.stop_basis:''}</span><span style="font-family:monospace;color:#ff5d6c;font-weight:700">${won(d.stop)} · −${d.risk_pct??'—'}%</span></div>
-        <div style="display:flex;justify-content:space-between;padding:6px 0 0"><span style="color:#8b95a5">R/R · 목표거리</span><span style="font-family:monospace;font-weight:700;color:${rrCol(d.rr)}">${d.rr==null?'—':d.rr} · +${d.rr_target_gap_pct??'—'}%</span></div>
-      </div>
-      <div style="padding:0 16px 14px">
-        <div style="font-size:10px;letter-spacing:1px;color:#5a6573;font-weight:700;margin-bottom:2px">MODE별 손익비 (손절폭 선택)</div>
-        ${rows}
-      </div>
-    </div>`;
   }
 
   document.getElementById('btn-fetch').addEventListener('click', () => {
@@ -1817,7 +1752,7 @@
     listEl.innerHTML = '';
 
     try {
-      const res = await fetch(`${RAILWAY_URL}/top30`, { signal: AbortSignal.timeout(10000) });
+      const res = await fetch(`${RAILWAY_URL}/top30_v2`, { signal: AbortSignal.timeout(10000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       if (d.status !== 'ok') throw new Error('조회 실패');
