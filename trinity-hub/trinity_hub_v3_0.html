@@ -19,7 +19,10 @@ body{background:var(--bg);color:var(--text);font-family:'Pretendard','Noto Sans 
 
 /* ━━ HEADER ━━ */
 header{padding:18px 16px 10px;}
-.hd-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.hd-top{display:flex;flex-wrap:wrap;align-items:center;}
+.hd-top > div:first-child{margin-right:auto;}
+.hd-top .finder{order:3;width:100%;max-width:none;justify-content:flex-end;margin:12px 0 0;}
+.hd-top .hd-clock{order:2;}
 .hd-title{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:1px;
   background:linear-gradient(90deg,var(--teal),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;}
 .hd-sub{font-family:var(--mono);font-size:8.5px;letter-spacing:3px;color:var(--text3);margin-top:2px;}
@@ -34,7 +37,7 @@ header{padding:18px 16px 10px;}
 .temp-attack{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
 .temp-neutral{background:rgba(255,204,0,.08);color:var(--yellow);border:1px solid rgba(255,204,0,.3);}
 .temp-defense{background:rgba(255,58,58,.1);color:var(--red);border:1px solid rgba(255,58,58,.3);}
-.temp-detail{font-family:var(--mono);font-size:9.5px;color:var(--text2);line-height:1.5;flex:1;}
+.temp-detail{font-family:var(--mono);font-size:9.5px;color:var(--text2);line-height:1.5;flex:1;display:flex;flex-wrap:wrap;gap:2px 12px;}
 .warm-btn{font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(0,212,255,.07);
   border:1px solid rgba(0,212,255,.3);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;}
 .warm-btn.done{color:var(--green);border-color:rgba(0,255,136,.3);}
@@ -186,10 +189,12 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
   .hd-sub{font-size:10px;letter-spacing:4px;}
   .hd-clock{background:rgba(13,22,41,.7);border:1px solid rgba(0,212,255,.14);border-radius:16px;padding:13px 16px;box-shadow:0 12px 28px rgba(0,0,0,.18);} 
   .hd-time{font-size:27px;color:#f2f7ff;}.hd-date{font-size:11px;}
-  .finder{grid-column:1 / -1;margin-top:0;max-width:520px;justify-self:end;opacity:.94;}
-  .temp-bar{margin:0 0 14px;min-height:72px;display:grid;grid-template-columns:170px minmax(0,1fr) 100px;}
+  .hd-top{flex-wrap:nowrap;gap:14px;}
+  .hd-top .finder{order:2;width:auto;flex:0 1 auto;margin:0 0 0 auto;}
+  .hd-top .hd-clock{order:3;flex:none;}
+  .temp-bar{margin:0 0 14px;min-height:60px;display:flex;flex-wrap:wrap;}
   .temp-pill{font-size:17px;text-align:center;padding:11px 12px;border-radius:15px;text-transform:uppercase;}
-  .temp-detail{font-size:13px;line-height:1.7;columns:2;column-gap:28px;}
+  .temp-detail{font-size:12.5px;line-height:1.7;gap:2px 18px;}
   .counts{margin:0 0 22px;grid-template-columns:repeat(3,1fr);gap:14px;}
   .cnt{padding:18px 10px;border-radius:16px;background:linear-gradient(180deg,rgba(13,22,41,.88),rgba(8,14,27,.9));}
   .cnt-num{font-size:38px;}.cnt-lbl{font-size:11px;}
@@ -214,19 +219,22 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
 
 
 /* ━━ v3.3 이식: Name Finder + spark ━━ */
-/* 🔎 Name Finder — 토스 대응: 코드 → 이름. 어두운 HUB 속 유일한 밝은 띠 */
-.finder{display:flex;align-items:center;gap:8px;margin-top:12px;
-  background:linear-gradient(135deg,#fdf6e3,#f7ecd4);border-radius:13px;padding:9px 12px;
-  box-shadow:0 2px 14px rgba(245,185,66,.18);}
-.finder .f-ico{font-size:14px;}
-.finder input{flex:0 0 118px;background:transparent;border:none;outline:none;
-  font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:2px;color:#3a2f14;}
-.finder input::placeholder{color:#b3a37c;font-size:11px;letter-spacing:0;font-weight:400;}
-.finder .f-name{flex:1;font-size:16px;font-weight:800;color:#5c4a1a;letter-spacing:-.02em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:19px;}
-.finder .f-name.miss{font-size:11px;font-weight:500;color:#a08c5a;}
-.finder .f-add{flex:none;background:#3a2f14;color:#fdf6e3;border:none;border-radius:9px;
-  font-size:11px;font-weight:700;padding:6px 10px;display:none;}
+/* 🔎 Name Finder — 단아한 유리질, 우측 상단 (v3.4) */
+.finder{display:flex;align-items:center;gap:7px;margin:10px 0 0 auto;
+  width:fit-content;max-width:340px;
+  background:rgba(253,246,227,.05);border:1px solid rgba(245,185,66,.22);
+  border-radius:999px;padding:6px 8px 6px 13px;transition:border-color .2s;}
+.finder:focus-within{border-color:rgba(245,185,66,.55);}
+.finder .f-ico{font-size:12px;opacity:.65;}
+.finder input{flex:0 0 96px;background:transparent;border:none;outline:none;
+  font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:1px;color:#f0e6c8;}
+.finder input::placeholder{color:rgba(245,185,66,.4);font-size:11px;letter-spacing:.5px;font-weight:400;}
+.finder .f-name{font-size:13px;font-weight:700;color:#f5b942;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
+.finder .f-name.miss{font-size:10.5px;font-weight:400;color:rgba(240,230,200,.45);}
+.finder .f-name:empty{display:none;}
+.finder .f-add{flex:none;background:rgba(245,185,66,.92);color:#16120a;border:none;border-radius:999px;
+  font-size:10.5px;font-weight:800;padding:5px 11px;display:none;}
 .finder .f-add.on{display:block;}
 .spark{flex:none;margin:0 8px 0 4px;opacity:.9;}
 
@@ -241,6 +249,22 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
 .bnav a:active{color:var(--teal);}
 body{padding-bottom:74px;}
 @media (min-width:640px){ .bnav{display:none;} body{padding-bottom:24px;} }
+
+/* ━━ v3.4: JUDGE 레이더 + STRIKE 히어로 ━━ */
+.j-mid{display:flex;align-items:center;gap:14px;margin:10px 0;}
+.radar{flex:none;}
+.j-mid .j-metrics{flex:1;margin:0;}
+#strikeHero{display:flex;align-items:center;gap:16px;padding:14px;margin-bottom:10px;
+  background:rgba(255,159,28,.05);border:1px solid rgba(255,159,28,.2);border-radius:16px;}
+.sh-ring{flex:none;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;}
+.sh-core{width:66px;height:66px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;
+  font-family:var(--mono);}
+.sh-core b{font-size:24px;line-height:1;}
+.sh-core small{font-size:8px;color:var(--text3);}
+.sh-name{font-size:16px;font-weight:800;}
+.sh-verdict{font-size:12px;font-weight:700;margin:3px 0 6px;}
+.sh-kv{display:flex;gap:8px;font-size:11px;color:var(--text2);line-height:1.7;}
+.sh-kv b{color:var(--text);font-family:var(--mono);}
 </style>
 </head>
 <body>
@@ -265,19 +289,19 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.3 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v3.4.1 UTOPIA</div>
     </div>
-    <div class="hd-clock">
-      <div class="hd-time" id="clock">--:--:--</div>
-      <div class="hd-date" id="cdate">--</div>
-    </div>
-  </div>
   <div class="finder">
     <span class="f-ico">🔎</span>
     <input id="fCode" type="search" placeholder="코드 ⇄ 이름"
            oninput="finderInput(this)" onkeydown="if(event.key==='Enter')finderInput(this,true)">
-    <span class="f-name" id="fName">코드 ⇄ 이름 — 어느 쪽이든 치세요</span>
+    <span class="f-name" id="fName"></span>
     <button class="f-add" id="fAdd" onclick="finderAdd()">＋후보</button>
+  </div>
+    <div class="hd-clock">
+      <div class="hd-time" id="clock">--:--:--</div>
+      <div class="hd-date" id="cdate">--</div>
+    </div>
   </div>
 </header>
 
@@ -323,6 +347,7 @@ body{padding-bottom:74px;}
 <section class="s-strike" id="secStrike">
   <div class="sec-head"><span class="sec-num">3. 실행 / STRIKE</span><span class="sec-q">— 지금 진입 가능한가?</span></div>
   <div class="panel">
+    <div id="strikeHero" style="display:none"></div>
     <div id="sigList"><div class="sig-empty">신호 없음 — 장중 BREAK·FIRE 신호가 여기 모입니다</div></div>
     <div class="scan-tools" style="margin-top:9px;">
       <button class="btn btn-yellow" onclick="go('strike_check_v2_3.html')">⚡ Strike Check 열기</button>
@@ -366,7 +391,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.3 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.4 UTOPIA 🔱
 </footer>
 
   </div>
@@ -423,8 +448,8 @@ async function fetchTemp(){
     if(avg >= 0.5){ pill.className='temp-pill temp-attack'; pill.textContent='🟢 공격 가능'; }
     else if(avg <= -0.5){ pill.className='temp-pill temp-defense'; pill.textContent='🔴 방어'; }
     else { pill.className='temp-pill temp-neutral'; pill.textContent='🟡 중립'; }
-    const f = (x)=> x==null?'--':(x>0?'+':'')+Number(x).toFixed(2)+'%';
-    $('tempDetail').innerHTML = `KOSPI ${f(ks)} · KOSDAQ ${f(kq)}<br>NASDAQ ${f(d.nasdaq?.change_pct)} · S&P ${f((d.sp500||d.snp500)?.change_pct)}`;
+    const f = (x)=> x==null?'--':`<b class="${x>=0?'up':'down'}">${x>0?'+':''}${Number(x).toFixed(2)}%</b>`;
+    $('tempDetail').innerHTML = `<span>KOSPI ${f(ks)}</span><span>KOSDAQ ${f(kq)}</span><span>NASDAQ ${f(d.nasdaq?.change_pct)}</span><span>S&P ${f((d.sp500||d.snp500)?.change_pct)}</span>`;
   }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; }
 }
 
@@ -537,11 +562,11 @@ function finderInput(el,force){
   const digits = q.replace(/\D/g,'');
   if(/^\d+$/.test(q)){                       // 코드 모드
     if(digits.length===6) finderLookup(digits);
-    else { $('fName').textContent='코드 ⇄ 이름'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); }
+    else { $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); }
     return;
   }
   if(q.length<2 && !force){                  // 이름 모드 (2글자부터)
-    $('fName').textContent='이름을 치면 코드가 떠요'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return;
+    $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return;
   }
   const code = nameToCode(q);                // 이름 → 코드
   if(code){
@@ -550,7 +575,7 @@ function finderInput(el,force){
     $('fName').className='f-name'; $('fAdd').classList.add('on');
   }else{
     _fCode='';
-    $('fName').textContent='사전에 없는 이름 — 코드로 한 번 등록하면 다음부터 이름으로 찾아져요';
+    $('fName').textContent='미등록';
     $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
   }
 }
@@ -558,13 +583,13 @@ async function finderLookup(code){
   _fCode=code;
   const out=$('fName'), add=$('fAdd');
   if(nameCache[code]){ out.textContent=nameCache[code]; out.className='f-name'; add.classList.add('on'); return; }
-  out.textContent='실측 중…'; out.className='f-name miss'; add.classList.remove('on');
+  out.textContent='…'; out.className='f-name miss'; add.classList.remove('on');
   const d = await fetchJudge(code);
   const nm = d ? digName(d) : '';
   if(nm){ nameCache[code]=nm; saveNameCache();
     out.textContent=nm; out.className='f-name'; add.classList.add('on'); }
   else{
-    out.textContent='미확인 — 여기를 탭해 직접 입력'; out.className='f-name miss';
+    out.textContent='미확인 · 탭하여 입력'; out.className='f-name miss';
     out.onclick=()=>{ const n=(prompt(`${code} 종목명 입력 (예: 예스티)`)||'').trim();
       if(n){ nameCache[code]=n; saveNameCache(); out.textContent=n; out.className='f-name'; add.classList.add('on'); }
       out.onclick=null; };
@@ -578,7 +603,7 @@ async function finderAdd(){
   if(!d){ toast('데이터를 못 가져왔어요'); return; }
   watch.push({code:_fCode, name:nameCache[_fCode]||_fCode, grade:d.mri?.grade||null});
   renderChips(); toast(`${nameCache[_fCode]||_fCode} 후보 추가`);
-  $('fCode').value=''; $('fName').textContent='코드 ⇄ 이름'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+  $('fCode').value=''; $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
 }
 function renameChip(i){
   const w=watch[i];
@@ -695,6 +720,38 @@ async function loadJudge(q){
   if(!d){ $('judgeCard').innerHTML='<div class="j-empty">조회 실패 — 웜업 후 다시 시도해주세요</div>'; return; }
   renderJudge(d);
 }
+
+// 오각 레이더 — /judge 실측값에서 유도한 5축. 원천 없는 축은 만들지 않는다.
+//  R/R(mri.rr 0~4) · 안전(risk_pct 작을수록↑) · 추세(spark 30일 위치) ·
+//  모멘텀(change_pct ±5%) · 등급(A100/B75/C50/D25)
+function radarSVG(d){
+  const m=d.mri; if(!m) return '';
+  const clamp=x=>Math.max(0,Math.min(100,x));
+  const sparkPos=(()=>{ const s=d.spark;
+    if(!Array.isArray(s)||s.length<2) return null;
+    const v=s.map(Number).filter(n=>n>0); if(v.length<2) return null;
+    const mn=Math.min(...v),mx=Math.max(...v);
+    return mx>mn? (v[v.length-1]-mn)/(mx-mn)*100 : 50; })();
+  const axes=[
+    ['R/R',     m.rr!=null? clamp(Number(m.rr)/4*100):null],
+    ['안전',    m.risk_pct!=null? clamp((1-Number(m.risk_pct)/10)*100):null],
+    ['추세',    sparkPos],
+    ['모멘텀',  d.change_pct!=null? clamp((Number(d.change_pct)+5)/10*100):null],
+    ['등급',    {'A':100,'B':75,'C':50}[m.grade]??25],
+  ];
+  const C=62,R=44,n=5;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[(C+r*Math.cos(a)).toFixed(1),(C+r*Math.sin(a)).toFixed(1)];};
+  const ring=r=>Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' ');
+  const poly=axes.map((a,i)=>pt(i,(a[1]??0)/100*R).join(',')).join(' ');
+  const labels=axes.map((a,i)=>{const[x,y]=pt(i,R+11);
+    return `<text x="${x}" y="${y}" font-size="8.5" fill="${a[1]==null?'rgba(138,154,176,.35)':'var(--text2)'}" text-anchor="middle" dominant-baseline="middle">${a[0]}</text>`;}).join('');
+  return `<svg class="radar" width="124" height="124" viewBox="0 0 124 124">
+    <polygon points="${ring(R)}" fill="none" stroke="rgba(255,255,255,.10)"/>
+    <polygon points="${ring(R*2/3)}" fill="none" stroke="rgba(255,255,255,.07)"/>
+    <polygon points="${ring(R/3)}" fill="none" stroke="rgba(255,255,255,.05)"/>
+    <polygon points="${poly}" fill="rgba(0,212,255,.16)" stroke="var(--teal)" stroke-width="1.5"/>
+    ${labels}</svg>`;
+}
 function renderJudge(d){
   const m = d.mri;
   const name = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
@@ -715,10 +772,13 @@ function renderJudge(d){
       ${sparkSVG(d.spark)}
       <div class="j-grade" style="color:${gc}">${m.grade}<small>${m.grade_label||''}</small></div>
     </div>
-    <div class="j-metrics">
-      <div class="jm"><div class="jm-v" style="color:var(--teal)">${m.rr??'--'}</div><div class="jm-l">R/R</div></div>
-      <div class="jm"><div class="jm-v" style="color:var(--red)">${stopPct}</div><div class="jm-l">STOP ${won(m.stop)}</div></div>
-      <div class="jm"><div class="jm-v" style="color:var(--purple)">${(m.recommended_mode||m.mode||'--').toUpperCase()}</div><div class="jm-l">MODE</div></div>
+    <div class="j-mid">
+      ${radarSVG(d)}
+      <div class="j-metrics">
+        <div class="jm"><div class="jm-v" style="color:var(--teal)">${m.rr??'--'}</div><div class="jm-l">R/R</div></div>
+        <div class="jm"><div class="jm-v" style="color:var(--red)">${stopPct}</div><div class="jm-l">STOP ${won(m.stop)}</div></div>
+        <div class="jm"><div class="jm-v" style="color:var(--purple)">${(m.recommended_mode||m.mode||'--').toUpperCase()}</div><div class="jm-l">MODE</div></div>
+      </div>
     </div>
     <div class="j-verdict">🩻 <b>${m.verdict||'-'}</b></div>
     <div class="j-act">
@@ -730,6 +790,21 @@ function renderJudge(d){
 // ━━━━━━━━━ 3. 실행 — 엔진 신호 수신 (Ignition·Block은 무대 뒤) ━━━━━━━━━
 let _b=0,_c=0,_s=0;
 const sigs=[];
+
+// STRIKE 히어로 — strike_check가 localStorage에 남긴 실측만 표시. 없는 필드는 그리지 않는다.
+function renderStrikeHero(d){
+  if(!d||d.score==null){ return; }
+  const sc=Number(d.score), col=sc>=85?'var(--green)':sc>=70?'var(--yellow)':'var(--red)';
+  const deg=Math.max(0,Math.min(100,sc))*3.6;
+  const opt=[['패턴',d.pattern],['트리거',d.trigger],['손절가',d.stop&&won(d.stop)],['목표가',d.target&&won(d.target)]]
+    .filter(x=>x[1]).map(x=>`<div class="sh-kv"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+  $('strikeHero').innerHTML=`
+    <div class="sh-ring" style="background:conic-gradient(${col} ${deg}deg, rgba(255,255,255,.06) 0)">
+      <div class="sh-core"><b>${sc}</b><small>/100</small></div></div>
+    <div class="sh-body"><div class="sh-name">${d.name||''}</div>
+      <div class="sh-verdict" style="color:${col}">${d.verdict||''}</div>${opt}</div>`;
+  $('strikeHero').style.display='flex';
+}
 function pushSig(ico,text){
   const k=new Date(Date.now()+ (new Date().getTimezoneOffset()*60000) + 9*3600000);
   const ts=`${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
@@ -752,7 +827,8 @@ function pollSignals(){
   try{ const d=JSON.parse(localStorage.getItem('trinity_strike_last')||'null');
     if(d&&d.ts&&d.ts!==_s){ _s=d.ts;
       const e=d.score>=85?'🟢':d.score>=70?'🟡':'🔴';
-      pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`); } }catch{}
+      pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`);
+      renderStrikeHero(d); } }catch{}
 }
 setInterval(pollSignals,2000);
 
@@ -828,7 +904,8 @@ function addFeed(text){
 
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
-addFeed('🔱 Trinity HUB v3.3 UTOPIA — 채피 외형 × 써니 기능 합체');
+try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
+addFeed('🔱 Trinity HUB v3.4 — 채피 디자인 리뷰 반영판');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
