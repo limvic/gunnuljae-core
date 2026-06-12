@@ -2641,7 +2641,8 @@
     // ━━ HUB에 판정 결과 전달 ━━
     try {
       localStorage.setItem('trinity_strike_last', JSON.stringify({
-        name, score: Math.round(total), verdict: stateLabel, ts: Date.now()
+        name, score: Math.round(total), verdict: stateLabel, ts: Date.now(),
+        stop: stopPrice   // HUB STRIKE 히어로용 — 위에서 계산된 실측 손절가
       }));
     } catch(e) {}
 
@@ -2750,6 +2751,16 @@
     (data.targets || []).forEach(t => {
       if (t.days in targetMap) targetMap[t.days] = t;
     });
+
+    // HUB STRIKE 히어로에 목표가 병합 전달 (3일 우선, 실측 응답만)
+    try {
+      const tgt = (targetMap[3] || targetMap[1]);
+      if (tgt && tgt.price) {
+        const prev = JSON.parse(localStorage.getItem('trinity_strike_last') || '{}');
+        prev.target = tgt.price;
+        localStorage.setItem('trinity_strike_last', JSON.stringify(prev));
+      }
+    } catch(e) {}
 
     // 1일/3일/7일 셀 채우기
     [[1,'t1'],[3,'t3'],[7,'t7']].forEach(([days, key]) => {
