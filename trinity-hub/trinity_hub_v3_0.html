@@ -112,6 +112,7 @@ section{margin-top:22px;}
 .h-price{font-size:13px;font-weight:700;}
 .h-pl{font-size:10px;margin-top:1px;}
 .up{color:var(--red);} .down{color:#4d8dff;} /* 한국식: 상승 빨강 */
+.spark{flex:none;margin:0 8px 0 4px;opacity:.9;}
 .h-pill{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:5px 8px;border-radius:8px;white-space:nowrap;}
 .hp-keep{background:rgba(0,255,136,.1);color:var(--green);}
 .hp-warn{background:rgba(255,204,0,.1);color:var(--yellow);}
@@ -365,6 +366,15 @@ async function scanAll(){
   b.classList.remove('spin'); b.textContent='🔍 전체 스캔 (Grade 갱신)';
   toast(`스캔 완료 — ${done}/${watch.length}`); addFeed(`🔍 전체 스캔 ${done}종목 완료`);
 }
+// 토스식 미니 가격추이 — /judge spark(최근 30일 종가)로 그림. 기간 상승=빨강, 하락=파랑.
+function sparkSVG(arr){
+  if(!arr || arr.length < 2) return '';
+  const w=62, hh=24, mn=Math.min(...arr), mx=Math.max(...arr), rg=(mx-mn)||1;
+  const pts = arr.map((v,i)=>((i/(arr.length-1))*w).toFixed(1)+','+((hh-2)-((v-mn)/rg)*(hh-4)).toFixed(1)).join(' ');
+  const col = arr[arr.length-1] >= arr[0] ? 'var(--red)' : '#4d8dff';
+  return '<svg class="spark" width="'+w+'" height="'+hh+'" viewBox="0 0 '+w+' '+hh+'">'+
+         '<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
 function updateGoCount(){
   const n = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')).length;
   $('cntGo').textContent = n;
@@ -386,6 +396,7 @@ function showGoList(){
       return `<div class="hold" onclick="loadJudge('${d.code}')" style="cursor:pointer;">
         <div class="h-info"><div class="h-name">${nm}</div>
           <div class="h-sub">Grade ${d.mri.grade} · R/R ${d.mri.rr??'-'} · STOP ${won(d.mri.stop)}</div></div>
+        ${sparkSVG(d.spark)}
         <div class="h-num"><div class="h-price">${won(d.price)}</div></div>
         <div class="h-pill hp-keep">진입 후보</div>
       </div>`;
@@ -527,6 +538,7 @@ function renderHolds(){
     return `<div class="hold">
       <div class="h-info"><div class="h-name">${h.name}</div>
         <div class="h-sub">매수 ${won(h.buy)} · STOP ${won(h.stop)}</div></div>
+      ${sparkSVG(h.spark)}
       <div class="h-num"><div class="h-price">${won(h.price)}</div>${plTxt}</div>
       <div class="h-pill ${cls}">${txt}</div>
       <div class="h-x" onclick="rmHold(${i})">✕</div>
@@ -543,7 +555,7 @@ async function addHold(){
   const d=await fetchJudge(q);
   if(!d){ toast('종목을 찾지 못했어요'); return; }
   holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy,
-              price:d.price??null, stop:d.mri?.stop??null});
+              price:d.price??null, stop:d.mri?.stop??null, spark:d.spark||null});
   $('hName').value=''; $('hBuy').value='';
   renderHolds(); toast('보유 감시 시작 🌊');
 }
@@ -552,7 +564,7 @@ async function refreshHolds(){
   const b=$('holdBtn'); b.classList.add('spin'); b.textContent='⏳ 감시 갱신 중…';
   for(const h of holds){
     const d=await fetchJudge(h.code);
-    if(d){ h.price=d.price??h.price; h.stop=d.mri?.stop??h.stop; renderHolds(); }
+    if(d){ h.price=d.price??h.price; h.stop=d.mri?.stop??h.stop; h.spark=d.spark||h.spark; if(d.name&&d.name!==d.code) h.name=d.name; renderHolds(); }
     await sleep(400);
   }
   b.classList.remove('spin'); b.textContent='🌊 손절선 감시 갱신 (MRI)';
