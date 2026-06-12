@@ -2360,6 +2360,9 @@ async def start_scheduler():
     )
     asyncio.create_task(wave_alert_loop())
 
+    # 🛰 Trinity Sentinel v0.1 — 장중 보초 (정의는 파일 하단, startup 시점엔 로드 완료)
+    asyncio.create_task(sentinel_loop())
+
 # ============================================
 # 🔥 AUTO ORDER ROUTER — IGNITION AUTO v0.1
 # AUTO 전용 계좌 (KIS_AUTO_ACCOUNT) 전용
@@ -3340,3 +3343,277 @@ async def support_zone(query: str, mode: str = "balance"):
             "candles_used": len(candles),
         },
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 🛰 TRINITY SENTINEL v0.1 — "림빅이 종목을 찾지 않게 만든다." (2026.06.12)
+#
+# 역할: 후보 탐지기. 자동 매매기가 아님 — 주문 코드 0줄 (헌법).
+# 구조: Sentinel → 텔레그램 → 림빅 → Judge 확인 → Strike 확인 → 주문(림빅 손)
+#
+# 채피 확정 스펙 (2026.06.12):
+#  1. 진입 조건: Grade A/B + R/R≥1.5 + tradeable=true (IGNITION 미결합 — v0.1 단순 우선)
+#  2. 워치리스트: 서버 저장 (POST/GET /sentinel/watch)
+#  3. 중복: 동일 종목·동일 상태 당일 1회. 상태 변화 시 재알림.
+#  4. 보유: POST /sentinel/holding (HUB v3 보유 섹션 → 서버 동기화)
+#  5. 등급: 🎯후보 / 🟡주의(손절선 3% 이내) / 🔴계약(손절선 이탈)
+#  6. 시간: 평일 09:00~15:30 KST만. 90초 주기.
+#  7. 제외: 자동주문·LLM·브리핑·차트·음성 — 전부 없음.
+#
+# 저장소: v0.1 = JSON 임시 (Railway 재배포 시 증발 허용 — 채피 승인).
+#         단 load/save 추상화로 감쌈 → v0.2에서 Volume/Supabase 교체 시 함수 내부만 변경.
+# SSOT: 모든 숫자는 support_zone() 내부 호출 — 재계산 금지, /judge·/support와 같은 숫자.
+# ══════════════════════════════════════════════════════════════════════════════
+import json as _sentinel_json
+
+SENTINEL_FILE         = os.environ.get("SENTINEL_FILE", "sentinel_data.json")
+SENTINEL_INTERVAL_SEC = 90          # 채피 스펙 6 — scan_loop와 동일 리듬
+SENTINEL_WARN_PCT     = 3.0         # 🟡 주의: 손절선 위 3% 이내 (HUB v3 보유 감시와 동일 기준)
+SENTINEL_RR_MIN       = 1.5         # 채피 스펙 1
+SENTINEL_PAUSE_BETWEEN = 0.5        # 종목 간 호출 간격 (KIS 예의)
+
+# 메모리 상주 상태 (JSON은 백업일 뿐 — 매 루프 파일 I/O 안 함)
+_sentinel = {
+    "watch":     [],     # ["005930", ...]
+    "holdings":  [],     # [{"code": "042700", "buy_price": 123400}, ...]
+    "alert_log": {},     # {"005930|CANDIDATE": "2026-06-12"} — 당일 중복 방지
+    "last_scan": None,   # ISO 시각 (상태 확인용)
+    "alerts_sent_today": 0,
+    "alerts_date": "",
+    "enabled": True,
+}
+
+# ── 저장소 추상화 (채피 지시 ② — v0.2 교체 지점은 아래 4개 함수 내부뿐) ──────
+def _sentinel_disk_load():
+    """파일 → 메모리. 파일 없으면 조용히 빈 상태 유지 (재배포 직후 정상 상황)."""
+    try:
+        with open(SENTINEL_FILE, "r", encoding="utf-8") as f:
+            d = _sentinel_json.load(f)
+        _sentinel["watch"]     = list(d.get("watch", []))
+        _sentinel["holdings"]  = list(d.get("holdings", []))
+        _sentinel["alert_log"] = dict(d.get("alert_log", {}))
+        print(f"[SENTINEL] 📂 저장소 복원 — watch {len(_sentinel['watch'])} · holdings {len(_sentinel['holdings'])}")
+    except FileNotFoundError:
+        print("[SENTINEL] 📂 저장 파일 없음 — 새 출발 (재배포 후 HUB에서 재등록)")
+    except Exception as e:
+        print(f"[SENTINEL] ⚠️ 저장소 복원 실패 (빈 상태로 계속): {e}")
+
+def _sentinel_disk_save():
+    try:
+        with open(SENTINEL_FILE, "w", encoding="utf-8") as f:
+            _sentinel_json.dump({
+                "watch": _sentinel["watch"],
+                "holdings": _sentinel["holdings"],
+                "alert_log": _sentinel["alert_log"],
+            }, f, ensure_ascii=False)
+    except Exception as e:
+        print(f"[SENTINEL] ⚠️ 저장 실패 (메모리는 유지): {e}")
+
+def load_watchlist() -> list:
+    return list(_sentinel["watch"])
+
+def save_watchlist(codes: list):
+    _sentinel["watch"] = codes
+    _sentinel_disk_save()
+
+def load_holdings() -> list:
+    return list(_sentinel["holdings"])
+
+def save_holdings(holds: list):
+    _sentinel["holdings"] = holds
+    _sentinel_disk_save()
+
+# ── 중복 알림 정책 (채피 스펙 3) ─────────────────────────────────────────────
+def _sentinel_today() -> str:
+    return datetime.now(KST).strftime("%Y-%m-%d")
+
+def _sentinel_should_alert(code: str, state: str) -> bool:
+    """동일 종목·동일 상태 = 당일 1회. 상태가 바뀌면 키가 달라져 자연 재알림."""
+    key = f"{code}|{state}"
+    if _sentinel["alert_log"].get(key) == _sentinel_today():
+        return False
+    _sentinel["alert_log"][key] = _sentinel_today()
+    # 로그 청소: 오늘 아닌 항목 제거 (무한 성장 방지)
+    _sentinel["alert_log"] = {k: v for k, v in _sentinel["alert_log"].items() if v == _sentinel_today()}
+    _sentinel_disk_save()
+    return True
+
+def _sentinel_market_open() -> bool:
+    """채피 스펙 6 — 평일 09:00~15:30 KST만. 프리장/NXT/애프터 전부 제외."""
+    now_k = datetime.now(KST)
+    if now_k.weekday() >= 5:
+        return False
+    tmin = now_k.hour * 60 + now_k.minute
+    return 540 <= tmin <= 930   # 09:00 ~ 15:30
+
+async def _sentinel_send(msg: str):
+    if not TG_IGNITION_TOKEN or not TG_IGNITION_CHAT_ID:
+        print("[SENTINEL] ⚠️ 텔레그램 환경변수 없음 — 발송 생략")
+        return
+    await send_telegram(TG_IGNITION_TOKEN, TG_IGNITION_CHAT_ID, msg)
+    today = _sentinel_today()
+    if _sentinel["alerts_date"] != today:
+        _sentinel["alerts_date"] = today
+        _sentinel["alerts_sent_today"] = 0
+    _sentinel["alerts_sent_today"] += 1
+
+# ── 감시 1회전 ────────────────────────────────────────────────────────────────
+async def _sentinel_check_watch(code: str):
+    """🎯 후보 감지 — Grade A/B + R/R≥1.5 + tradeable=true (전부 SSOT 실측)."""
+    sup = await support_zone(code, mode="balance")
+    grade     = str(sup.get("grade") or "").upper()
+    rr        = sup.get("rr")
+    tradeable = bool(sup.get("tradeable"))
+    if grade in ("A", "B") and rr is not None and rr >= SENTINEL_RR_MIN and tradeable:
+        if _sentinel_should_alert(code, "CANDIDATE"):
+            stop = sup.get("stop")
+            risk = sup.get("risk_pct")
+            lines = [
+                f"🎯 <b>진입 후보 — {sup.get('name', code)}</b>",
+                f"Grade <b>{grade}</b> · R/R <b>{rr}</b>",
+                f"현재가 {sup.get('price', 0):,}원",
+            ]
+            if stop:
+                risk_txt = f" (-{risk}%)" if risk is not None else ""
+                lines.append(f"STOP {stop:,}원{risk_txt}")
+            verdict = (sup.get("card") or {}).get("verdict", "")
+            if verdict:
+                lines.append(f"verdict: {verdict}")
+            lines.append("— Judge 확인 후 결정하세요 🔱")
+            await _sentinel_send("\n".join(lines))
+            print(f"[SENTINEL] 🎯 후보 알림 — {code} (Grade {grade}, R/R {rr})")
+
+async def _sentinel_check_holding(h: dict):
+    """🔴 손절선 이탈 / 🟡 3% 이내 근접 — MRI stop 기준 (SSOT)."""
+    code = h.get("code", "")
+    if not code:
+        return
+    sup = await support_zone(code, mode="balance")
+    price = sup.get("price", 0)
+    stop  = sup.get("stop")
+    name  = sup.get("name", code)
+    if not price or not stop:
+        return   # 실측 불가 → 추측 알림 금지 (vwap=null 원칙과 동일)
+    buy = h.get("buy_price", 0)
+    pnl = f" · 평단 대비 {round((price - buy) / buy * 100, 1)}%" if buy else ""
+    if price < stop:
+        if _sentinel_should_alert(code, "BREACH"):
+            await _sentinel_send(
+                f"🔴 <b>{name} 손절선 이탈</b>\n"
+                f"현재가 {price:,}원 &lt; STOP {stop:,}원{pnl}\n"
+                f"— 계약 이행 시점입니다. 직접 확인하세요."
+            )
+            print(f"[SENTINEL] 🔴 이탈 알림 — {code}")
+    elif price <= stop * (1 + SENTINEL_WARN_PCT / 100):
+        if _sentinel_should_alert(code, "WARN"):
+            await _sentinel_send(
+                f"🟡 <b>{name} 손절선 근접</b>\n"
+                f"현재가 {price:,}원 · STOP {stop:,}원 (여유 {round((price - stop) / stop * 100, 1)}%){pnl}\n"
+                f"— 주의 깊게 지켜보세요."
+            )
+            print(f"[SENTINEL] 🟡 주의 알림 — {code}")
+
+async def _sentinel_run_once():
+    for code in load_watchlist():
+        try:
+            await _sentinel_check_watch(code)
+        except Exception as e:
+            print(f"[SENTINEL] ⚠️ watch {code} 실패 (계속): {e}")
+        await asyncio.sleep(SENTINEL_PAUSE_BETWEEN)
+    for h in load_holdings():
+        try:
+            await _sentinel_check_holding(h)
+        except Exception as e:
+            print(f"[SENTINEL] ⚠️ holding {h.get('code')} 실패 (계속): {e}")
+        await asyncio.sleep(SENTINEL_PAUSE_BETWEEN)
+    _sentinel["last_scan"] = datetime.now(KST).isoformat()
+
+async def sentinel_loop():
+    """🛰 장중 보초 — scan_loop·wave_alert_loop와 같은 생존 패턴 (예외 먹고 계속)."""
+    print("[SENTINEL] 🛰 Trinity Sentinel v0.1 기동 — 평일 09:00~15:30 KST · 90초")
+    _sentinel_disk_load()
+    await asyncio.sleep(20)   # 서버 완전 기동 대기 (scan 10s·wave 15s 뒤)
+    while True:
+        try:
+            if not _sentinel["enabled"]:
+                await asyncio.sleep(30)
+                continue
+            if _sentinel_market_open():
+                await _sentinel_run_once()
+                await asyncio.sleep(SENTINEL_INTERVAL_SEC)
+            else:
+                await asyncio.sleep(60)
+        except Exception as e:
+            print(f"[SENTINEL] ⚠️ 루프 예외 (유지됨): {e}")
+            await asyncio.sleep(30)
+
+# ── API — HUB v3 동기화 + 운영 확인 ──────────────────────────────────────────
+@app.get("/sentinel/watch")
+async def sentinel_watch_get():
+    return {"watch": load_watchlist(), "count": len(load_watchlist())}
+
+@app.post("/sentinel/watch")
+async def sentinel_watch_set(payload: dict = Body(...)):
+    """전체 교체 방식 — HUB v3가 자기 리스트를 통째로 동기화. body: {"codes": ["005930", ...]}"""
+    codes = payload.get("codes")
+    if not isinstance(codes, list):
+        raise HTTPException(status_code=422, detail='body는 {"codes": ["005930", ...]} 형식')
+    clean = []
+    for c in codes:
+        c = str(c).strip()
+        if len(c) == 6 and c.isdigit() and c not in clean:
+            clean.append(c)
+    save_watchlist(clean)
+    return {"ok": True, "watch": clean, "count": len(clean)}
+
+@app.get("/sentinel/holding")
+async def sentinel_holding_get():
+    return {"holdings": load_holdings(), "count": len(load_holdings())}
+
+@app.post("/sentinel/holding")
+async def sentinel_holding_set(payload: dict = Body(...)):
+    """전체 교체 방식. body: {"holdings": [{"code": "042700", "buy_price": 123400}, ...]}"""
+    holds = payload.get("holdings")
+    if not isinstance(holds, list):
+        raise HTTPException(status_code=422, detail='body는 {"holdings": [{"code","buy_price"}]} 형식')
+    clean = []
+    for h in holds:
+        code = str(h.get("code", "")).strip()
+        if len(code) == 6 and code.isdigit():
+            try:
+                bp = int(h.get("buy_price", 0) or 0)
+            except (TypeError, ValueError):
+                bp = 0
+            clean.append({"code": code, "buy_price": bp})
+    save_holdings(clean)
+    return {"ok": True, "holdings": clean, "count": len(clean)}
+
+@app.get("/sentinel/status")
+async def sentinel_status():
+    return {
+        "engine": "Trinity Sentinel v0.1",
+        "motto": "림빅이 종목을 찾지 않게 만든다.",
+        "enabled": _sentinel["enabled"],
+        "market_open_now": _sentinel_market_open(),
+        "watch_count": len(_sentinel["watch"]),
+        "holdings_count": len(_sentinel["holdings"]),
+        "last_scan": _sentinel["last_scan"],
+        "alerts_sent_today": _sentinel["alerts_sent_today"] if _sentinel["alerts_date"] == _sentinel_today() else 0,
+        "rule": "Grade A/B + R/R≥1.5 + tradeable=true · 평일 09:00~15:30 KST · 90초",
+        "storage": "JSON 임시 (v0.1 — 재배포 시 증발 허용, v0.2 Volume/Supabase)",
+    }
+
+@app.get("/sentinel/test")
+async def sentinel_test():
+    """텔레그램 연결 실측 — 더미 후보 알림 1건 발사 (조건 판정 없음)."""
+    await _sentinel_send(
+        "🛰 <b>Trinity Sentinel v0.1 — 연결 테스트</b>\n"
+        "이 메시지가 보이면 보초 교대 완료.\n"
+        "장중에는 시스템이 먼저 림빅을 부릅니다 🔱"
+    )
+    return {"ok": True, "sent": "test alert"}
+
+@app.post("/sentinel/toggle")
+async def sentinel_toggle():
+    _sentinel["enabled"] = not _sentinel["enabled"]
+    return {"ok": True, "enabled": _sentinel["enabled"]}
