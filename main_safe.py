@@ -1837,6 +1837,8 @@ async def index_snapshot():
         "kosdaq": None,
         "nasdaq": None,
         "sp500":  None,
+        "vix":    None,
+        "usdkrw": None,
         "_debug": {}
     }
 
@@ -1917,6 +1919,9 @@ async def index_snapshot():
 
     result["nasdaq"] = await fetch_yahoo("%5EIXIC", "nasdaq")
     result["sp500"]  = await fetch_yahoo("%5EGSPC", "sp500")
+    # v2.1 (2026.06.13): VIX·원달러 환율 — 동일 검증 경로(fetch_yahoo) 재사용
+    result["vix"]    = await fetch_yahoo("%5EVIX", "vix")
+    result["usdkrw"] = await fetch_yahoo("KRW%3DX", "usdkrw")
 
     _cache[cache_key] = {"ts": now, "data": result}
     return result
