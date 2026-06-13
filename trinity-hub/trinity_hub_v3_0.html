@@ -324,7 +324,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.7 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v3.8 UTOPIA</div>
     </div>
   <div class="finder">
     <span class="f-ico">🔎</span>
@@ -428,7 +428,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.7 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.8 UTOPIA 🔱
 </footer>
 
   </div>
@@ -545,7 +545,11 @@ function presetTop10(){
 async function addCandidate(){
   let q = $('addWatch').value.trim(); if(!q) return;
   $('addWatch').value=''; toast('확인 중…');
-  if(!/^\d{6}$/.test(q)){ const c=nameToCode(q); if(c) q=c; }   // 이름 → 코드 사전 우선
+  if(!/^\d{6}$/.test(q)){
+    const c=nameToCode(q);
+    if(c) q=c;
+    else{ const m=await resolveNameRemote(q); if(m) q=m.code; }   // 전 종목 서버 검색
+  }
   const d = await fetchJudge(q);
   if(!d){ toast('종목을 찾지 못했어요 — 코드 6자리로 시도해보세요'); return; }
   if(watch.some(w=>w.code===d.code)){ toast('이미 후보에 있어요'); return; }
@@ -606,6 +610,18 @@ function nameToCode(q){
   }
   return starts || incl;
 }
+
+// 전 종목 검색 — 로컬 사전 실패 시 서버(/search_stock, 네이버 크롤) 호출. 결과는 학습 저장.
+async function resolveNameRemote(q){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/search_stock/${encodeURIComponent(q)}`,{signal:AbortSignal.timeout(9000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    const m = (d.matches||[])[0];
+    if(m && m.code){ nameCache[m.code]=m.name||q; saveNameCache(); return m; }
+  }catch{}
+  return null;
+}
 let _fCode='';
 function finderInput(el,force){
   const q = el.value.trim();
@@ -618,16 +634,24 @@ function finderInput(el,force){
   if(q.length<2 && !force){                  // 이름 모드 (2글자부터)
     $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return;
   }
-  const code = nameToCode(q);                // 이름 → 코드
+  const code = nameToCode(q);                // ① 로컬 사전
   if(code){
     _fCode = code;
     $('fName').textContent = `${nameCache[code]} → ${code}`;
     $('fName').className='f-name'; $('fAdd').classList.add('on');
-  }else{
-    _fCode='';
-    $('fName').textContent='미등록';
-    $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+    return;
   }
+  if(!force && q.length<3){ $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return; }
+  $('fName').textContent='…'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+  resolveNameRemote(q).then(m=>{             // ② 서버 전 종목 검색 (학습 저장)
+    if($('fCode').value.trim()!==q) return;  // 그 사이 입력 변경 시 무시
+    if(m){ _fCode=m.code;
+      $('fName').textContent=`${m.name} → ${m.code}`;
+      $('fName').className='f-name'; $('fAdd').classList.add('on');
+    }else{ _fCode='';
+      $('fName').textContent='미등록'; $('fName').className='f-name miss';
+    }
+  });
 }
 async function finderLookup(code){
   _fCode=code;
@@ -959,7 +983,11 @@ async function addHold(){
   let q=$('hName').value.trim(); const buy=parseInt($('hBuy').value.replace(/,/g,''),10);
   if(!q||!buy){ toast('종목과 매수가를 입력해주세요'); return; }
   toast('확인 중…');
-  if(!/^\d{6}$/.test(q)){ const c=nameToCode(q); if(c) q=c; }   // 이름 → 코드 사전 우선
+  if(!/^\d{6}$/.test(q)){
+    const c=nameToCode(q);
+    if(c) q=c;
+    else{ const m=await resolveNameRemote(q); if(m) q=m.code; }   // 전 종목 서버 검색
+  }
   const d=await fetchJudge(q);
   if(!d){ toast('종목을 찾지 못했어요'); return; }
   holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy,
@@ -1004,7 +1032,7 @@ function addFeed(text){
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus();
-addFeed('🔱 Trinity HUB v3.7 — 정보가 아니라 행동이 보인다');
+addFeed('🔱 Trinity HUB v3.8 — 전 종목 검색 개통');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
