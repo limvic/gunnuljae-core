@@ -1813,6 +1813,45 @@ async def api_state_log(last: int = 20):
     }
 
 # — 9-10. 지수 스냅샷 -------------------------------------------------
+
+# ── 종목명 → 코드 검색 (v1.0 · 2026.06.13) ─────────────────────────────────
+# 네이버 금융 검색 페이지 크롤 — index_snapshot·top30_v2와 동일한 검증된 패턴
+# (UA 고정 · euc-kr · 정규식). HUB Name Finder의 '전 종목' 검색 원천.
+@app.get("/search_stock/{query}")
+async def search_stock(query: str):
+    import re as _re
+    cache_key = f"search_stock:{query}"
+    now = time.time()
+    if cache_key in _cache and now - _cache[cache_key]["ts"] < 3600:
+        return _cache[cache_key]["data"]
+
+    UA = "Mozilla/5.0 (Linux; Windows NT 10.0) AppleWebKit/537.36"
+    result = {"query": query, "matches": [], "_debug": None}
+    try:
+        url = "https://finance.naver.com/search/search.naver"
+        async with httpx.AsyncClient(timeout=8, headers={"User-Agent": UA}) as c:
+            res = await c.get(url, params={"query": query})
+        res.encoding = "euc-kr"
+        html = res.text
+        # 결과 행: /item/main.naver?code=XXXXXX ... >종목명<
+        pairs = _re.findall(r'code=(\d{6})[^>]*>\s*([^<>]{1,40}?)\s*</a>', html)
+        seen = set()
+        for code, name in pairs:
+            name = name.strip()
+            if not name or code in seen:
+                continue
+            seen.add(code)
+            result["matches"].append({"code": code, "name": name})
+            if len(result["matches"]) >= 8:
+                break
+        if not result["matches"]:
+            result["_debug"] = "no match in page"
+    except Exception as e:
+        result["_debug"] = f"err: {type(e).__name__}: {str(e)[:80]}"
+
+    _cache[cache_key] = {"ts": now, "data": result}
+    return result
+
 @app.get("/index_snapshot")
 async def index_snapshot():
     """
