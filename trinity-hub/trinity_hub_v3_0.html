@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.1 UTOPIA</title>
+<title>🔱 Trinity HUB v4.1.1 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -558,7 +558,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.1 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.1.1 UTOPIA 🔱
 </footer>
 
   </div>
@@ -807,8 +807,8 @@ function portfolioHealth(){
 function phGrade(s){
   if(s>=80) return ['ph-good','🟢','건강','정상 운용'];
   if(s>=60) return ['ph-ok','🟡','양호','관리 지속'];
-  if(s>=40) return ['ph-warn','🟠','주의','신규 자제 · 손실 점검'];
-  return ['ph-risk','🔴','위험','신규매수 금지 · 손실 정리 우선'];
+  if(s>=40) return ['ph-warn','🟠','주의','손실 종목 점검 권장'];
+  return ['ph-risk','🔴','위험','손실 과다 · 정리 우선 권장'];
 }
 let _phLast=null;
 function renderPH(){
@@ -1277,19 +1277,20 @@ function pushSig(ico,text){
 }
 function s0(s){return s.ico+' '+s.text;}
 function pollSignals(){
+  const live = (typeof marketState==='function') ? marketState()[0]==='mk-open' : true;  // v4.1.1: 장중에만 알림
   try{ const d=JSON.parse(localStorage.getItem('trinity_block_last')||'null');
-    if(d&&d.ts&&d.ts!==_b){ _b=d.ts;
+    if(d&&d.ts&&d.ts!==_b){ _b=d.ts; if(live){
       if((d.fire||0)>0) pushSig('🔥',`급락 회복 신호 <b>FIRE ${d.fire}건</b> · SHOCK ${d.shock||0}건`);
-      else if((d.shock||0)>0) pushSig('🚨',`급락 충격 SHOCK ${d.shock}건 감지`); } }catch{}
+      else if((d.shock||0)>0) pushSig('🚨',`급락 충격 SHOCK ${d.shock}건 감지`); } } }catch{}
   try{ const d=JSON.parse(localStorage.getItem('trinity_candidate_last')||'null');
-    if(d&&d.ts&&d.ts!==_c){ _c=d.ts;
+    if(d&&d.ts&&d.ts!==_c){ _c=d.ts; if(live){
       if((d.fire||0)>0) pushSig('🔥',`후보 FIRE <b>${d.fire}건</b>`);
-      else if((d.armed||0)>0) pushSig('🔒',`후보 ARMED ${d.armed}건 · 총 ${d.total||'-'}개`); } }catch{}
+      else if((d.armed||0)>0) pushSig('🔒',`후보 ARMED ${d.armed}건 · 총 ${d.total||'-'}개`); } } }catch{}
   try{ const d=JSON.parse(localStorage.getItem('trinity_strike_last')||'null');
     if(d&&d.ts&&d.ts!==_s){ _s=d.ts;
-      const e=d.score>=85?'🟢':d.score>=70?'🟡':'🔴';
-      pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`);
-      renderStrikeHero(d); renderFocus(); } }catch{}
+      if(live){ const e=d.score>=85?'🟢':d.score>=70?'🟡':'🔴';
+        pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`); }
+      renderStrikeHero(d); renderFocus(); } }catch{}   // 히어로 카드는 표시 상태라 항상 갱신
 }
 setInterval(pollSignals,2000);
 
@@ -1298,12 +1299,10 @@ function holdState(h){
   if(h.price==null||h.stop==null) return ['hp-q','⚪ 감시'];
   if(h.price < h.stop) return ['hp-out','🔴 이탈'];
   if((h.price-h.stop)/h.price < 0.03) return ['hp-warn','🟡 주의'];
+  if(h.buy && h.price < h.buy) return ['hp-reval','🔁 재평가'];   // v4.1.1: 손실이면 진입후보 여부 무관 재평가 (초록 유지는 수익 전용)
   const j = judgeCache[h.code];
   const addable = j ? (j.mri?.tradeable && (j.mri.action_label||'').includes('진입')) : h.addable;
-  if(addable){
-    if(h.buy && h.price < h.buy) return ['hp-reval','🔁 재평가'];   // 손실 종목엔 추가 권유 금지 (Rule 6)
-    return ['hp-add','🔵 추가 가능'];
-  }
+  if(addable) return ['hp-add','🔵 추가 가능'];
   return ['hp-keep','🟢 유지'];
 }
 function holdSummary(){
@@ -1386,7 +1385,7 @@ function addFeed(text){
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
-addFeed('🔱 Trinity HUB v4.1 — Portfolio Health · 현금비중 가이드');
+addFeed('🔱 Trinity HUB v4.1.1 — WAVE 색 통일 · 주말 신호 음소거 · PH 권고형');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
