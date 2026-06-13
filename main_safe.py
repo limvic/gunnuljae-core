@@ -3729,3 +3729,79 @@ async def sentinel_test():
 async def sentinel_toggle():
     _sentinel["enabled"] = not _sentinel["enabled"]
     return {"ok": True, "enabled": _sentinel["enabled"]}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 📌 Trinity Memo Board v1.0  (HUB v3.9)
+#    채피(GPT) 설계  ×  써니(Claude) 구현  ×  림빅 최종결정
+#
+#    용도: 그날의 발표·이슈·일정 핀보드.
+#         림빅 수동 핀 + 채피/써니 자동 등록을 같은 저장소에서 공유.
+#    저장: Sentinel과 동일한 JSON 디스크 백업 패턴.
+#         (v1 — 재배포 시 증발 허용. v2에서 Volume/Supabase로 교체 지점은 아래 2함수뿐)
+#    원칙: 자동 뉴스 수집 없음(채피 지시). 등록은 사람/AI가 명시적으로만.
+# ══════════════════════════════════════════════════════════════════════════════
+MEMO_FILE = os.environ.get("MEMO_FILE", "memo_data.json")
+_memos: list = []   # [{id, date, text, tag, author, ts}]
+
+def _memo_load():
+    global _memos
+    try:
+        with open(MEMO_FILE, "r", encoding="utf-8") as f:
+            _memos = _sentinel_json.load(f).get("memos", [])
+        print(f"[MEMO] 📂 복원 — {len(_memos)}건")
+    except FileNotFoundError:
+        _memos = []
+        print("[MEMO] 📂 파일 없음 — 새 출발 (재배포 후 HUB에서 재등록)")
+    except Exception as e:
+        _memos = []
+        print(f"[MEMO] ⚠️ 복원 실패 (빈 상태로 계속): {e}")
+
+def _memo_save():
+    try:
+        with open(MEMO_FILE, "w", encoding="utf-8") as f:
+            _sentinel_json.dump({"memos": _memos}, f, ensure_ascii=False)
+    except Exception as e:
+        print(f"[MEMO] ⚠️ 저장 실패 (메모리는 유지): {e}")
+
+_memo_load()
+
+@app.get("/memo")
+async def memo_list(date: str = ""):
+    """date 지정 시 해당 날짜만, 없으면 전체. 최신순."""
+    items = [m for m in _memos if (not date or m.get("date") == date)]
+    items.sort(key=lambda m: m.get("ts", 0), reverse=True)
+    return {"memos": items, "count": len(items)}
+
+@app.post("/memo")
+async def memo_add(payload: dict = Body(...)):
+    """업서트(id 같으면 교체). body: {text, date?, tag?, author?, id?, ts?}
+    author 예: 림빅 / 채피 / 써니 — AI 자동 등록도 이 경로 하나로."""
+    text = str(payload.get("text", "")).strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text 필수")
+    now = datetime.now(KST)
+    mid = str(payload.get("id") or f"m{int(now.timestamp() * 1000)}")
+    memo = {
+        "id":     mid,
+        "date":   str(payload.get("date") or now.strftime("%Y-%m-%d")),
+        "text":   text[:300],
+        "tag":    str(payload.get("tag") or "메모")[:10],
+        "author": str(payload.get("author") or "림빅")[:10],
+        "ts":     int(payload.get("ts") or now.timestamp() * 1000),
+    }
+    global _memos
+    _memos = [m for m in _memos if m.get("id") != mid]   # 업서트
+    _memos.append(memo)
+    if len(_memos) > 200:                                 # 무한 성장 방지
+        _memos = sorted(_memos, key=lambda m: m.get("ts", 0))[-200:]
+    _memo_save()
+    return {"ok": True, "memo": memo, "count": len(_memos)}
+
+@app.delete("/memo/{mid}")
+async def memo_delete(mid: str):
+    global _memos
+    before = len(_memos)
+    _memos = [m for m in _memos if m.get("id") != mid]
+    _memo_save()
+    return {"ok": True, "removed": before - len(_memos), "count": len(_memos)}
