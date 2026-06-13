@@ -1814,40 +1814,77 @@ async def api_state_log(last: int = 20):
 
 # — 9-10. 지수 스냅샷 -------------------------------------------------
 
-# ── 종목명 → 코드 검색 (v1.0 · 2026.06.13) ─────────────────────────────────
-# 네이버 금융 검색 페이지 크롤 — index_snapshot·top30_v2와 동일한 검증된 패턴
-# (UA 고정 · euc-kr · 정규식). HUB Name Finder의 '전 종목' 검색 원천.
+# ── 종목명 → 코드 검색 (v1.1 · 2026.06.13) ─────────────────────────────────
+# 실측 교정: 네이버 금융 검색은 query를 euc-kr 인코딩해야 결과를 반환
+# (v1.0은 UTF-8 전송 → "no match in page" — 림빅 실측 스크린샷으로 확인)
+# 2단 구조: ① euc-kr 검색 페이지 크롤 → ② 자동완성 API(ac.stock.naver.com) 예비
 @app.get("/search_stock/{query}")
 async def search_stock(query: str):
     import re as _re
+    from urllib.parse import quote as _quote
+
     cache_key = f"search_stock:{query}"
     now = time.time()
     if cache_key in _cache and now - _cache[cache_key]["ts"] < 3600:
         return _cache[cache_key]["data"]
 
     UA = "Mozilla/5.0 (Linux; Windows NT 10.0) AppleWebKit/537.36"
-    result = {"query": query, "matches": [], "_debug": None}
+    result = {"query": query, "matches": [], "_debug": None, "_src": None}
+
+    def _push(code, name):
+        code = (code or "").strip(); name = (name or "").strip()
+        if code and name and _re.fullmatch(r"\d{6}", code):
+            if not any(m["code"] == code for m in result["matches"]):
+                result["matches"].append({"code": code, "name": name})
+
+    # ── ① 데스크톱 검색 페이지 (euc-kr 인코딩 필수) ──
     try:
-        url = "https://finance.naver.com/search/search.naver"
+        q_euc = _quote(query.encode("euc-kr"))
+        url = f"https://finance.naver.com/search/search.naver?query={q_euc}"
         async with httpx.AsyncClient(timeout=8, headers={"User-Agent": UA}) as c:
-            res = await c.get(url, params={"query": query})
+            res = await c.get(url)
         res.encoding = "euc-kr"
-        html = res.text
-        # 결과 행: /item/main.naver?code=XXXXXX ... >종목명<
-        pairs = _re.findall(r'code=(\d{6})[^>]*>\s*([^<>]{1,40}?)\s*</a>', html)
-        seen = set()
-        for code, name in pairs:
-            name = name.strip()
-            if not name or code in seen:
-                continue
-            seen.add(code)
-            result["matches"].append({"code": code, "name": name})
-            if len(result["matches"]) >= 8:
-                break
-        if not result["matches"]:
-            result["_debug"] = "no match in page"
+        pairs = _re.findall(r'code=(\d{6})[^>]*>\s*([^<>]{1,40}?)\s*</a>', res.text)
+        for code, name in pairs[:8]:
+            _push(code, name)
+        if result["matches"]:
+            result["_src"] = "search_euckr"
     except Exception as e:
-        result["_debug"] = f"err: {type(e).__name__}: {str(e)[:80]}"
+        result["_debug"] = f"L1 err: {type(e).__name__}: {str(e)[:60]}"
+
+    # ── ② 예비: 네이버 증권 자동완성 (UTF-8 JSON) — 구조 가정 없이 방어적 추출 ──
+    if not result["matches"]:
+        try:
+            url2 = "https://ac.stock.naver.com/ac"
+            async with httpx.AsyncClient(timeout=8, headers={"User-Agent": UA}) as c:
+                res2 = await c.get(url2, params={"q": query, "target": "stock,index"})
+            data = res2.json()
+
+            def walk(node):
+                # 어떤 깊이든 [6자리코드, 한글이름, ...] 패턴을 찾는다 (포맷 가정 최소화)
+                if isinstance(node, list):
+                    strs = [x for x in node if isinstance(x, str)]
+                    code = next((s for s in strs if _re.fullmatch(r"\d{6}", s)), None)
+                    name = next((s for s in strs if s and not _re.fullmatch(r"[\d.,%+-]+", s) and s != code), None)
+                    if code and name:
+                        _push(code, name)
+                    for x in node:
+                        walk(x)
+                elif isinstance(node, dict):
+                    code = node.get("code") or node.get("cd")
+                    name = node.get("name") or node.get("nm")
+                    if code and name:
+                        _push(str(code), str(name))
+                    for v in node.values():
+                        walk(v)
+            walk(data)
+            result["matches"] = result["matches"][:8]
+            if result["matches"]:
+                result["_src"] = "autocomplete"
+            elif result["_debug"] is None:
+                result["_debug"] = "both layers empty"
+        except Exception as e:
+            result["_debug"] = (result["_debug"] or "") + f" | L2 err: {type(e).__name__}: {str(e)[:60]}"
 
     _cache[cache_key] = {"ts": now, "data": result}
     return result
