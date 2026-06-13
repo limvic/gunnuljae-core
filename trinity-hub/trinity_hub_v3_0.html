@@ -413,6 +413,7 @@ body{padding-bottom:74px;}
   border-radius:6px;font-size:9.5px;padding:3px 6px;cursor:pointer;font-family:var(--mono);}
 .wcard .w-charts button:active{border-color:var(--teal);color:var(--teal);}
 .wcard .w-x{flex:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0 2px;}
+.wcard .w-rrwarn{flex:none;font-size:12px;}
 /* 5상태 라이프사이클: 깜박(0~1분) → 점멸(1~4분) → 골드(4분~, 유지) */
 .wcard.wa-blink{border-color:var(--green);animation:waBlink .72s steps(2,jump-none) infinite;}
 .wcard.wa-pulse{border-color:rgba(0,255,136,.55);animation:waPulse 1.8s ease-in-out infinite;}
@@ -1152,6 +1153,7 @@ function watchCardHTML(code, my){
            : (myWatch.find(w=>w.code===code)?.name || watch.find(w=>w.code===code)?.name || code);
   const sc = cd?watchScore(cd):null;
   const scChip = sc==null?'<span class="wsc">--</span>':`<span class="wsc ${scoreCls(sc)}">${sc}</span>`;
+  const rrWarn = (cd&&cd.mri&&cd.mri.rr!=null&&Number(cd.mri.rr)>5) ? '<span class="w-rrwarn" title="R/R 과대 — stop 왜곡 의심">⚠️</span>' : '';
   const grade = (cd&&cd.mri)?cd.mri.grade:'';
   const gcls = {'A':'g-a','B':'g-b','C':'g-c'}[grade]||'g-d';
   const stage = watchStage(code);
@@ -1159,7 +1161,7 @@ function watchCardHTML(code, my){
   const rmBtn = my?`<span class="w-x" onclick="event.stopPropagation();rmMyWatch('${code}')">✕</span>`:'';
   return `<div class="wcard ${stage}" data-code="${code}" onclick="loadJudge('${code}')">
     <span class="w-grade ${gcls}">${grade||'·'}</span>
-    <span class="w-name">${nm}</span>${badge}${scChip}
+    <span class="w-name">${nm}</span>${badge}${rrWarn}${scChip}
     <span class="w-charts" onclick="event.stopPropagation()">
       <button onclick="openNaver('${code}')" title="네이버 차트">📈네</button>
       <button onclick="openTossStock('${code}')" title="토스">토스</button>
@@ -1538,7 +1540,7 @@ renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
-addFeed('🔱 Trinity HUB v4.2 — WATCH Center 가동 (기회 대기실)');
+addFeed('🔱 Trinity HUB v4.2 — WATCH Center · R/R 과대 표시');
 setInterval(fetchTemp, 90000);
 setInterval(watchScan, 60000);                       // 장중 60초 감시
 setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
