@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.0 UTOPIA</title>
+<title>🔱 Trinity HUB v4.1 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -373,6 +373,24 @@ body{padding-bottom:74px;}
 /* ━━ v4.0: 🔁 재평가 (손실 종목엔 '추가 가능' 대신 — Rule 6 보호) ━━ */
 .ws.hp-reval{border-color:rgba(184,132,255,.45);color:var(--purple);}
 .hp-reval{background:rgba(184,132,255,.13);color:var(--purple);}
+
+/* ━━ v4.1: 🚢 Portfolio Health (계좌 건강 — Storm=시장, PH=내 책) ━━ */
+.phealth{display:flex;align-items:center;gap:13px;margin:10px 16px 0;padding:12px 15px;
+  border-radius:14px;background:var(--surface);border:1px solid var(--border);cursor:pointer;
+  transition:border-color .25s,box-shadow .25s;}
+.phealth .ph-emoji{font-size:21px;line-height:1;}
+.phealth .ph-l{display:flex;flex-direction:column;gap:1px;}
+.phealth .ph-cap{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;}
+.phealth .ph-label{font-family:var(--display);font-size:14px;font-weight:700;}
+.phealth .ph-score{font-family:var(--mono);font-size:26px;font-weight:800;margin-left:auto;line-height:1;}
+.phealth .ph-score small{font-size:10px;color:var(--text3);font-weight:600;}
+.phealth .ph-r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0;}
+.phealth .ph-advice{font-size:9.5px;color:var(--text2);text-align:right;line-height:1.4;}
+.phealth .ph-break{font-family:var(--mono);font-size:8.5px;color:var(--text3);text-align:right;}
+.phealth.ph-good{border-color:rgba(0,255,136,.32);}  .phealth.ph-good .ph-label,.phealth.ph-good .ph-score{color:var(--green);}
+.phealth.ph-ok  {border-color:rgba(255,204,0,.30);}  .phealth.ph-ok   .ph-label,.phealth.ph-ok   .ph-score{color:var(--yellow);}
+.phealth.ph-warn{border-color:rgba(255,138,0,.42);box-shadow:0 0 16px rgba(255,138,0,.07);} .phealth.ph-warn .ph-label,.phealth.ph-warn .ph-score{color:var(--orange);}
+.phealth.ph-risk{border-color:rgba(255,58,58,.55);box-shadow:0 0 18px rgba(255,58,58,.11);}  .phealth.ph-risk .ph-label,.phealth.ph-risk .ph-score{color:var(--red);}
 </style>
 </head>
 <body>
@@ -397,7 +415,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.0 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.1 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -427,6 +445,14 @@ body{padding-bottom:74px;}
   <span class="mk-sep"></span>
   <span class="fed unset" id="fedChip" onclick="editFed()">🏦 FED 설정</span>
   <span class="fomc" id="fomcChip"></span>
+</div>
+
+<!-- 🚢 Portfolio Health -->
+<div class="phealth ph-ok" id="phCard" onclick="explainPH()">
+  <span class="ph-emoji" id="phEmoji">🚢</span>
+  <div class="ph-l"><span class="ph-cap">PORTFOLIO</span><span class="ph-label" id="phLabel">측정 대기</span></div>
+  <div class="ph-score" id="phScore">--<small> /100</small></div>
+  <div class="ph-r"><span class="ph-advice" id="phAdvice">보유 갱신 필요</span><span class="ph-break" id="phBreak"></span></div>
 </div>
 
 <div id="focusCard" style="display:none" class="focus"></div>
@@ -532,7 +558,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.0 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.1 UTOPIA 🔱
 </footer>
 
   </div>
@@ -648,12 +674,12 @@ function computeStorm(d){
   if(!wsum) return null;
   return {score:Math.round(C.reduce((a,c)=>a+c.r*c.w,0)/wsum), full:wsum>=100};
 }
-function stormGrade(s){    // v2.0 — 현금 비중 결정 가이드
-  if(s<=20) return ['st-sun','☀️','맑음','공격 우위'];
-  if(s<=40) return ['st-cloud','🌤','양호','분할 진입'];
-  if(s<=60) return ['st-rain','⛅','주의','현금 확대 시작'];
-  if(s<=80) return ['st-storm','🌧','경계','신규 진입 최소화'];
-  return ['st-crash','⛈','폭풍','신규 진입 금지 · 현금 우선'];
+function stormGrade(s){    // v2.0 + v4.1 현금비중 가이드
+  if(s<=20) return ['st-sun','☀️','맑음','공격 우위 · 현금 10~20%'];
+  if(s<=40) return ['st-cloud','🌤','양호','분할 진입 · 현금 20~30%'];
+  if(s<=60) return ['st-rain','⛅','주의','현금 확대 · 40~50%'];
+  if(s<=80) return ['st-storm','🌧','경계','신규 최소화 · 현금 60~80%'];
+  return ['st-crash','🌪️','피난','신규매수 금지 · 현금 최대'];
 }
 let _stormLast=null;
 function renderStorm(st){
@@ -761,6 +787,49 @@ function editFed(){
   toast('FED 정보 저장 — 직접 입력한 실측값');
 }
 function renderMacro(){ updateMktState(); $('mkUpd').textContent=fmtUpd(_lastSnapTs); renderFed(); }
+
+// ━━━━━━━━━ 🚢 v4.1 Portfolio Health (계좌 건강 — 보유 실측 100%) ━━━━━━━━━
+function portfolioHealth(){
+  if(!holds.length) return null;
+  let pen=0, out=0, warn=0, loss=0, profit=0, q=0;
+  holds.forEach(h=>{
+    const k=holdState(h)[0];
+    if(k==='hp-q'){ q++; return; }                         // 가격/손절 미설정 — 평가 보류
+    if(k==='hp-out'){ pen+=30; out++; return; }            // 손절선 이탈 — 최악
+    if(k==='hp-warn'){ pen+=16; warn++; return; }          // 손절선 근접
+    if(h.buy && h.price!=null){                            // 이탈/주의 아님 → 손익으로
+      if(h.price<h.buy){ pen+=Math.min(14, 3+(h.buy-h.price)/h.buy*100*0.6); loss++; }
+      else profit++;
+    }
+  });
+  return {score:Math.max(0,Math.min(100,Math.round(100-pen))), out, warn, loss, profit, q, n:holds.length};
+}
+function phGrade(s){
+  if(s>=80) return ['ph-good','🟢','건강','정상 운용'];
+  if(s>=60) return ['ph-ok','🟡','양호','관리 지속'];
+  if(s>=40) return ['ph-warn','🟠','주의','신규 자제 · 손실 점검'];
+  return ['ph-risk','🔴','위험','신규매수 금지 · 손실 정리 우선'];
+}
+let _phLast=null;
+function renderPH(){
+  const card=$('phCard'); if(!card) return;
+  const h=portfolioHealth(); _phLast=h;
+  if(!h){ card.className='phealth ph-ok'; $('phEmoji').textContent='🚢';
+    $('phLabel').textContent='보유 없음'; $('phScore').innerHTML='--<small> /100</small>';
+    $('phAdvice').textContent='담은 종목이 없어요'; $('phBreak').textContent=''; return; }
+  const [cls,emo,lbl,adv]=phGrade(h.score);
+  card.className='phealth '+cls;
+  $('phEmoji').textContent=emo;
+  $('phLabel').textContent=lbl + (h.q?` ·${h.q} 갱신대기`:'');
+  $('phScore').innerHTML=`${h.score}<small> /100</small>`;
+  $('phAdvice').textContent=adv;
+  $('phBreak').textContent=`이탈 ${h.out} · 주의 ${h.warn} · 손실 ${h.loss} · 수익 ${h.profit}`;
+}
+function explainPH(){
+  if(!_phLast){ toast('보유 종목을 담고 손절선 갱신을 눌러보세요'); return; }
+  const [,emo,lbl,adv]=phGrade(_phLast.score);
+  toast(`${emo} Portfolio ${_phLast.score} · ${lbl} — ${adv} (이탈 ${_phLast.out}·주의 ${_phLast.warn}·손실 ${_phLast.loss}·수익 ${_phLast.profit})`);
+}
 
 // ━━━━━━━━━ 웜업 (v2.0과 동일 대상) ━━━━━━━━━
 async function warmup(){
@@ -1261,6 +1330,7 @@ function renderHolds(){
   }).join('');
   $('cntHold').textContent = holds.length;
   save(LS_HOLD, holds); syncSentinelHold();
+  if(typeof renderPH==='function') renderPH();    // 🚢 v4.1 — 계좌 건강 갱신
 }
 function rmHold(i){ holds.splice(i,1); renderHolds(); }
 async function addHold(){
@@ -1315,8 +1385,8 @@ function addFeed(text){
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
-renderFocus(); renderMemos(); syncMemos(); renderMacro();
-addFeed('🔱 Trinity HUB v4.0 — Macro Barometer · Storm v2.0 · Rule6 가드');
+renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
+addFeed('🔱 Trinity HUB v4.1 — Portfolio Health · 현금비중 가이드');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
