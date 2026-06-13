@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v3.3 UTOPIA</title>
+<title>🔱 Trinity HUB v3.9 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -300,6 +300,59 @@ body{padding-bottom:74px;}
 .sh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 14px;max-width:300px;}
 .sh-cell small{font-size:9px;color:var(--text3);display:block;}
 .sh-cell b{font-family:var(--mono);font-size:13px;}
+
+/* ━━ v3.9: ⛈️ Storm Index 날씨 카드 (채피 설계 / ATTACK과 분리) ━━ */
+.storm{order:2;display:flex;flex-direction:column;justify-content:center;gap:1px;
+  min-width:150px;padding:8px 14px;margin:0 12px;border-radius:14px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border);transition:border-color .25s,box-shadow .25s;}
+.storm .st-top{display:flex;align-items:baseline;gap:7px;font-family:var(--mono);}
+.storm .st-emoji{font-size:17px;line-height:1;}
+.storm .st-score{font-size:18px;font-weight:800;letter-spacing:.5px;}
+.storm .st-score small{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:1px;margin-left:1px;}
+.storm .st-label{font-size:11.5px;font-weight:700;margin-top:1px;}
+.storm .st-advice{font-size:9px;color:var(--text2);line-height:1.4;letter-spacing:-.01em;}
+.storm.st-sun  {border-color:rgba(0,255,136,.32);}   .storm.st-sun   .st-label{color:var(--green);}
+.storm.st-cloud{border-color:rgba(255,204,0,.30);}   .storm.st-cloud .st-label{color:var(--yellow);}
+.storm.st-rain {border-color:rgba(0,212,255,.34);}   .storm.st-rain  .st-label{color:var(--teal);}
+.storm.st-storm{border-color:rgba(255,138,0,.42);box-shadow:0 0 18px rgba(255,138,0,.08);} .storm.st-storm .st-label{color:var(--orange);}
+.storm.st-crash{border-color:rgba(255,58,58,.55);box-shadow:0 0 20px rgba(255,58,58,.12);} .storm.st-crash .st-label{color:var(--red);}
+.storm .st-score{color:var(--text);}
+.storm.st-storm .st-score,.storm.st-crash .st-score{color:#fff;}
+@media (max-width:639px){ .storm{order:2;width:100%;flex-direction:row;align-items:center;gap:10px;margin:11px 0 0;}
+  .storm .st-top{flex:none;} .storm .st-mid{flex:1;min-width:0;}
+  .hd-top .hd-clock{order:1;} }
+
+/* ━━ v3.9: 📌 메모판 (핀보드) — localStorage + /memo 동기화 ━━ */
+.memo{margin:10px 16px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;}
+.memo-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;}
+.memo-title{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);letter-spacing:.5px;}
+.memo-date{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-left:auto;}
+.memo-list{display:flex;flex-direction:column;gap:5px;margin-bottom:9px;}
+.memo-empty{font-size:11px;color:var(--text3);padding:3px 1px;}
+.memo-item{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:9px;padding:6px 9px;}
+.memo-tag{flex:none;font-family:var(--mono);font-size:8.5px;font-weight:800;padding:2px 6px;border-radius:6px;letter-spacing:.3px;}
+.mt-sch {background:rgba(0,212,255,.13);color:var(--teal);}
+.mt-iss {background:rgba(255,58,58,.13);color:var(--red);}
+.mt-note{background:rgba(184,132,255,.13);color:var(--purple);}
+.memo-txt{flex:1;min-width:0;font-size:12px;color:var(--text);line-height:1.4;}
+.memo-txt small{color:var(--text3);font-family:var(--mono);font-size:9px;}
+.memo-auth{flex:none;font-size:9px;color:var(--text3);font-family:var(--mono);}
+.memo-x{flex:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0 2px;}
+.memo-x:active{color:var(--red);}
+.memo-add{display:flex;gap:6px;}
+.memo-add select{flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text2);font-size:10.5px;font-family:var(--mono);padding:0 6px;}
+.memo-add input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);font-size:11.5px;padding:8px 10px;outline:none;}
+.memo-add input:focus{border-color:rgba(0,212,255,.35);}
+.memo-add button{flex:none;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:var(--teal);
+  border-radius:9px;font-size:13px;padding:0 11px;cursor:pointer;}
+
+/* ━━ v3.9: 검색창을 SCAN 패널 안으로 이전 (상단 자리는 Storm에 양보) ━━ */
+.finder.finder-inline{width:100%;max-width:none;margin:10px 0 0;justify-content:flex-start;}
+.finder.finder-inline input{flex:1;min-width:0;}
+.finder.finder-inline .f-name{margin-left:auto;}
 </style>
 </head>
 <body>
@@ -324,15 +377,15 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.8 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v3.9 UTOPIA</div>
     </div>
-  <div class="finder">
-    <span class="f-ico">🔎</span>
-    <input id="fCode" type="search" placeholder="코드 ⇄ 이름"
-           oninput="finderInput(this)" onkeydown="if(event.key==='Enter')finderInput(this,true)">
-    <span class="f-name" id="fName"></span>
-    <button class="f-add" id="fAdd" onclick="finderAdd()">＋후보</button>
-  </div>
+    <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
+      <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
+      <div class="st-mid">
+        <div class="st-label" id="stLabel">측정 대기</div>
+        <div class="st-advice" id="stAdvice">지수 불러오는 중…</div>
+      </div>
+    </div>
     <div class="hd-clock">
       <div class="hd-time" id="clock">--:--:--</div>
       <div class="hd-date" id="cdate">--</div>
@@ -349,6 +402,25 @@ body{padding-bottom:74px;}
 
 <div id="focusCard" style="display:none" class="focus"></div>
 
+<!-- 📌 메모판 (핀보드) -->
+<div class="memo" id="memoCard">
+  <div class="memo-head">
+    <span class="memo-title">📌 메모판</span>
+    <span class="memo-date" id="memoDate">--</span>
+  </div>
+  <div class="memo-list" id="memoList"></div>
+  <div class="memo-add">
+    <select id="memoTag">
+      <option value="일정">일정</option>
+      <option value="이슈">이슈</option>
+      <option value="메모" selected>메모</option>
+    </select>
+    <input id="memoInput" placeholder="발표·이슈·일정 핀 (예: FOMC 새벽 3시 · 옵션만기 목)"
+           onkeydown="if(event.key==='Enter')addMemo()">
+    <button onclick="addMemo()">📌</button>
+  </div>
+</div>
+
 <!-- 카운트 -->
 <div class="counts">
   <div class="cnt cnt-scan" onclick="scrollToSec('secScan')"><div class="cnt-num" id="cntScan">0</div><div class="cnt-lbl">후보</div></div>
@@ -361,9 +433,12 @@ body{padding-bottom:74px;}
   <div class="sec-head"><span class="sec-num">1. 발견 / SCAN</span><span class="sec-q">— 무엇을 볼 것인가?</span></div>
   <div class="panel">
     <div class="chips" id="chips"></div>
-    <div class="scan-row">
-      <input id="addWatch" placeholder="종목명 또는 코드 추가 (예: 한미반도체)" onkeydown="if(event.key==='Enter')addCandidate()">
-      <button class="btn btn-purple" onclick="addCandidate()">＋ 추가</button>
+    <div class="finder finder-inline">
+      <span class="f-ico">🔎</span>
+      <input id="fCode" type="search" placeholder="종목명 또는 코드 검색 (예: 한미반도체 / 042700)"
+             oninput="finderInput(this)" onkeydown="if(event.key==='Enter')finderInput(this,true)">
+      <span class="f-name" id="fName"></span>
+      <button class="f-add" id="fAdd" onclick="finderAdd()">＋후보</button>
     </div>
     <div class="scan-tools">
       <button class="btn btn-ghost" onclick="presetTop10()">🌊 채피 Top10 채우기</button>
@@ -428,7 +503,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.8 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.9 UTOPIA 🔱
 </footer>
 
   </div>
@@ -493,7 +568,124 @@ async function fetchTemp(){
     $('tempDetail').innerHTML =
       `<span>KOSPI ${f(ks)}</span><span>KOSDAQ ${f(kq)}</span><span>NASDAQ ${f(d.nasdaq?.change_pct)}</span>`+
       `<span>S&P ${f((d.sp500||d.snp500)?.change_pct)}</span><span>VIX ${vixTxt}</span><span>환율 ${fxTxt}</span>`;
-  }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; }
+    renderStorm(computeStorm(d));        // ⛈️ v3.9 — 같은 실측으로 Storm Index 산출
+  }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; renderStorm(null); }
+}
+
+// ━━━━━━━━━ ⛈️ Storm Index v0.1 (채피 설계 / ATTACK과 분리 — 위험 환경 게이지) ━━━━━━━━━
+// 0~100. 높을수록 위험. 실측만 사용 — 결측 축은 가중치에서 제외하고 재정규화(추측 금지).
+const _clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+function _lerpSeg(x,pts){               // pts: x 오름차순 [[x,y],...], 양끝 클램프
+  if(x<=pts[0][0]) return pts[0][1];
+  if(x>=pts[pts.length-1][0]) return pts[pts.length-1][1];
+  for(let i=0;i<pts.length-1;i++){ const [x0,y0]=pts[i],[x1,y1]=pts[i+1];
+    if(x>=x0&&x<=x1) return y0+(y1-y0)*(x-x0)/(x1-x0); }
+  return pts[pts.length-1][1];
+}
+function stormInternal(){               // Trinity 내부신호 — HUB 실측 상태만
+  let s=0, out=0, warn=0;
+  holds.forEach(h=>{ const k=holdState(h)[0]; if(k==='hp-out')out++; else if(k==='hp-warn')warn++; });
+  s += out*35 + warn*20;
+  if(holds.length && (out+warn)/holds.length >= 0.3) return 100;   // 보유 30%+ 위험 → 즉시 100
+  if(watch.length){
+    if(goList().length===0) s += 20;                               // 진입 가능 0개
+    const ab = watch.filter(w=>w.grade==='A'||w.grade==='B').length;
+    if(ab/watch.length <= 0.2) s += 20;                            // A/B 비율 20% 이하
+  }
+  return _clamp(s,0,100);
+}
+function computeStorm(d){
+  const C=[];                           // {r:위험0~100, w:가중치}
+  if(d&&d.kospi?.change_pct!=null&&d.kosdaq?.change_pct!=null){
+    let r=_lerpSeg((+d.kospi.change_pct + +d.kosdaq.change_pct)/2, [[-3,100],[0,35],[3,0]]);
+    if(+d.kosdaq.change_pct<=-2) r+=10;                            // KOSDAQ 급락 가산
+    C.push({r:_clamp(r,0,100),w:35});
+  }
+  const sp=d&&(d.sp500||d.snp500);
+  if(d&&d.nasdaq?.change_pct!=null&&sp?.change_pct!=null)
+    C.push({r:_clamp(_lerpSeg((+d.nasdaq.change_pct + +sp.change_pct)/2,[[-2.5,100],[0,30],[2,0]]),0,100),w:20});
+  if(d&&d.vix?.price!=null)
+    C.push({r:_clamp(_lerpSeg(+d.vix.price,[[15,0],[20,35],[25,70],[30,100]]),0,100),w:15});
+  if(d&&d.usdkrw?.change_pct!=null){
+    let r=_lerpSeg(+d.usdkrw.change_pct,[[-1,0],[0,25],[1,60],[2,100]]);
+    const lv=+(d.usdkrw.price||0); if(lv>=1500) r+=20; else if(lv>=1450) r+=10;   // 환율 레벨 가산
+    C.push({r:_clamp(r,0,100),w:15});
+  }
+  C.push({r:stormInternal(),w:15});     // 내부신호는 항상(클라이언트 실측)
+  const wsum=C.reduce((a,c)=>a+c.w,0);
+  if(!wsum) return null;
+  return {score:Math.round(C.reduce((a,c)=>a+c.r*c.w,0)/wsum), full:wsum>=100};
+}
+function stormGrade(s){
+  if(s<=20) return ['st-sun','☀️','맑음','정상 운용'];
+  if(s<=40) return ['st-cloud','⛅','흐림','선별 진입'];
+  if(s<=60) return ['st-rain','🌧️','비','비중 축소 준비'];
+  if(s<=80) return ['st-storm','⛈️','폭풍주의','현금 비중 ↑ / 신규 진입 축소'];
+  return ['st-crash','🚨','폭락장 경계','신규 진입 금지 · 손절선 엄수'];
+}
+let _stormLast=null;
+function renderStorm(st){
+  const card=$('stormCard');
+  if(!st){ card.className='storm st-cloud'; $('stEmoji').textContent='⛅';
+    $('stScore').innerHTML='--<small>STORM</small>'; $('stLabel').textContent='측정 대기';
+    $('stAdvice').textContent='웜업 후 재시도'; _stormLast=null; return; }
+  _stormLast=st;
+  const [cls,emo,lbl,adv]=stormGrade(st.score);
+  card.className='storm '+cls;
+  $('stEmoji').textContent=emo;
+  $('stScore').innerHTML=`${st.score}<small>STORM</small>`;
+  $('stLabel').textContent=lbl + (st.full?'':' ·일부대기');
+  $('stAdvice').textContent=adv;
+}
+function explainStorm(){
+  if(!_stormLast){ toast('지수 측정 대기 중 — 웜업을 눌러보세요'); return; }
+  const [,emo,lbl,adv]=stormGrade(_stormLast.score);
+  toast(`${emo} Storm ${_stormLast.score} · ${lbl} — ${adv}`);
+}
+
+// ━━━━━━━━━ 📌 메모판 v1 (localStorage) + v2 (/memo 동기화) ━━━━━━━━━
+const LS_MEMO='trinity3_memo';
+let memos=load(LS_MEMO,[]);
+function memoToday(){ const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  return `${k.getFullYear()}-${String(k.getMonth()+1).padStart(2,'0')}-${String(k.getDate()).padStart(2,'0')}`; }
+function escHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderMemos(){
+  const today=memoToday(); $('memoDate').textContent=today.slice(5).replace('-','/');
+  const el=$('memoList');
+  const list=[...memos].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!list.length){ el.innerHTML='<div class="memo-empty">핀 고정된 메모가 없어요 — 오늘의 발표·일정을 적어두세요</div>'; return; }
+  el.innerHTML=list.map(m=>{
+    const tc={'일정':'mt-sch','이슈':'mt-iss','메모':'mt-note'}[m.tag]||'mt-note';
+    const auth=(m.author&&m.author!=='림빅')?`<span class="memo-auth">${escHtml(m.author)}</span>`:'';
+    const dchip=(m.date&&m.date!==today)?` <small>${m.date.slice(5)}</small>`:'';
+    return `<div class="memo-item"><span class="memo-tag ${tc}">${escHtml(m.tag||'메모')}</span>`+
+      `<span class="memo-txt">${escHtml(m.text)}${dchip}</span>${auth}`+
+      `<span class="memo-x" onclick="rmMemo('${m.id}')">✕</span></div>`;
+  }).join('');
+}
+function addMemo(){
+  const t=$('memoInput').value.trim(); if(!t) return;
+  const m={id:'m'+Date.now()+Math.random().toString(36).slice(2,5), date:memoToday(),
+           text:t, tag:$('memoTag').value, author:'림빅', ts:Date.now()};
+  memos.push(m); save(LS_MEMO,memos); $('memoInput').value=''; renderMemos();
+  pushMemoServer(m);                    // 백엔드 있으면 공유, 없으면 조용히 로컬만
+}
+function rmMemo(id){
+  memos=memos.filter(m=>m.id!==id); save(LS_MEMO,memos); renderMemos();
+  fetch(`${RAIL_MAIN}/memo/${id}`,{method:'DELETE',signal:AbortSignal.timeout(6000)}).catch(()=>{});
+}
+async function pushMemoServer(m){
+  try{ await fetch(`${RAIL_MAIN}/memo`,{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify(m),signal:AbortSignal.timeout(6000)}); }catch{}
+}
+async function syncMemos(){             // 부팅 시 서버 메모(채피/써니 등록분)와 병합
+  try{
+    const r=await fetch(`${RAIL_MAIN}/memo`,{signal:AbortSignal.timeout(6000)});
+    if(!r.ok) return;
+    const server=(await r.json()).memos||[];
+    const byId={}; memos.forEach(m=>byId[m.id]=m); server.forEach(m=>byId[m.id]=m);  // 서버 우선
+    memos=Object.values(byId); save(LS_MEMO,memos); renderMemos();
+  }catch{}
 }
 
 // ━━━━━━━━━ 웜업 (v2.0과 동일 대상) ━━━━━━━━━
@@ -1031,8 +1223,8 @@ function addFeed(text){
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
-renderFocus();
-addFeed('🔱 Trinity HUB v3.8 — 전 종목 검색 개통');
+renderFocus(); renderMemos(); syncMemos();
+addFeed('🔱 Trinity HUB v3.9 — Storm Index + 메모판 가동');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
