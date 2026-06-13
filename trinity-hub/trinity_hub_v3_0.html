@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v3.9 UTOPIA</title>
+<title>🔱 Trinity HUB v4.0 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -353,6 +353,26 @@ body{padding-bottom:74px;}
 .finder.finder-inline{width:100%;max-width:none;margin:10px 0 0;justify-content:flex-start;}
 .finder.finder-inline input{flex:1;min-width:0;}
 .finder.finder-inline .f-name{margin-left:auto;}
+
+/* ━━ v4.0: 🧭 Macro Barometer 스트립 (시장상태·기준시각·FED·FOMC) ━━ */
+.macro{display:flex;flex-wrap:wrap;align-items:center;gap:7px 9px;margin:8px 16px 0;
+  font-family:var(--mono);font-size:10px;color:var(--text2);}
+.macro .mk{font-weight:800;padding:3px 9px;border-radius:999px;border:1px solid var(--border);letter-spacing:.3px;}
+.macro .mk.mk-open  {color:var(--green); border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.08);}
+.macro .mk.mk-pre   {color:var(--yellow);border-color:rgba(255,204,0,.4);}
+.macro .mk.mk-after,
+.macro .mk.mk-closed{color:var(--text3);border-color:var(--border);}
+.macro .mk.mk-weekend{color:var(--teal);border-color:rgba(0,212,255,.35);}
+.macro .mk-upd{color:var(--text3);}
+.macro .mk-sep{flex:1;min-width:8px;}
+.macro .fed{cursor:pointer;padding:3px 9px;border-radius:999px;border:1px solid rgba(184,132,255,.3);color:var(--purple);font-weight:700;}
+.macro .fed.unset{color:var(--text3);border-color:var(--border);font-weight:400;}
+.macro .fomc{color:var(--text2);font-weight:700;}
+@media (min-width:640px){ .macro{margin:8px 0 0;} }
+
+/* ━━ v4.0: 🔁 재평가 (손실 종목엔 '추가 가능' 대신 — Rule 6 보호) ━━ */
+.ws.hp-reval{border-color:rgba(184,132,255,.45);color:var(--purple);}
+.hp-reval{background:rgba(184,132,255,.13);color:var(--purple);}
 </style>
 </head>
 <body>
@@ -377,7 +397,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v3.9 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.0 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -398,6 +418,15 @@ body{padding-bottom:74px;}
   <div class="temp-pill temp-neutral" id="tempPill">🟡 측정 중</div>
   <div class="temp-detail" id="tempDetail">지수 불러오는 중…</div>
   <button class="warm-btn" id="warmBtn" onclick="warmup()">🔌 웜업</button>
+</div>
+
+<!-- 🧭 Macro Barometer -->
+<div class="macro" id="macroStrip">
+  <span class="mk mk-weekend" id="mkState">🔵 주말</span>
+  <span class="mk-upd" id="mkUpd">업데이트 --</span>
+  <span class="mk-sep"></span>
+  <span class="fed unset" id="fedChip" onclick="editFed()">🏦 FED 설정</span>
+  <span class="fomc" id="fomcChip"></span>
 </div>
 
 <div id="focusCard" style="display:none" class="focus"></div>
@@ -503,7 +532,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v3.9 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.0 UTOPIA 🔱
 </footer>
 
   </div>
@@ -545,6 +574,7 @@ function tick(){
   $('clock').textContent=[k.getHours(),k.getMinutes(),k.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
   const d=['일','월','화','수','목','금','토'][k.getDay()];
   $('cdate').textContent=`${k.getFullYear()}.${String(k.getMonth()+1).padStart(2,'0')}.${String(k.getDate()).padStart(2,'0')} (${d})`;
+  if(typeof updateMktState==='function') updateMktState();
 }
 setInterval(tick,1000); tick();
 
@@ -569,7 +599,9 @@ async function fetchTemp(){
       `<span>KOSPI ${f(ks)}</span><span>KOSDAQ ${f(kq)}</span><span>NASDAQ ${f(d.nasdaq?.change_pct)}</span>`+
       `<span>S&P ${f((d.sp500||d.snp500)?.change_pct)}</span><span>VIX ${vixTxt}</span><span>환율 ${fxTxt}</span>`;
     renderStorm(computeStorm(d));        // ⛈️ v3.9 — 같은 실측으로 Storm Index 산출
-  }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; renderStorm(null); }
+    _lastSnapTs = d.ts || Math.floor(Date.now()/1000);
+    renderMacro();                       // 🧭 v4.0 — 시장상태·기준시각·FED
+  }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; renderStorm(null); renderMacro(); }
 }
 
 // ━━━━━━━━━ ⛈️ Storm Index v0.1 (채피 설계 / ATTACK과 분리 — 위험 환경 게이지) ━━━━━━━━━
@@ -595,33 +627,33 @@ function stormInternal(){               // Trinity 내부신호 — HUB 실측 �
   return _clamp(s,0,100);
 }
 function computeStorm(d){
-  const C=[];                           // {r:위험0~100, w:가중치}
+  const C=[];                           // {r:위험0~100, w:가중치}  — v2.0 가중치
   if(d&&d.kospi?.change_pct!=null&&d.kosdaq?.change_pct!=null){
     let r=_lerpSeg((+d.kospi.change_pct + +d.kosdaq.change_pct)/2, [[-3,100],[0,35],[3,0]]);
     if(+d.kosdaq.change_pct<=-2) r+=10;                            // KOSDAQ 급락 가산
-    C.push({r:_clamp(r,0,100),w:35});
+    C.push({r:_clamp(r,0,100),w:25});                             // 국내 25
   }
   const sp=d&&(d.sp500||d.snp500);
   if(d&&d.nasdaq?.change_pct!=null&&sp?.change_pct!=null)
-    C.push({r:_clamp(_lerpSeg((+d.nasdaq.change_pct + +sp.change_pct)/2,[[-2.5,100],[0,30],[2,0]]),0,100),w:20});
+    C.push({r:_clamp(_lerpSeg((+d.nasdaq.change_pct + +sp.change_pct)/2,[[-2.5,100],[0,30],[2,0]]),0,100),w:20}); // 미국 20
   if(d&&d.vix?.price!=null)
-    C.push({r:_clamp(_lerpSeg(+d.vix.price,[[15,0],[20,35],[25,70],[30,100]]),0,100),w:15});
+    C.push({r:_clamp(_lerpSeg(+d.vix.price,[[15,0],[20,35],[25,70],[30,100]]),0,100),w:20}); // VIX 20
   if(d&&d.usdkrw?.change_pct!=null){
     let r=_lerpSeg(+d.usdkrw.change_pct,[[-1,0],[0,25],[1,60],[2,100]]);
     const lv=+(d.usdkrw.price||0); if(lv>=1500) r+=20; else if(lv>=1450) r+=10;   // 환율 레벨 가산
-    C.push({r:_clamp(r,0,100),w:15});
+    C.push({r:_clamp(r,0,100),w:15});                             // 환율 15
   }
-  C.push({r:stormInternal(),w:15});     // 내부신호는 항상(클라이언트 실측)
+  C.push({r:stormInternal(),w:20});     // 내부신호 20 (클라이언트 실측 — 항상)
   const wsum=C.reduce((a,c)=>a+c.w,0);
   if(!wsum) return null;
   return {score:Math.round(C.reduce((a,c)=>a+c.r*c.w,0)/wsum), full:wsum>=100};
 }
-function stormGrade(s){
-  if(s<=20) return ['st-sun','☀️','맑음','정상 운용'];
-  if(s<=40) return ['st-cloud','⛅','흐림','선별 진입'];
-  if(s<=60) return ['st-rain','🌧️','비','비중 축소 준비'];
-  if(s<=80) return ['st-storm','⛈️','폭풍주의','현금 비중 ↑ / 신규 진입 축소'];
-  return ['st-crash','🚨','폭락장 경계','신규 진입 금지 · 손절선 엄수'];
+function stormGrade(s){    // v2.0 — 현금 비중 결정 가이드
+  if(s<=20) return ['st-sun','☀️','맑음','공격 우위'];
+  if(s<=40) return ['st-cloud','🌤','양호','분할 진입'];
+  if(s<=60) return ['st-rain','⛅','주의','현금 확대 시작'];
+  if(s<=80) return ['st-storm','🌧','경계','신규 진입 최소화'];
+  return ['st-crash','⛈','폭풍','신규 진입 금지 · 현금 우선'];
 }
 let _stormLast=null;
 function renderStorm(st){
@@ -687,6 +719,48 @@ async function syncMemos(){             // 부팅 시 서버 메모(채피/써�
     memos=Object.values(byId); save(LS_MEMO,memos); renderMemos();
   }catch{}
 }
+
+// ━━━━━━━━━ 🧭 v4.0 Macro Barometer (시장상태 · 기준시각 · FED · FOMC) ━━━━━━━━━
+function marketState(){     // 채피 4상태 — 평일 09:00~15:30 장중, 08:00~09:00 프리장, 주말, 그 외 장마감
+  const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  const day=k.getDay(), t=k.getHours()*60+k.getMinutes();
+  if(day===0||day===6) return ['mk-weekend','🔵','주말'];
+  if(t>=540&&t<=930)   return ['mk-open','🟢','장중'];
+  if(t>=480&&t<540)    return ['mk-pre','🟡','프리장'];
+  return ['mk-closed','⚫','장마감'];
+}
+function updateMktState(){
+  const [cls,emo,lbl]=marketState(), el=$('mkState');
+  if(el){ el.className='mk '+cls; el.textContent=`${emo} ${lbl}`; }
+}
+let _lastSnapTs=null;       // index_snapshot 기준시각 (epoch sec)
+function fmtUpd(ts){
+  if(!ts) return '업데이트 --';
+  const k=new Date(ts*1000+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  return `업데이트 ${String(k.getMonth()+1).padStart(2,'0')}.${String(k.getDate()).padStart(2,'0')} `+
+         `${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
+}
+// ── FED 수동 패널 — 림빅이 정확한 값을 직접 입력(추측 금지). FOMC D-N은 자동 계산 ──
+const LS_FED='trinity_fed';
+let fed=load(LS_FED,null);  // {rate, stance, fomc:'YYYY-MM-DD'}
+function fomcDday(dstr){ try{ return Math.round((new Date(dstr)-new Date(memoToday()))/86400000); }catch{ return null; } }
+function renderFed(){
+  const fc=$('fedChip'), foc=$('fomcChip'); if(!fc) return;
+  if(!fed||!fed.rate){ fc.textContent='🏦 FED 설정'; fc.className='fed unset'; foc.textContent=''; return; }
+  fc.className='fed'; fc.textContent=`🏦 FED ${fed.rate}${fed.stance?(' '+fed.stance):''}`;
+  if(fed.fomc){ const dn=fomcDday(fed.fomc);
+    foc.textContent = dn==null?'' : dn>0?`📅 FOMC D-${dn}` : dn===0?'📅 FOMC D-DAY':'📅 FOMC 지남'; }
+  else foc.textContent='';
+}
+function editFed(){
+  const rate=(prompt('현재 미국 기준금리 (예: 4.25%) — 실측값만','' + (fed?.rate||''))||'').trim();
+  if(!rate){ return; }
+  const stance=(prompt('스탠스 (예: 동결 / 인하 / 인상)', fed?.stance||'동결')||'').trim();
+  const fomc=(prompt('다음 FOMC 날짜 (YYYY-MM-DD)', fed?.fomc||'')||'').trim();
+  fed={rate, stance, fomc}; save(LS_FED, fed); renderFed();
+  toast('FED 정보 저장 — 직접 입력한 실측값');
+}
+function renderMacro(){ updateMktState(); $('mkUpd').textContent=fmtUpd(_lastSnapTs); renderFed(); }
 
 // ━━━━━━━━━ 웜업 (v2.0과 동일 대상) ━━━━━━━━━
 async function warmup(){
@@ -940,12 +1014,27 @@ function pickFocus(){
         return {name:s.name, sub:`BREAK · ${s.score}점${s.pattern?(' · '+s.pattern):''}`, why:'진입 구간 접근 — Strike 신호', code:null};
     }
   }catch{}
-  const go = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'))
-    .sort((a,b)=>(b.mri.rr||0)-(a.mri.rr||0))[0];
-  if(go){ const w=watch.find(x=>x.code===go.code);
-    return {name:(w?.name)||go.name||go.code, sub:`${go.mri.grade||''} · R/R ${go.mri.rr??'--'} · ${go.mri.action_label||'진입 후보'}`, why:'오늘 최우선 관찰 — Judge 진입 가능', code:go.code}; }
+  // TODAY SCORE = Judge 40 · R/R 30 · Momentum 20 · Storm 적합도 10 (전부 실측 유도)
+  const todayScore=(d)=>{
+    const m=d.mri; if(!m) return -1;
+    const grade={'A':100,'B':75,'C':50}[m.grade]??25;
+    const rrN=m.rr!=null?_clamp(Number(m.rr)/4*100,0,100):0;
+    const mom=d.change_pct!=null?_clamp((Number(d.change_pct)+5)/10*100,0,100):50;
+    const stormFit=_stormLast?(100-_stormLast.score):60;          // 맑을수록 진입 유리
+    return Math.round(grade*0.4 + rrN*0.3 + mom*0.2 + stormFit*0.1);
+  };
+  const cand = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'))
+    .map(d=>({d, ts:todayScore(d)})).sort((a,b)=>b.ts-a.ts)[0];
+  if(cand){ const d=cand.d, m=d.mri, w=watch.find(x=>x.code===d.code);
+    const held=holds.some(h=>h.code===d.code);
+    const rrWarn=(m.rr!=null && Number(m.rr)>5);                   // R/R 과대 = stop 왜곡 의심
+    const badge=(held?'🏠 보유중 ':'')+(rrWarn?'⚠️ R/R 과대 ':'');
+    return {name:(w?.name)||d.name||d.code,
+      sub:`${m.grade||''} · R/R ${m.rr??'--'} · TODAY ${cand.ts}점`,
+      why:`${badge}오늘 최우선 — Judge 진입 가능`, code:d.code}; }
   const best = watch.filter(w=>w.rr!=null).sort((a,b)=>(b.rr||0)-(a.rr||0))[0];
-  if(best) return {name:best.name, sub:`${best.grade||'?'} · R/R ${best.rr}`, why:'스캔 최고 R/R — 관찰 1순위', code:best.code};
+  if(best){ const held=holds.some(h=>h.code===best.code);
+    return {name:best.name, sub:`${best.grade||'?'} · R/R ${best.rr}`, why:`${held?'🏠 보유중 ':''}스캔 최고 R/R — 관찰 1순위`, code:best.code}; }
   return null;
 }
 function renderFocus(){
@@ -1142,11 +1231,14 @@ function holdState(h){
   if((h.price-h.stop)/h.price < 0.03) return ['hp-warn','🟡 주의'];
   const j = judgeCache[h.code];
   const addable = j ? (j.mri?.tradeable && (j.mri.action_label||'').includes('진입')) : h.addable;
-  if(addable) return ['hp-add','🔵 추가 가능'];
+  if(addable){
+    if(h.buy && h.price < h.buy) return ['hp-reval','🔁 재평가'];   // 손실 종목엔 추가 권유 금지 (Rule 6)
+    return ['hp-add','🔵 추가 가능'];
+  }
   return ['hp-keep','🟢 유지'];
 }
 function holdSummary(){
-  const order=[['hp-out','이탈'],['hp-warn','주의'],['hp-add','추가 가능'],['hp-keep','유지'],['hp-q','감시']];
+  const order=[['hp-out','이탈'],['hp-warn','주의'],['hp-reval','재평가'],['hp-add','추가 가능'],['hp-keep','유지'],['hp-q','감시']];
   const cnt={}; holds.forEach(h=>{const k=holdState(h)[0]; cnt[k]=(cnt[k]||0)+1;});
   const parts=order.filter(([k])=>cnt[k]).map(([k,l])=>`<span class="ws ${k}">${l} <b>${cnt[k]}</b></span>`);
   return parts.length?`<div class="wsum">${parts.join('')}</div>`:'';
@@ -1223,8 +1315,8 @@ function addFeed(text){
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
-renderFocus(); renderMemos(); syncMemos();
-addFeed('🔱 Trinity HUB v3.9 — Storm Index + 메모판 가동');
+renderFocus(); renderMemos(); syncMemos(); renderMacro();
+addFeed('🔱 Trinity HUB v4.0 — Macro Barometer · Storm v2.0 · Rule6 가드');
 setInterval(fetchTemp, 90000);
 </script>
 </body>
