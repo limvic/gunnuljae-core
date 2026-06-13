@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.1.1 UTOPIA</title>
+<title>🔱 Trinity HUB v4.2 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -391,6 +391,37 @@ body{padding-bottom:74px;}
 .phealth.ph-ok  {border-color:rgba(255,204,0,.30);}  .phealth.ph-ok   .ph-label,.phealth.ph-ok   .ph-score{color:var(--yellow);}
 .phealth.ph-warn{border-color:rgba(255,138,0,.42);box-shadow:0 0 16px rgba(255,138,0,.07);} .phealth.ph-warn .ph-label,.phealth.ph-warn .ph-score{color:var(--orange);}
 .phealth.ph-risk{border-color:rgba(255,58,58,.55);box-shadow:0 0 18px rgba(255,58,58,.11);}  .phealth.ph-risk .ph-label,.phealth.ph-risk .ph-score{color:var(--red);}
+
+/* ━━ v4.2: 👀 WATCH Center (기회 대기실 — SCAN과 JUDGE 사이) ━━ */
+.watch-tier{font-family:var(--mono);font-size:11px;color:var(--text2);letter-spacing:1px;margin:13px 0 7px;}
+.watch-tier:first-child{margin-top:2px;}
+.watch-tier small{color:var(--text3);font-size:9.5px;margin-left:5px;}
+.wlist{display:flex;flex-direction:column;gap:7px;}
+.w-empty{font-size:11.5px;color:var(--text3);padding:6px 2px;}
+.wcard{display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:11px;padding:9px 11px;cursor:pointer;transition:border-color .2s;}
+.wcard .w-grade{flex:none;width:22px;height:22px;border-radius:7px;font-family:var(--mono);font-weight:800;font-size:11px;
+  display:flex;align-items:center;justify-content:center;background:var(--surface);}
+.w-grade.g-a{color:var(--green);} .w-grade.g-b{color:var(--yellow);} .w-grade.g-c{color:var(--orange);} .w-grade.g-d{color:var(--text3);}
+.wcard .w-name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wcard .wsc{flex:none;font-family:var(--mono);font-weight:800;font-size:13px;padding:1px 8px;border-radius:7px;background:var(--surface);color:var(--text2);}
+.wsc.ws-green{color:var(--green);} .wsc.ws-yellow{color:var(--yellow);} .wsc.ws-red{color:var(--red);}
+.wcard .wa-badge{flex:none;font-family:var(--mono);font-size:9.5px;font-weight:800;color:var(--green);
+  padding:2px 7px;border-radius:999px;border:1px solid rgba(0,255,136,.4);white-space:nowrap;}
+.wcard .w-charts{flex:none;display:flex;gap:3px;}
+.wcard .w-charts button{background:var(--surface);border:1px solid var(--border);color:var(--text2);
+  border-radius:6px;font-size:9.5px;padding:3px 6px;cursor:pointer;font-family:var(--mono);}
+.wcard .w-charts button:active{border-color:var(--teal);color:var(--teal);}
+.wcard .w-x{flex:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0 2px;}
+/* 5상태 라이프사이클: 깜박(0~1분) → 점멸(1~4분) → 골드(4분~, 유지) */
+.wcard.wa-blink{border-color:var(--green);animation:waBlink .72s steps(2,jump-none) infinite;}
+.wcard.wa-pulse{border-color:rgba(0,255,136,.55);animation:waPulse 1.8s ease-in-out infinite;}
+.wcard.wa-gold {border-color:var(--yellow);box-shadow:0 0 14px rgba(255,204,0,.18);}
+@keyframes waBlink{0%{box-shadow:0 0 0 rgba(0,255,136,0);}50%{box-shadow:0 0 18px rgba(0,255,136,.6);border-color:#eafff4;}100%{box-shadow:0 0 0 rgba(0,255,136,0);}}
+@keyframes waPulse{0%,100%{box-shadow:0 0 4px rgba(0,255,136,.12);}50%{box-shadow:0 0 16px rgba(0,255,136,.42);}}
+@media (prefers-reduced-motion: reduce){
+  .wcard.wa-blink,.wcard.wa-pulse{animation:none;border-color:var(--yellow);box-shadow:0 0 12px rgba(255,204,0,.18);}
+}
 </style>
 </head>
 <body>
@@ -502,6 +533,21 @@ body{padding-bottom:74px;}
   </div>
 </section>
 
+<!-- 1.5 대기실 / WATCH -->
+<section class="s-watch" id="secWatch">
+  <div class="sec-head"><span class="sec-num">👀 WATCH</span><span class="sec-q">— 언제 행동할까? (기회 대기실)</span></div>
+  <div class="panel">
+    <div class="watch-tier">🤖 TOP5 <small>엔진 추천 · 점수순</small></div>
+    <div id="watchAuto" class="wlist"></div>
+    <div class="watch-tier">👤 MY <small>관망 지정 · 최대 5</small></div>
+    <div id="watchMy" class="wlist"></div>
+    <div class="scan-row" style="margin-top:9px;">
+      <input id="myWatchIn" placeholder="관망 추가 (예: 한미반도체 / 042700)" onkeydown="if(event.key==='Enter')addMyWatch()">
+      <button class="btn btn-teal" onclick="addMyWatch()">＋ 관망</button>
+    </div>
+  </div>
+</section>
+
 <!-- 2. 판단 -->
 <section class="s-judge" id="secJudge">
   <div class="sec-head"><span class="sec-num">2. 판단 / JUDGE</span><span class="sec-q">— 지금 상태가 좋은가?</span></div>
@@ -558,7 +604,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.1.1 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.2 UTOPIA 🔱
 </footer>
 
   </div>
@@ -1047,6 +1093,7 @@ function sparkSVG(arr){
 function updateGoCount(){
   const n = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')).length;
   $('cntGo').textContent = n;
+  if(typeof renderWatch==='function') renderWatch();   // 👀 v4.2 — TOP5 실시간 갱신
 }
 function goList(){
   return Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'));
@@ -1071,6 +1118,111 @@ function showGoList(){
       </div>`;
     }).join('');
 }
+
+
+// ━━━━━━━━━ 👀 v4.2 WATCH Center (기회 대기실) ━━━━━━━━━
+const LS_MYWATCH='trinity_mywatch';
+let myWatch=load(LS_MYWATCH,[]);     // [{code,name}] 최대 5
+const _waState={};                   // code → {enter: ts}  (CONFIRM 진입 시각)
+
+function watchScore(d){               // WATCH 점수 = TODAY 복합점수 재사용 (실측 유도)
+  const m=d&&d.mri; if(!m) return null;
+  const grade={'A':100,'B':75,'C':50}[m.grade]??25;
+  const rrN=m.rr!=null?_clamp(Number(m.rr)/4*100,0,100):0;
+  const mom=d.change_pct!=null?_clamp((Number(d.change_pct)+5)/10*100,0,100):50;
+  const stormFit=_stormLast?(100-_stormLast.score):60;
+  return Math.round(grade*0.4 + rrN*0.3 + mom*0.2 + stormFit*0.1);
+}
+function isConfirm(d){ return !!(d&&d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')); }
+function scoreCls(s){ return s>=80?'ws-green':s>=60?'ws-yellow':'ws-red'; }
+function autoTop5(){
+  return Object.values(judgeCache).filter(d=>d.mri && watchScore(d)!=null)
+    .map(d=>({d,s:watchScore(d)})).sort((a,b)=>b.s-a.s).slice(0,5).map(x=>x.d);
+}
+function watchStage(code){            // 깜박(0~1분) → 점멸(1~4분) → 골드(4분~, CONFIRM 유지중)
+  const w=_waState[code]; if(!w) return '';
+  const e=(Date.now()-w.enter)/1000;
+  if(e<60)  return 'wa-blink';
+  if(e<240) return 'wa-pulse';
+  return 'wa-gold';
+}
+function watchCardHTML(code, my){
+  const cd = judgeCache[code];
+  const nm = (cd&&cd.name&&cd.name!==code) ? cd.name
+           : (myWatch.find(w=>w.code===code)?.name || watch.find(w=>w.code===code)?.name || code);
+  const sc = cd?watchScore(cd):null;
+  const scChip = sc==null?'<span class="wsc">--</span>':`<span class="wsc ${scoreCls(sc)}">${sc}</span>`;
+  const grade = (cd&&cd.mri)?cd.mri.grade:'';
+  const gcls = {'A':'g-a','B':'g-b','C':'g-c'}[grade]||'g-d';
+  const stage = watchStage(code);
+  const badge = stage?`<span class="wa-badge">🟢 CONFIRM</span>`:'';
+  const rmBtn = my?`<span class="w-x" onclick="event.stopPropagation();rmMyWatch('${code}')">✕</span>`:'';
+  return `<div class="wcard ${stage}" data-code="${code}" onclick="loadJudge('${code}')">
+    <span class="w-grade ${gcls}">${grade||'·'}</span>
+    <span class="w-name">${nm}</span>${badge}${scChip}
+    <span class="w-charts" onclick="event.stopPropagation()">
+      <button onclick="openNaver('${code}')" title="네이버 차트">📈네</button>
+      <button onclick="openTossStock('${code}')" title="토스">토스</button>
+      <button onclick="openHantu()" title="한투">한투</button>
+    </span>${rmBtn}
+  </div>`;
+}
+function renderWatch(){
+  const a=$('watchAuto'), m=$('watchMy'); if(!a||!m) return;
+  const top=autoTop5();
+  a.innerHTML = top.length ? top.map(d=>watchCardHTML(d.code,false)).join('')
+                           : '<div class="w-empty">전체 스캔(Grade 갱신)하면 점수 TOP5가 채워져요</div>';
+  m.innerHTML = myWatch.length ? myWatch.map(w=>watchCardHTML(w.code,true)).join('')
+                               : '<div class="w-empty">관망할 종목을 추가하세요 (최대 5)</div>';
+}
+function tickWatchStages(){           // 배지/테두리 단계만 갱신 — 애니메이션 끊김 방지
+  if(!Object.keys(_waState).length) return;
+  document.querySelectorAll('.wcard').forEach(el=>{
+    const code=el.getAttribute('data-code'), st=watchStage(code);
+    const had=el.classList.contains('wa-blink')||el.classList.contains('wa-pulse')||el.classList.contains('wa-gold');
+    el.classList.remove('wa-blink','wa-pulse','wa-gold');
+    if(st) el.classList.add(st);
+    const hasBadge=!!el.querySelector('.wa-badge');
+    if((st&&!hasBadge)||(!st&&hasBadge)) renderWatch();   // 배지 유무 바뀌면 재렌더
+  });
+}
+async function watchScan(){
+  const live = (typeof marketState==='function') ? marketState()[0]==='mk-open' : true;
+  for(const w of myWatch){            // MY 관망은 직접 갱신 (TOP5는 judgeCache 재사용)
+    if(!judgeCache[w.code] || live){ try{ await fetchJudge(w.code); }catch{} }
+  }
+  if(live){                           // CONFIRM 전환 감지는 장중에만 (주말 오발 방지)
+    const codes = new Set([...autoTop5().map(d=>d.code), ...myWatch.map(w=>w.code)]);
+    codes.forEach(code=>{
+      const conf=isConfirm(judgeCache[code]);
+      if(conf && !_waState[code]){      // ▶ 새 CONFIRM 진입 → 라이프사이클 시작
+        _waState[code]={enter:Date.now()};
+        const cd=judgeCache[code], nm=(cd.name&&cd.name!==code)?cd.name:code;
+        const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+        addFeed(`👀 컨펌: <b>${nm}</b> ${cd.mri.grade} R/R ${cd.mri.rr??'-'} · ${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`);
+      } else if(!conf && _waState[code]){ delete _waState[code]; }  // ◀ CONFIRM 해제 → 원복
+    });
+  }
+  renderWatch();
+}
+function addMyWatch(){
+  const q=$('myWatchIn').value.trim(); if(!q) return;
+  if(myWatch.length>=5){ toast('MY 관망은 최대 5개예요'); return; }
+  const commit=(code,name)=>{
+    if(!code) { toast('종목을 찾지 못했어요'); return; }
+    if(myWatch.some(w=>w.code===code)){ toast('이미 관망 중'); return; }
+    myWatch.push({code,name:name||code}); save(LS_MYWATCH,myWatch);
+    $('myWatchIn').value=''; renderWatch(); fetchJudge(code).then(renderWatch).catch(()=>{});
+  };
+  if(/^\d{6}$/.test(q)){ commit(q, judgeCache[q]?.name||q); return; }
+  const local = (typeof nameToCode==='function') ? nameToCode(q) : null;
+  if(local){ commit(local, q); return; }
+  if(typeof resolveNameRemote==='function'){ toast('찾는 중…'); resolveNameRemote(q).then(c=>commit(c,q)).catch(()=>toast('조회 실패')); }
+  else toast('종목을 찾지 못했어요');
+}
+function rmMyWatch(code){ myWatch=myWatch.filter(w=>w.code!==code); save(LS_MYWATCH,myWatch); delete _waState[code]; renderWatch(); }
+function openNaver(code){ window.location.href='https://m.stock.naver.com/domestic/stock/'+code+'/total'; }
+function openTossStock(code){ window.location.href='https://www.tossinvest.com/stocks/A'+code; }
 
 
 // 🎯 TODAY — 우선순위: 오늘 Strike BREAK(85+) > Judge 진입가능 중 최고 R/R > 스캔 최고 R/R
@@ -1385,8 +1537,11 @@ function addFeed(text){
 renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
-addFeed('🔱 Trinity HUB v4.1.1 — WAVE 색 통일 · 주말 신호 음소거 · PH 권고형');
+renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
+addFeed('🔱 Trinity HUB v4.2 — WATCH Center 가동 (기회 대기실)');
 setInterval(fetchTemp, 90000);
+setInterval(watchScan, 60000);                       // 장중 60초 감시
+setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
 </script>
 </body>
 </html>
