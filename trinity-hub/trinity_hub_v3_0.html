@@ -82,6 +82,15 @@ section{margin-top:22px;}
 .btn-ghost{color:var(--text2);border-color:var(--border);background:transparent;}
 .scan-tools{display:flex;gap:7px;margin-top:8px;}
 .scan-tools .btn{flex:1;text-align:center;}
+/* ━━ v4.3: SCAN 정렬/그룹/보기/일괄삭제 컨트롤 ━━ */
+.scan-ctrl{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.scan-ctrl select,.scan-ctrl .sc-btn{background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text2);font-size:10.5px;padding:4px 9px;cursor:pointer;font-family:inherit;line-height:1.4;}
+.scan-ctrl .sc-btn.on{color:var(--teal);border-color:var(--teal);}
+.scan-ctrl .sc-clear{margin-left:auto;color:var(--orange);border-color:transparent;}
+.chips .grp-head{grid-column:1/-1;font-size:10px;color:var(--text3);letter-spacing:.5px;
+  padding:6px 2px 2px;border-bottom:1px solid var(--border);margin-top:2px;}
+.chip.view-simple .spark{display:none;}
 
 /* ━━ 2. 판단 카드 ━━ */
 .jcard{min-height:120px;}
@@ -545,6 +554,16 @@ body{padding-bottom:74px;}
 <section class="s-scan" id="secScan">
   <div class="sec-head"><span class="sec-num">1. 발견 / SCAN</span><span class="sec-q">— 무엇을 볼 것인가?</span></div>
   <div class="panel">
+    <div class="scan-ctrl" id="scanCtrl" style="display:none;">
+      <select id="scanSortSel" onchange="setScanSort(this.value)" title="정렬 기준">
+        <option value="rr">R/R 높은순</option>
+        <option value="grade">등급순</option>
+        <option value="name">이름순</option>
+      </select>
+      <button class="sc-btn" id="scanGroupBtn" onclick="toggleScanGroup()">⊞ 등급별</button>
+      <button class="sc-btn" id="scanViewBtn" onclick="toggleScanView()">≣ 자세히</button>
+      <button class="sc-btn sc-clear" onclick="clearScan()">🗑 전체 지우기</button>
+    </div>
     <div class="chips" id="chips"></div>
     <div class="finder finder-inline">
       <span class="f-ico">🔎</span>
@@ -963,15 +982,18 @@ const TOP10 = [
   {code:'010120',name:'LS ELECTRIC'},{code:'454910',name:'두산로보틱스'},
   {code:'035420',name:'NAVER'},{code:'307950',name:'현대오토에버'}
 ];
-function renderChips(){
-  const el=$('chips');
-  if(!watch.length){ el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:6px 2px;">후보가 비었습니다 — 추가하거나 채피 Top10을 불러오세요</div>'; }
-  else el.innerHTML = watch.map((w,i)=>{
-    const d = judgeCache[w.code], m = d?.mri;
-    const rrV = m?.rr ?? w.rr, spV = d?.spark || w.spark;
-    const rr = rrV!=null ? `<span class="c-rr">R/R <b>${rrV}</b></span>` : '';
-    const sp = spV ? sparkSVG(spV) : '';
-    return `<div class="chip" onclick="loadJudge('${w.code}')">
+// ── v4.3: SCAN 정렬/그룹/보기 설정 (localStorage 유지) ──
+const LS_SCANPREF='trinity3_scanpref';
+let scanPref = load(LS_SCANPREF, {sort:'rr', group:false, view:'detail'});
+const GRADE_RANK={A:0,B:1,C:2,D:3};
+function scanRRof(w){ const d=judgeCache[w.code]; return (d?.mri?.rr ?? w.rr ?? -1); }
+function chipHTML(w, i){
+  // i = 원본 watch 배열의 실제 인덱스 (정렬돼도 삭제/이름이 엉뚱한 카드를 건드리지 않게 보존)
+  const d = judgeCache[w.code], m = d?.mri;
+  const rrV = m?.rr ?? w.rr, spV = d?.spark || w.spark;
+  const rr = rrV!=null ? `<span class="c-rr">R/R <b>${rrV}</b></span>` : '';
+  const sp = spV ? sparkSVG(spV) : '';
+  return `<div class="chip view-${scanPref.view}" onclick="loadJudge('${w.code}')">
       <div class="c-top">
         <span class="g ${w.grade?('g'+w.grade):'gq'}">${w.grade||'?'}</span>
         <span class="c-nm">${w.name}</span>
@@ -979,9 +1001,55 @@ function renderChips(){
         <span class="x" onclick="event.stopPropagation();rmWatch(${i})">✕</span>
       </div>
       ${(sp||rr)?`<div class="c-bot">${sp}${rr}</div>`:''}
-    </div>`;}).join('');
+    </div>`;
+}
+function scanSorted(){
+  let arr = watch.map((w,i)=>({w,i}));   // 원본 인덱스 보존
+  const s=scanPref.sort;
+  if(s==='grade')      arr.sort((a,b)=> (GRADE_RANK[a.w.grade]??9)-(GRADE_RANK[b.w.grade]??9) || scanRRof(b.w)-scanRRof(a.w));
+  else if(s==='name')  arr.sort((a,b)=> (a.w.name||'').localeCompare(b.w.name||'','ko'));
+  else                 arr.sort((a,b)=> scanRRof(b.w)-scanRRof(a.w));  // rr 기본
+  return arr;
+}
+function renderChips(){
+  const el=$('chips'), ctrl=$('scanCtrl');
+  if(!watch.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:6px 2px;">후보가 비었습니다 — 추가하거나 채피 Top10을 불러오세요</div>';
+    if(ctrl) ctrl.style.display='none';
+  } else {
+    if(ctrl) ctrl.style.display='flex';
+    if(scanPref.group){
+      const labels={A:'A 등급',B:'B 등급',C:'C 등급',D:'D 등급'};
+      const g = watch.map((w,i)=>({w,i}))
+        .sort((a,b)=> (GRADE_RANK[a.w.grade]??9)-(GRADE_RANK[b.w.grade]??9) || scanRRof(b.w)-scanRRof(a.w));
+      let html='', cur=null;
+      for(const {w,i} of g){
+        const key=w.grade||'?', lab=labels[key]||'미평가';
+        if(key!==cur){ html+=`<div class="grp-head">${lab}</div>`; cur=key; }
+        html+=chipHTML(w,i);
+      }
+      el.innerHTML=html;
+    } else {
+      el.innerHTML = scanSorted().map(({w,i})=>chipHTML(w,i)).join('');
+    }
+  }
   $('cntScan').textContent = watch.length;
   updateGoCount(); save(LS_WATCH, watch); syncSentinelWatch(); renderFocus();
+}
+function setScanSort(v){ scanPref.sort=v; save(LS_SCANPREF,scanPref); renderChips(); }
+function toggleScanGroup(){ scanPref.group=!scanPref.group; save(LS_SCANPREF,scanPref);
+  const b=$('scanGroupBtn'); if(b) b.classList.toggle('on',scanPref.group); renderChips(); }
+function toggleScanView(){ scanPref.view = (scanPref.view==='detail'?'simple':'detail'); save(LS_SCANPREF,scanPref);
+  const b=$('scanViewBtn'); if(b) b.textContent = (scanPref.view==='detail'?'≣ 자세히':'≣ 간략히'); renderChips(); }
+function clearScan(){
+  if(!watch.length) return;
+  if(!confirm(`SCAN 후보 ${watch.length}개를 모두 지울까요? (되돌릴 수 없어요)`)) return;
+  watch.length=0; renderChips(); toast('후보 전체 삭제');
+}
+function initScanCtrl(){
+  const sel=$('scanSortSel'); if(sel) sel.value=scanPref.sort;
+  const gb=$('scanGroupBtn'); if(gb) gb.classList.toggle('on',scanPref.group);
+  const vb=$('scanViewBtn'); if(vb) vb.textContent=(scanPref.view==='detail'?'≣ 자세히':'≣ 간략히');
 }
 function rmWatch(i){ watch.splice(i,1); renderChips(); }
 function presetTop10(){
@@ -1700,7 +1768,7 @@ function addFeed(text){
 }
 
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
-renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
+initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
