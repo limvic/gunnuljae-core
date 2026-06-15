@@ -3530,6 +3530,25 @@ def _sentinel_name(code: str, raw_name: str = "") -> str:
             return nm
     return code
 
+async def _resolve_name_via_search(code: str) -> str:
+    """검색기 연동(2026.06.16) — 이름 캐시가 비었을 때 /search_stock(=네이버 소스)로
+    코드→이름을 1회 해소해 _sentinel["names"]에 박제한다.
+    · 네이버 소스라 사명변경 종목도 정확 → JUDGE_STOCK_MAP 수동등록 불필요.
+    · 담기/동기 시점(async)에서만 호출 → 1회 박제 후엔 캐시로 즉시(재호출 X).
+    · 실패해도 조용히 "" 반환 → 기존 폴백(맵→코드)이 그대로 받친다(무중단)."""
+    cached = _sentinel["names"].get(code, "")
+    if cached:
+        return cached
+    try:
+        res = await search_stock(code)
+        for m in (res or {}).get("matches", []):
+            if m.get("code") == code and m.get("name") and m["name"] != code:
+                _sentinel["names"][code] = m["name"]
+                return m["name"]
+    except Exception as e:
+        print(f"[SENTINEL] 이름 검색 보강 실패 {code}: {type(e).__name__}: {str(e)[:50]}")
+    return ""
+
 # ── 중복 알림 정책 (채피 스펙 3) ─────────────────────────────────────────────
 def _sentinel_today() -> str:
     return datetime.now(KST).strftime("%Y-%m-%d")
@@ -3678,6 +3697,10 @@ async def sentinel_watch_set(payload: dict = Body(...)):
             c, n = str(c).strip(), str(n).strip()
             if len(c) == 6 and c.isdigit() and n and n != c:
                 _sentinel["names"][c] = n
+    # 검색기 연동: HUB가 이름을 안 준 코드는 네이버로 1회 보강 (관심은 최대 5종목)
+    for c in clean:
+        if not _sentinel["names"].get(c):
+            await _resolve_name_via_search(c)
     save_watchlist(clean)   # names도 함께 디스크 저장됨
     return {"ok": True, "watch": clean, "count": len(clean)}
 
@@ -3703,6 +3726,9 @@ async def sentinel_holding_set(payload: dict = Body(...)):
             nm = str(h.get("name", "")).strip()
             if nm and nm != code:
                 _sentinel["names"][code] = nm
+            elif not _sentinel["names"].get(code):
+                # 검색기 연동: HUB가 이름을 못 줬고 캐시에도 없으면 → 네이버로 1회 보강
+                await _resolve_name_via_search(code)
             clean.append({"code": code, "buy_price": bp})
     save_holdings(clean)
     return {"ok": True, "holdings": clean, "count": len(clean)}
