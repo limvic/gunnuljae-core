@@ -129,7 +129,32 @@ section{margin-top:22px;}
 .hold-add{display:flex;gap:7px;margin-top:9px;}
 .hold-add input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
   padding:9px 10px;color:var(--text);font-size:12.5px;outline:none;min-width:0;}
-.hi-name{flex:1.4;} .hi-buy{flex:1;}
+.hi-name{flex:1.4;} .hi-buy{flex:1;} .hi-qty{flex:.7;}
+/* 📒 VAVLOG 모달 + 복기 */
+.vl-back{position:fixed;inset:0;background:rgba(4,8,16,.72);backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.vl-back.show{display:flex;}
+.vl-modal{width:100%;max-width:520px;max-height:88vh;overflow:auto;background:linear-gradient(180deg,rgba(13,22,41,.98),rgba(8,14,27,.99));border:1px solid var(--border);border-radius:18px 18px 0 0;padding:18px 16px 24px;}
+.vl-h{font-size:15px;font-weight:700;margin-bottom:4px;}
+.vl-sub{font-size:11.5px;color:var(--text3);margin-bottom:14px;}
+.vl-row{margin-bottom:12px;}
+.vl-lbl{font-size:11.5px;color:var(--text3);display:block;margin-bottom:5px;}
+.vl-in{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;color:#fff;font-size:14px;box-sizing:border-box;}
+.vl-reasons{display:flex;flex-wrap:wrap;gap:7px;}
+.vl-chip{padding:8px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:var(--surface2);color:var(--text3);}
+.vl-chip.on{background:var(--teal);color:#001016;border-color:var(--teal);font-weight:700;}
+.vl-emos{display:flex;gap:8px;}
+.vl-emo{flex:1;text-align:center;padding:8px 0;border:1px solid var(--border);border-radius:10px;font-size:18px;cursor:pointer;background:var(--surface2);}
+.vl-emo.on{border-color:var(--teal);background:rgba(0,212,255,.12);}
+.vl-calc{font-size:13px;padding:10px 12px;background:var(--surface2);border-radius:10px;margin:6px 0 14px;}
+.vl-btns{display:flex;gap:10px;margin-top:6px;}
+.vl-btns .btn{flex:1;}
+.vl-stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.vl-stat .s{background:var(--surface2);border-radius:10px;padding:10px;}
+.vl-stat .s b{display:block;font-size:18px;}
+.vl-stat .s small{font-size:10.5px;color:var(--text3);}
+.vl-log{font-size:12px;}
+.vl-le{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.vl-le .nm{font-weight:600;} .vl-le .dt{font-size:10.5px;color:var(--text3);}
 
 /* ━━ 5. 시스템 ━━ */
 details.sys{margin:22px 16px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
@@ -184,10 +209,10 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
   .side-logo{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:42px;background:radial-gradient(circle,rgba(184,132,255,.28),rgba(0,212,255,.08) 55%,rgba(0,0,0,.15));border:1px solid rgba(184,132,255,.35);box-shadow:0 0 36px rgba(184,132,255,.22), inset 0 0 28px rgba(0,212,255,.12);}
   .side-name{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:1px;margin-top:12px;color:#eaf6ff;}
   .side-role{font-family:var(--mono);font-size:10px;color:var(--purple);border:1px solid rgba(184,132,255,.25);padding:4px 10px;border-radius:999px;margin-top:5px;background:rgba(184,132,255,.08);}
-  .side-nav{width:100%;margin-top:34px;display:grid;gap:9px;}
+  .side-nav{width:100%;margin-top:auto;display:grid;gap:9px;}
   .side-nav a{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text2);font-size:13px;border:1px solid transparent;border-radius:12px;padding:12px 13px;}
   .side-nav a.active,.side-nav a:hover{color:var(--teal);background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.18);box-shadow:inset 3px 0 0 rgba(0,212,255,.55);} 
-  .side-foot{margin-top:auto;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.7;}
+  .side-foot{margin-top:14px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.7;}
   .wrap{max-width:1260px;width:100%;padding:0 28px 36px;margin:0;}
   header{padding:28px 0 14px;display:grid;grid-template-columns:1fr 270px;gap:20px;align-items:start;}
   .hd-title{font-size:38px;letter-spacing:2px;text-shadow:0 0 28px rgba(0,212,255,.28);}
@@ -434,6 +459,7 @@ body{padding-bottom:74px;}
     <nav class="side-nav">
       <a href="#" class="active" onclick="scrollToSec('secScan');return false;">🏠 대시보드</a>
       <a href="#" onclick="scrollToSec('secScan');return false;">🔍 발견 SCAN</a>
+      <a href="#" onclick="scrollToSec('secWatch');return false;">👀 WATCH</a>
       <a href="#" onclick="scrollToSec('secJudge');return false;">🎯 판단 JUDGE</a>
       <a href="#" onclick="scrollToSec('secStrike');return false;">⚡ 실행 STRIKE</a>
       <a href="#" onclick="scrollToSec('secWave');return false;">🌊 보유 WAVE</a>
@@ -447,7 +473,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.1 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.2 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -579,13 +605,49 @@ body{padding-bottom:74px;}
     <div class="hold-add">
       <input class="hi-name" id="hName" placeholder="종목명/코드">
       <input class="hi-buy" id="hBuy" placeholder="매수가" inputmode="numeric">
+      <input class="hi-qty" id="hQty" placeholder="수량" inputmode="numeric">
       <button class="btn btn-teal" onclick="addHold()">담기</button>
     </div>
     <div class="scan-tools">
       <button class="btn btn-teal" id="holdBtn" onclick="refreshHolds()">🌊 손절선 감시 갱신 (MRI)</button>
+      <button class="btn" onclick="openVavlog()">📒 매매일지 (복기)</button>
     </div>
   </div>
 </section>
+
+<!-- 📒 VAVLOG 청산 모달 -->
+<div class="vl-back" id="vlClose">
+  <div class="vl-modal">
+    <div class="vl-h" id="vlcTitle">청산 기록</div>
+    <div class="vl-sub">삭제 = 기록. 토스 실거래값 그대로 — 실측 우선.</div>
+    <div class="vl-row"><label class="vl-lbl">매도가 (실제 체결가)</label>
+      <input class="vl-in" id="vlcSell" inputmode="numeric" placeholder="예: 736000"></div>
+    <div class="vl-row"><label class="vl-lbl">수량</label>
+      <input class="vl-in" id="vlcQty" inputmode="numeric" placeholder="주"></div>
+    <div class="vl-row"><label class="vl-lbl">청산 사유</label>
+      <div class="vl-reasons" id="vlcReasons"></div></div>
+    <div class="vl-row"><label class="vl-lbl">그때 감정 (선택 · 패턴 학습용, 자책 X)</label>
+      <div class="vl-emos" id="vlcEmos"></div></div>
+    <div class="vl-row"><label class="vl-lbl">세후 실현손익 (토스 영수증 · 선택)</label>
+      <input class="vl-in" id="vlcNet" inputmode="numeric" placeholder="예: 50528"></div>
+    <div class="vl-calc" id="vlcCalc">세전 손익 — 매도가·수량 입력 시 자동 계산</div>
+    <div class="vl-btns">
+      <button class="btn" onclick="closeVlModal()">취소</button>
+      <button class="btn" style="opacity:.65" onclick="vlJustRemove()">기록없이 제거</button>
+      <button class="btn btn-teal" onclick="vlSubmit()">기록하고 제거</button>
+    </div>
+  </div>
+</div>
+<!-- 📒 VAVLOG 매매일지 / 복기 -->
+<div class="vl-back" id="vlBook">
+  <div class="vl-modal">
+    <div class="vl-h">📒 매매일지 · 복기</div>
+    <div class="vl-sub" id="vlbSub">이번 달 실측 통계</div>
+    <div class="vl-stat" id="vlbStat"></div>
+    <div class="vl-log" id="vlbLog"></div>
+    <div class="vl-btns"><button class="btn btn-teal" onclick="closeVlBook()">닫기</button></div>
+  </div>
+</div>
 
 <!-- 5. 시스템 (접힘 · 엔진은 여기 숨음) -->
 <details class="sys">
@@ -612,6 +674,7 @@ body{padding-bottom:74px;}
 </div>
 <nav class="bnav">
   <a href="#" onclick="scrollToSec('secScan');return false;"><span class="bi">🔍</span>SCAN</a>
+  <a href="#" onclick="scrollToSec('secWatch');return false;"><span class="bi">👀</span>WATCH</a>
   <a href="#" onclick="scrollToSec('secJudge');return false;"><span class="bi">🎯</span>JUDGE</a>
   <a href="#" onclick="scrollToSec('secStrike');return false;"><span class="bi">⚡</span>STRIKE</a>
   <a href="#" onclick="scrollToSec('secWave');return false;"><span class="bi">🌊</span>WAVE</a>
@@ -799,6 +862,7 @@ function marketState(){     // 채피 4상태 — 평일 09:00~15:30 장중, 08:
   const day=k.getDay(), t=k.getHours()*60+k.getMinutes();
   if(day===0||day===6) return ['mk-weekend','🔵','주말'];
   if(t>=540&&t<=930)   return ['mk-open','🟢','장중'];
+  if(t>930&&t<1200)    return ['mk-pre','🟡','시간외 (NXT)'];   // 15:30~20:00 넥스트레이드 연장 — 토스 거래 가능
   if(t>=480&&t<540)    return ['mk-pre','🟡','프리장'];
   return ['mk-closed','⚫','장마감'];
 }
@@ -1472,9 +1536,12 @@ function renderHolds(){
     const pl = (h.price!=null&&h.buy)? ((h.price-h.buy)/h.buy*100) : null;
     const plTxt = pl==null?'':`<div class="h-pl ${pl>=0?'up':'down'}">${pl>0?'+':''}${pl.toFixed(2)}%</div>`;
     const [cls,txt]=holdState(h);
+    const evalTxt = (h.qty&&h.price!=null&&h.buy)
+      ? ` · ${won(h.qty)}주 · 평가 <span class="${(h.price-h.buy)>=0?'up':'down'}">${(h.price-h.buy)*h.qty>0?'+':''}${won(Math.round((h.price-h.buy)*h.qty))}</span>`
+      : (h.qty?` · ${won(h.qty)}주`:'');
     return `<div class="hold">
       <div class="h-info"><div class="h-name">${h.name}</div>
-        <div class="h-sub">매수 ${won(h.buy)} · STOP ${won(h.stop)}</div></div>
+        <div class="h-sub">매수 ${won(h.buy)} · STOP ${won(h.stop)}${evalTxt}</div></div>
       ${sparkSVG(h.spark)}
       <div class="h-num"><div class="h-price">${won(h.price)}</div>${plTxt}</div>
       <div class="h-pill ${cls}">${txt}</div>
@@ -1485,9 +1552,10 @@ function renderHolds(){
   save(LS_HOLD, holds); syncSentinelHold();
   if(typeof renderPH==='function') renderPH();    // 🚢 v4.1 — 계좌 건강 갱신
 }
-function rmHold(i){ holds.splice(i,1); renderHolds(); }
+function rmHold(i){ openCloseModal(i); }   // 📒 삭제 = 청산 기록 모달
 async function addHold(){
   let q=$('hName').value.trim(); const buy=parseInt($('hBuy').value.replace(/,/g,''),10);
+  const qty=parseInt(($('hQty').value||'').replace(/,/g,''),10)||null;   // 수량(수동 — 토스 실거래)
   if(!q||!buy){ toast('종목과 매수가를 입력해주세요'); return; }
   toast('확인 중…');
   if(!/^\d{6}$/.test(q)){
@@ -1497,9 +1565,15 @@ async function addHold(){
   }
   const d=await fetchJudge(q);
   if(!d){ toast('종목을 찾지 못했어요'); return; }
-  holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy,
-              price:d.price??null, stop:d.mri?.stop??null, spark:d.spark||null});
-  $('hName').value=''; $('hBuy').value='';
+  // 📒 진입 스냅샷 — "왜 들어갔나"를 청산 시점이 아니라 '진입 시점' 값으로 박제 (복기 정확도)
+  const gMap={'A':100,'B':75,'C':50}, g=gMap[d.mri?.grade]??25;
+  const rrN=d.mri?.rr!=null?Math.max(0,Math.min(100,Number(d.mri.rr)/4*100)):0;
+  holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy, qty,
+              price:d.price??null, stop:d.mri?.stop??null, spark:d.spark||null,
+              entry:{date:kstDate(), grade:d.mri?.grade??null, rr:d.mri?.rr??null,
+                     stop:d.mri?.stop??null, verdict:d.mri?.verdict??null,
+                     score:Math.round(g*0.5+rrN*0.5)}});
+  $('hName').value=''; $('hBuy').value=''; $('hQty').value='';
   renderHolds(); toast('보유 감시 시작 🌊');
 }
 async function refreshHolds(){
@@ -1516,6 +1590,96 @@ async function refreshHolds(){
   const out=holds.filter(h=>holdState(h)[0]==='hp-out').length;
   toast(out?`⚠ 손절선 이탈 ${out}종목!`:'전 종목 점검 완료');
   addFeed(`🌊 보유 ${holds.length}종목 손절선 점검 — 이탈 ${out}건`);
+}
+
+// ━━━━━━━━━ 📒 VAVLOG — 청산 기록 + 복기 ━━━━━━━━━
+function kstDate(){ const n=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  return n.toISOString().slice(0,10); }
+const VL_REASONS=['목표가도달','손절','Judge경고','시스템종료','수동익절','기타'];
+const VL_EMOS=[['자신감','😀'],['중립','😐'],['불안','😨'],['조급','😡']];
+let _vlIdx=null, _vlReason=null, _vlEmo=null;
+
+function openCloseModal(i){
+  const h=holds[i]; if(!h) return;
+  _vlIdx=i; _vlReason=null; _vlEmo=null;
+  $('vlcTitle').textContent=`청산 기록 — ${h.name}`;
+  $('vlcSell').value = h.price!=null?h.price:'';
+  $('vlcQty').value  = h.qty||'';
+  $('vlcNet').value  = '';
+  $('vlcReasons').innerHTML = VL_REASONS.map(r=>`<span class="vl-chip" onclick="pickReason(this,'${r}')">${r}</span>`).join('');
+  $('vlcEmos').innerHTML = VL_EMOS.map(([k,e])=>`<span class="vl-emo" title="${k}" onclick="pickEmo(this,'${k}')">${e}</span>`).join('');
+  vlCalc();
+  $('vlcSell').oninput=vlCalc; $('vlcQty').oninput=vlCalc;
+  $('vlClose').classList.add('show');
+}
+function pickReason(el,r){ _vlReason=r; document.querySelectorAll('#vlcReasons .vl-chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function pickEmo(el,k){ _vlEmo=k; document.querySelectorAll('#vlcEmos .vl-emo').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function vlCalc(){
+  const h=holds[_vlIdx]; if(!h) return;
+  const sell=parseInt(($('vlcSell').value||'').replace(/,/g,''),10);
+  const qty =parseInt(($('vlcQty').value||'').replace(/,/g,''),10);
+  if(sell&&qty&&h.buy){
+    const g=(sell-h.buy)*qty, p=((sell-h.buy)/h.buy*100);
+    $('vlcCalc').innerHTML=`세전 손익 <b class="${g>=0?'up':'down'}">${g>0?'+':''}${won(g)}원 (${p>0?'+':''}${p.toFixed(2)}%)</b> <span style="color:var(--text3)">· 세후는 토스 영수증값</span>`;
+  } else $('vlcCalc').textContent='세전 손익 — 매도가·수량 입력 시 자동 계산';
+}
+function closeVlModal(){ $('vlClose').classList.remove('show'); _vlIdx=null; }
+function vlJustRemove(){ if(_vlIdx==null) return; if(!confirm('기록 없이 제거할까요? (오입력 정리용)')) return;
+  holds.splice(_vlIdx,1); closeVlModal(); renderHolds(); toast('기록 없이 제거됨'); }
+async function vlSubmit(){
+  const h=holds[_vlIdx]; if(!h) return;
+  const sell=parseInt(($('vlcSell').value||'').replace(/,/g,''),10);
+  const qty =parseInt(($('vlcQty').value||'').replace(/,/g,''),10)||h.qty||null;
+  const net =parseInt(($('vlcNet').value||'').replace(/,/g,''),10)||null;
+  if(!sell){ toast('매도가를 입력해주세요'); return; }
+  if(!_vlReason){ toast('청산 사유를 골라주세요'); return; }
+  const rec={ code:h.code, name:h.name, buy_price:h.buy, sell_price:sell, qty,
+    pnl_net:net, exit_reason:_vlReason, emotion:_vlEmo,
+    entry_date:h.entry?.date||null, exit_date:kstDate(),
+    planned_stop:h.entry?.stop??h.stop??null,
+    entry_grade:h.entry?.grade||null, entry_rr:h.entry?.rr??null,
+    entry_score:h.entry?.score??null, entry_verdict:h.entry?.verdict||null,
+    source:'hub' };
+  toast('기록 중…');
+  try{
+    const r=await fetch(`${RAIL_MAIN}/vavlog`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(rec),signal:AbortSignal.timeout(10000)});
+    const d=await r.json();
+    if(d.ok){
+      addFeed(`📒 청산 — ${h.name} ${d.pnl_gross>=0?'+':''}${won(d.pnl_gross)}원${d.rule_violation?' ⚠️Rule위반':''}`);
+      holds.splice(_vlIdx,1); closeVlModal(); renderHolds(); toast(`기록 완료 — ${h.name}`);
+    } else { toast('저장 실패: '+(d.reason||'Supabase 확인')); }
+  }catch(e){ toast('네트워크 오류 — 잠시 후 재시도'); }
+}
+
+function openVavlog(){ $('vlBook').classList.add('show'); loadBook(); }
+function closeVlBook(){ $('vlBook').classList.remove('show'); }
+async function loadBook(){
+  const month=kstDate().slice(0,7);
+  $('vlbSub').textContent=`${month} 실측 통계`;
+  $('vlbStat').innerHTML='<div class="s"><b>…</b><small>불러오는 중</small></div>';
+  $('vlbLog').innerHTML='';
+  try{
+    const [sR,lR]=await Promise.all([
+      fetch(`${RAIL_MAIN}/vavlog/stats?month=${month}`,{signal:AbortSignal.timeout(10000)}),
+      fetch(`${RAIL_MAIN}/vavlog?limit=60`,{signal:AbortSignal.timeout(10000)})]);
+    const s=await sR.json(), l=await lR.json();
+    if(s.ok&&s.n){
+      $('vlbStat').innerHTML=`
+        <div class="s"><b class="${s.realized_pnl>=0?'up':'down'}">${s.realized_pnl>0?'+':''}${won(s.realized_pnl)}</b><small>실현손익(세전)</small></div>
+        <div class="s"><b>${s.winrate}%</b><small>승률 (${s.n}건)</small></div>
+        <div class="s"><b>${s.rr_realized??'--'}</b><small>실측 손익비</small></div>
+        <div class="s"><b>${s.rule_adherence}%</b><small>Rule 준수율</small></div>
+        <div class="s"><b class="up">${s.best?won(s.best.pnl):'--'}</b><small>최고 ${s.best?.name||''}</small></div>
+        <div class="s"><b class="down">${s.worst?won(s.worst.pnl):'--'}</b><small>최악 ${s.worst?.name||''}</small></div>`;
+    } else { $('vlbStat').innerHTML=`<div class="s"><b>0건</b><small>${s.ok?'이번 달 기록 없음':(s.reason||'연결 확인')}</small></div>`; }
+    if(l.ok&&l.rows&&l.rows.length){
+      $('vlbLog').innerHTML=l.rows.map(x=>`<div class="vl-le">
+        <div><div class="nm">${x.name||x.code} ${x.rule_violation?'⚠️':''}</div><div class="dt">${x.exit_date||''} · ${x.exit_reason||''}${x.emotion?(' · '+x.emotion):''}</div></div>
+        <div style="text-align:right"><div class="${(x.pnl_gross||0)>=0?'up':'down'}">${(x.pnl_gross||0)>0?'+':''}${won(x.pnl_gross)}</div><div class="dt">${x.pnl_pct!=null?((x.pnl_pct>0?'+':'')+x.pnl_pct+'%'):''}</div></div>
+      </div>`).join('');
+    } else if(l.ok){ $('vlbLog').innerHTML='<div style="color:var(--text3);padding:12px 0;font-size:12px;">아직 기록이 없어요. 보유에서 청산하면 여기 쌓여요.</div>'; }
+  }catch(e){ $('vlbStat').innerHTML='<div class="s"><b>--</b><small>네트워크 오류</small></div>'; }
 }
 
 // ━━━━━━━━━ 증권·뱅킹 앱 바로 실행 (Android intent) ━━━━━━━━━
