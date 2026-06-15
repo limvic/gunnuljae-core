@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>🔱 Trinity HUB v4.2 UTOPIA</title>
+<style>
+:root{
+  --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
+  --text:#dfe6f3; --text2:#8b97b0; --text3:#566179;
+  --teal:#00d4ff; --purple:#b884ff; --orange:#ff8a00; --yellow:#ffcc00;
+  --fire:#ff5500; --green:#00ff88; --red:#ff3a3a;
+  --mono:'JetBrains Mono','Roboto Mono',monospace;
+  --display:'Rajdhani','Pretendard',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Pretendard','Noto Sans KR',sans-serif;font-size:14px;padding-bottom:40px;}
+.wrap{max-width:560px;margin:0 auto;}
+
+/* ━━ HEADER ━━ */
+header{padding:18px 16px 10px;}
+.hd-top{display:flex;flex-wrap:wrap;align-items:center;}
+.hd-top > div:first-child{margin-right:auto;}
+.hd-top .finder{order:3;width:100%;max-width:none;justify-content:flex-end;margin:12px 0 0;}
+.hd-top .hd-clock{order:2;}
+.hd-title{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:1px;
+  background:linear-gradient(90deg,var(--teal),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hd-sub{font-family:var(--mono);font-size:8.5px;letter-spacing:3px;color:var(--text3);margin-top:2px;}
+.hd-clock{text-align:right;font-family:var(--mono);}
+.hd-time{font-size:17px;font-weight:700;}
+.hd-date{font-size:9px;color:var(--text3);margin-top:2px;}
+
+/* 시장 온도 */
+.temp-bar{margin:12px 16px 0;display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 14px;}
+.temp-pill{font-family:var(--mono);font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap;}
+.temp-attack{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
+.temp-neutral{background:rgba(255,204,0,.08);color:var(--yellow);border:1px solid rgba(255,204,0,.3);}
+.temp-defense{background:rgba(255,58,58,.1);color:var(--red);border:1px solid rgba(255,58,58,.3);}
+.temp-detail{font-family:var(--mono);font-size:9.5px;color:var(--text2);line-height:1.6;flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px;}
+.warm-btn{font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(0,212,255,.07);
+  border:1px solid rgba(0,212,255,.3);border-radius:10px;padding:7px 10px;cursor:pointer;white-space:nowrap;}
+.warm-btn.done{color:var(--green);border-color:rgba(0,255,136,.3);}
+
+/* 카운트 스트립 */
+.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 16px 0;}
+.cnt{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 6px;text-align:center;cursor:pointer;}
+.cnt-num{font-family:var(--mono);font-size:19px;font-weight:700;}
+.cnt-lbl{font-size:9px;color:var(--text3);margin-top:1px;letter-spacing:.5px;}
+.cnt-scan .cnt-num{color:var(--purple);} .cnt-judge .cnt-num{color:var(--yellow);} .cnt-wave .cnt-num{color:var(--teal);}
+
+/* ━━ 섹션 공통 ━━ */
+section{margin-top:22px;}
+.sec-head{display:flex;align-items:baseline;gap:8px;padding:0 16px 8px;}
+.sec-num{font-family:var(--display);font-size:17px;font-weight:700;}
+.sec-q{font-size:10px;color:var(--text3);}
+.s-scan .sec-num{color:var(--purple);} .s-judge .sec-num{color:var(--yellow);}
+.s-strike .sec-num{color:var(--orange);} .s-wave .sec-num{color:var(--teal);}
+.panel{margin:0 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px;}
+
+/* ━━ 1. 발견 ━━ */
+.chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.chip .c-top{display:flex;align-items:center;gap:6px;width:100%;min-width:0;}
+.chip .c-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chip .c-bot{display:flex;align-items:center;gap:8px;width:100%;margin-top:6px;}
+.chip .c-rr{font-family:var(--mono);font-size:9.5px;color:var(--text2);margin-left:auto;}
+.chip .c-rr b{color:var(--teal);font-size:11px;}
+.chip{display:flex;flex-direction:column;align-items:flex-start;gap:0;background:var(--surface2);border:1px solid var(--border);
+  border-radius:11px;padding:7px 10px;cursor:pointer;font-size:12px;}
+.chip .g{font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 5px;border-radius:5px;}
+.gA{background:rgba(0,255,136,.12);color:var(--green);} .gB{background:rgba(255,204,0,.12);color:var(--yellow);}
+.gC{background:rgba(255,138,0,.12);color:var(--orange);} .gD,.gF{background:rgba(255,58,58,.12);color:var(--red);}
+.gq{background:rgba(139,151,176,.12);color:var(--text3);}
+.chip .x{color:var(--text3);font-size:13px;padding:0 2px;}
+.scan-row{display:flex;gap:7px;margin-top:10px;}
+.scan-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:9px 11px;color:var(--text);font-size:13px;outline:none;}
+.btn{font-family:var(--mono);font-size:11px;border-radius:10px;padding:9px 12px;cursor:pointer;border:1px solid;white-space:nowrap;}
+.btn-purple{color:var(--purple);border-color:rgba(184,132,255,.35);background:rgba(184,132,255,.07);}
+.btn-yellow{color:var(--yellow);border-color:rgba(255,204,0,.35);background:rgba(255,204,0,.06);}
+.btn-teal{color:var(--teal);border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.06);}
+.btn-ghost{color:var(--text2);border-color:var(--border);background:transparent;}
+.scan-tools{display:flex;gap:7px;margin-top:8px;}
+.scan-tools .btn{flex:1;text-align:center;}
+
+/* ━━ 2. 판단 카드 ━━ */
+.jcard{min-height:120px;}
+.j-empty{color:var(--text3);font-size:12px;text-align:center;padding:34px 0;}
+.j-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.j-name{font-size:19px;font-weight:700;}
+.j-code{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
+.j-grade{font-family:var(--display);font-size:27px;font-weight:700;line-height:1;opacity:.92;}
+.j-grade small{display:block;font-size:9px;color:var(--text3);font-weight:400;letter-spacing:1px;text-align:right;}
+.j-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px;}
+.jm{background:var(--surface2);border-radius:11px;padding:9px 8px;text-align:center;}
+.jm-v{font-family:var(--mono);font-size:16px;font-weight:700;}
+.jm-l{font-size:8.5px;color:var(--text3);margin-top:2px;letter-spacing:1px;}
+.j-verdict{margin-top:12px;font-size:12.5px;line-height:1.55;background:var(--surface2);
+  border-left:3px solid var(--yellow);border-radius:0 10px 10px 0;padding:9px 11px;color:var(--text2);}
+.j-verdict b{color:var(--text);}
+.j-act{display:flex;gap:8px;margin-top:11px;}
+.j-state{flex:1;text-align:center;font-family:var(--mono);font-size:12px;font-weight:700;border-radius:11px;padding:10px;}
+.st-go{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);}
+.st-watch{background:rgba(255,204,0,.07);color:var(--yellow);border:1px solid rgba(255,204,0,.25);}
+.st-no{background:rgba(255,58,58,.08);color:var(--red);border:1px solid rgba(255,58,58,.25);}
+
+/* ━━ 3. 실행 ━━ */
+.sig-empty{color:var(--text3);font-size:12px;text-align:center;padding:20px 0;}
+.sig{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:11px;padding:10px 12px;margin-bottom:7px;}
+.sig-ico{font-size:18px;}
+.sig-body{flex:1;font-size:12px;line-height:1.45;}
+.sig-meta{font-family:var(--mono);font-size:9px;color:var(--text3);}
+
+/* ━━ 4. 보유 ━━ */
+.hold{display:flex;align-items:center;gap:9px;background:var(--surface2);border-radius:12px;padding:10px 11px;margin-bottom:7px;}
+.h-info{flex:1;min-width:0;}
+.h-name{font-size:13.5px;font-weight:700;}
+.h-sub{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:2px;}
+.h-num{text-align:right;font-family:var(--mono);}
+.h-price{font-size:13px;font-weight:700;}
+.h-pl{font-size:10px;margin-top:1px;}
+.up{color:var(--red);} .down{color:#4d8dff;} /* 한국식: 상승 빨강 */
+.h-pill{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:5px 8px;border-radius:8px;white-space:nowrap;}
+.hp-keep{background:rgba(0,255,136,.1);color:var(--green);}
+.hp-warn{background:rgba(255,204,0,.1);color:var(--yellow);}
+.hp-out{background:rgba(255,58,58,.12);color:var(--red);}
+.hp-q{background:rgba(139,151,176,.1);color:var(--text3);}
+.h-x{color:var(--text3);padding:4px 6px;cursor:pointer;font-size:14px;}
+.hold-add{display:flex;gap:7px;margin-top:9px;}
+.hold-add input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:9px 10px;color:var(--text);font-size:12.5px;outline:none;min-width:0;}
+.hi-name{flex:1.4;} .hi-buy{flex:1;} .hi-qty{flex:.7;}
+/* 📒 VAVLOG 모달 + 복기 */
+.vl-back{position:fixed;inset:0;background:rgba(4,8,16,.72);backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.vl-back.show{display:flex;}
+.vl-modal{width:100%;max-width:520px;max-height:88vh;overflow:auto;background:linear-gradient(180deg,rgba(13,22,41,.98),rgba(8,14,27,.99));border:1px solid var(--border);border-radius:18px 18px 0 0;padding:18px 16px 24px;}
+.vl-h{font-size:15px;font-weight:700;margin-bottom:4px;}
+.vl-sub{font-size:11.5px;color:var(--text3);margin-bottom:14px;}
+.vl-row{margin-bottom:12px;}
+.vl-lbl{font-size:11.5px;color:var(--text3);display:block;margin-bottom:5px;}
+.vl-in{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;color:#fff;font-size:14px;box-sizing:border-box;}
+.vl-reasons{display:flex;flex-wrap:wrap;gap:7px;}
+.vl-chip{padding:8px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:var(--surface2);color:var(--text3);}
+.vl-chip.on{background:var(--teal);color:#001016;border-color:var(--teal);font-weight:700;}
+.vl-emos{display:flex;gap:8px;}
+.vl-emo{flex:1;text-align:center;padding:8px 0;border:1px solid var(--border);border-radius:10px;font-size:18px;cursor:pointer;background:var(--surface2);}
+.vl-emo.on{border-color:var(--teal);background:rgba(0,212,255,.12);}
+.vl-calc{font-size:13px;padding:10px 12px;background:var(--surface2);border-radius:10px;margin:6px 0 14px;}
+.vl-btns{display:flex;gap:10px;margin-top:6px;}
+.vl-btns .btn{flex:1;}
+.vl-stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.vl-stat .s{background:var(--surface2);border-radius:10px;padding:10px;}
+.vl-stat .s b{display:block;font-size:18px;}
+.vl-stat .s small{font-size:10.5px;color:var(--text3);}
+.vl-log{font-size:12px;}
+.vl-le{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.vl-le .nm{font-weight:600;} .vl-le .dt{font-size:10.5px;color:var(--text3);}
+
+/* ━━ 5. 시스템 ━━ */
+details.sys{margin:22px 16px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+details.sys summary{padding:13px 14px;font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--text3);
+  cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
+details.sys summary::-webkit-details-marker{display:none;}
+.sys-body{padding:0 14px 14px;}
+.sys-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;}
+.sys-grid .btn{text-align:center;}
+.feed{max-height:200px;overflow-y:auto;}
+.fi{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:11.5px;}
+.fi:last-child{border:none;}
+.fi-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--teal);}
+.fi-t{color:var(--text2);line-height:1.45;flex:1;}
+.fi-m{font-family:var(--mono);font-size:8.5px;color:var(--text3);}
+.feed-none{color:var(--text3);font-size:11px;text-align:center;padding:14px 0;}
+
+footer{margin-top:34px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--text3);line-height:2;}
+footer b{color:var(--text2);}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);
+  border:1px solid var(--border);border-radius:12px;padding:10px 16px;font-size:12px;transition:transform .25s;z-index:99;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.spin{opacity:.55;pointer-events:none;}
+
+
+/* ━━━━━━━━━ UTOPIA v3.3 — responsive command center skin ━━━━━━━━━ */
+:root{
+  --utopia-bg1:#020711; --utopia-bg2:#071426; --glass:rgba(11,19,35,.72);
+  --neon-blue:#00d4ff; --neon-gold:#ffcc55; --neon-green:#00ff99;
+}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(0,212,255,.18), transparent 28%),
+    radial-gradient(circle at 85% 12%, rgba(184,132,255,.12), transparent 30%),
+    linear-gradient(180deg,var(--utopia-bg1),#030813 45%,#02050b);
+}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background-image:linear-gradient(rgba(0,212,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);
+  background-size:48px 48px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),transparent 85%);}
+.utopia-shell{width:100%;}
+.side{display:none;}
+.panel,.temp-bar,.cnt,details.sys{backdrop-filter:blur(18px);background:linear-gradient(180deg,rgba(13,22,41,.86),rgba(8,14,27,.88));box-shadow:0 16px 40px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.035);} 
+.panel{position:relative;overflow:hidden;}
+.panel::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.45),transparent);opacity:.55;}
+.chip,.hold,.sig,.jm{box-shadow:inset 0 1px 0 rgba(255,255,255,.025);} 
+
+@media (min-width:640px){
+  body{font-size:15px;padding-bottom:24px;overflow-x:hidden;}
+  .utopia-shell{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:190px minmax(0,1fr);gap:0;min-height:100vh;}
+  .side{display:flex;position:sticky;top:0;height:100vh;align-self:start;flex-direction:column;align-items:center;padding:28px 18px;background:linear-gradient(180deg,rgba(4,16,32,.86),rgba(5,10,20,.72));border-right:1px solid rgba(0,212,255,.16);box-shadow:18px 0 60px rgba(0,0,0,.22);}
+  .side-logo{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:42px;background:radial-gradient(circle,rgba(184,132,255,.28),rgba(0,212,255,.08) 55%,rgba(0,0,0,.15));border:1px solid rgba(184,132,255,.35);box-shadow:0 0 36px rgba(184,132,255,.22), inset 0 0 28px rgba(0,212,255,.12);}
+  .side-name{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:1px;margin-top:12px;color:#eaf6ff;}
+  .side-role{font-family:var(--mono);font-size:10px;color:var(--purple);border:1px solid rgba(184,132,255,.25);padding:4px 10px;border-radius:999px;margin-top:5px;background:rgba(184,132,255,.08);}
+  .side-nav{width:100%;margin-top:34px;display:grid;gap:9px;}
+  .side-nav a{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text2);font-size:13px;border:1px solid transparent;border-radius:12px;padding:12px 13px;}
+  .side-nav a.active,.side-nav a:hover{color:var(--teal);background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.18);box-shadow:inset 3px 0 0 rgba(0,212,255,.55);} 
+  .side-foot{margin-top:auto;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.7;}
+  .wrap{max-width:1260px;width:100%;padding:0 28px 36px;margin:0;}
+  header{padding:28px 0 14px;display:grid;grid-template-columns:1fr 270px;gap:20px;align-items:start;}
+  .hd-title{font-size:38px;letter-spacing:2px;text-shadow:0 0 28px rgba(0,212,255,.28);}
+  .hd-sub{font-size:10px;letter-spacing:4px;}
+  .hd-clock{background:rgba(13,22,41,.7);border:1px solid rgba(0,212,255,.14);border-radius:16px;padding:13px 16px;box-shadow:0 12px 28px rgba(0,0,0,.18);} 
+  .hd-time{font-size:27px;color:#f2f7ff;}.hd-date{font-size:11px;}
+  .hd-top{flex-wrap:nowrap;gap:14px;}
+  .hd-top .finder{order:2;width:auto;flex:0 1 auto;margin:0 0 0 auto;}
+  .hd-top .hd-clock{order:3;flex:none;}
+  .temp-bar{margin:0 0 14px;min-height:60px;display:flex;flex-wrap:wrap;}
+  .temp-pill{font-size:17px;text-align:center;padding:11px 12px;border-radius:15px;text-transform:uppercase;}
+  .temp-detail{font-size:12px;line-height:1.7;display:flex;flex-wrap:wrap;gap:2px 16px;}
+  .counts{margin:0 0 22px;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .cnt{padding:18px 10px;border-radius:16px;background:linear-gradient(180deg,rgba(13,22,41,.88),rgba(8,14,27,.9));}
+  .cnt-num{font-size:38px;}.cnt-lbl{font-size:11px;}
+  section{margin-top:30px;}
+  .sec-head{padding:0 0 12px;}
+  .sec-num{font-size:27px;}.sec-q{font-size:13px;}
+  .panel{margin:0;border-radius:20px;padding:20px;}
+  .chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+  .chip{min-height:72px;align-items:flex-start;flex-direction:column;justify-content:center;border-radius:16px;padding:13px 14px;position:relative;background:linear-gradient(180deg,rgba(17,30,55,.86),rgba(10,17,32,.92));}
+  .chip .g{font-size:13px;padding:3px 8px;}.chip .x{position:absolute;right:10px;top:8px;}
+  .scan-row,.scan-tools{max-width:760px;}
+  .j-name{font-size:27px}.j-grade{font-size:46px;}
+  .j-metrics{gap:12px}.jm{padding:17px 12px;border-radius:16px}.jm-v{font-size:25px}.jm-l{font-size:10px}
+  .j-verdict{font-size:14px;padding:14px 16px;}.j-state{font-size:15px;padding:14px;}
+  .sig{min-height:62px;border-radius:15px;padding:14px 16px;}.sig-ico{font-size:25px}.sig-body{font-size:15px}.sig-meta{font-size:11px;}
+  .hold{min-height:76px;border-radius:16px;padding:14px 16px;}
+  .h-name{font-size:17px}.h-sub{font-size:11px}.h-price{font-size:18px}.h-pl{font-size:12px}.h-pill{font-size:12px;padding:7px 11px;}
+  details.sys{margin:30px 0 0;border-radius:18px;}
+  .sys-grid{grid-template-columns:repeat(3,1fr);}
+  footer{font-size:11px;margin-top:28px;}
+}
+
+
+/* ━━ v3.3 이식: Name Finder + spark ━━ */
+/* 🔎 Name Finder — 단아한 유리질, 우측 상단 (v3.4) */
+.finder{display:flex;align-items:center;gap:7px;margin:10px 0 0 auto;
+  width:fit-content;max-width:340px;
+  background:rgba(253,246,227,.05);border:1px solid rgba(245,185,66,.22);
+  border-radius:999px;padding:6px 8px 6px 13px;transition:border-color .2s;}
+.finder:focus-within{border-color:rgba(245,185,66,.55);}
+.finder .f-ico{font-size:12px;opacity:.65;}
+.finder input{flex:0 0 96px;background:transparent;border:none;outline:none;
+  font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:1px;color:#f0e6c8;}
+.finder input::placeholder{color:rgba(245,185,66,.4);font-size:11px;letter-spacing:.5px;font-weight:400;}
+.finder .f-name{font-size:13px;font-weight:700;color:#f5b942;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
+.finder .f-name.miss{font-size:10.5px;font-weight:400;color:rgba(240,230,200,.45);}
+.finder .f-name:empty{display:none;}
+.finder .f-add{flex:none;background:rgba(245,185,66,.92);color:#16120a;border:none;border-radius:999px;
+  font-size:10.5px;font-weight:800;padding:5px 11px;display:none;}
+.finder .f-add.on{display:block;}
+.spark{flex:none;margin:0 8px 0 4px;opacity:.9;}
+
+/* ━━ v3.3.1: 모바일 하단 네비 (사이드바 대체) ━━ */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:90;display:flex;
+  background:linear-gradient(180deg,rgba(6,14,28,.92),rgba(4,10,20,.97));
+  backdrop-filter:blur(12px);border-top:1px solid rgba(0,212,255,.18);
+  padding:7px 4px calc(7px + env(safe-area-inset-bottom));}
+.bnav a{flex:1;text-align:center;text-decoration:none;color:var(--text2);
+  font-size:9.5px;line-height:1.5;}
+.bnav a .bi{display:block;font-size:17px;}
+.bnav a:active{color:var(--teal);}
+body{padding-bottom:74px;}
+@media (min-width:640px){ .bnav{display:none;} body{padding-bottom:24px;} }
+
+/* ━━ v3.4: JUDGE 레이더 + STRIKE 히어로 ━━ */
+.j-mid{display:flex;align-items:center;gap:14px;margin:10px 0;}
+.radar{flex:none;}
+.j-mid .j-metrics{flex:1;margin:0;}
+#strikeHero{display:flex;align-items:center;gap:16px;padding:14px;margin-bottom:10px;
+  background:rgba(255,159,28,.05);border:1px solid rgba(255,159,28,.2);border-radius:16px;}
+.sh-ring{flex:none;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;}
+.sh-core{width:66px;height:66px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;
+  font-family:var(--mono);}
+.sh-core b{font-size:24px;line-height:1;}
+.sh-core small{font-size:8px;color:var(--text3);}
+.sh-name{font-size:16px;font-weight:800;}
+.sh-verdict{font-size:12px;font-weight:700;margin:3px 0 6px;}
+.sh-kv{display:flex;gap:8px;font-size:11px;color:var(--text2);line-height:1.7;}
+.sh-kv b{color:var(--text);font-family:var(--mono);}
+
+/* ━━ v3.5: WAVE 전략판 요약 ━━ */
+.wsum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.ws{font-size:10.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--text2);}
+.ws b{font-family:var(--mono);}
+.ws.hp-out{border-color:rgba(255,77,109,.45);color:var(--red);}
+.ws.hp-warn{border-color:rgba(255,159,28,.4);color:var(--yellow);}
+.ws.hp-add{border-color:rgba(0,212,255,.4);color:var(--teal);}
+.ws.hp-keep{border-color:rgba(46,196,134,.35);color:var(--green);}
+.hp-add{background:rgba(0,212,255,.12);color:var(--teal);}
+
+.temp-ready{background:rgba(255,159,28,.1);border:1px solid rgba(255,159,28,.35);color:var(--yellow);}
+.temp-pill small{font-size:9px;opacity:.75;font-weight:600;margin-left:3px;}
+
+/* ━━ v3.7: 🎯 Focus Card + STRIKE 설명 엔진 ━━ */
+.focus{margin:12px 16px 0;display:flex;align-items:center;gap:14px;cursor:pointer;
+  padding:13px 16px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(245,185,66,.10),rgba(245,185,66,.03));
+  border:1px solid rgba(245,185,66,.35);box-shadow:0 0 24px rgba(245,185,66,.07);}
+.fc-tag{flex:none;font-family:var(--mono);font-size:10px;font-weight:800;color:#f5b942;
+  border:1px solid rgba(245,185,66,.45);border-radius:999px;padding:5px 10px;letter-spacing:1px;}
+.fc-name{font-size:17px;font-weight:800;}
+.fc-sub{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;}
+.fc-why{font-size:10.5px;color:#caa84e;margin-top:3px;}
+@media (min-width:640px){ .focus{margin:12px 0 0;} .fc-name{font-size:19px;} }
+.sh-pattern{font-family:var(--mono);font-size:12.5px;font-weight:800;color:var(--yellow);margin:2px 0;}
+.sh-reason{font-size:11px;color:var(--text2);margin-bottom:7px;}
+.sh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 14px;max-width:300px;}
+.sh-cell small{font-size:9px;color:var(--text3);display:block;}
+.sh-cell b{font-family:var(--mono);font-size:13px;}
+
+/* ━━ v3.9: ⛈️ Storm Index 날씨 카드 (채피 설계 / ATTACK과 분리) ━━ */
+.storm{order:2;display:flex;flex-direction:column;justify-content:center;gap:1px;
+  min-width:150px;padding:8px 14px;margin:0 12px;border-radius:14px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border);transition:border-color .25s,box-shadow .25s;}
+.storm .st-top{display:flex;align-items:baseline;gap:7px;font-family:var(--mono);}
+.storm .st-emoji{font-size:17px;line-height:1;}
+.storm .st-score{font-size:18px;font-weight:800;letter-spacing:.5px;}
+.storm .st-score small{font-size:9.5px;font-weight:600;color:var(--text3);letter-spacing:1px;margin-left:1px;}
+.storm .st-label{font-size:11.5px;font-weight:700;margin-top:1px;}
+.storm .st-advice{font-size:9px;color:var(--text2);line-height:1.4;letter-spacing:-.01em;}
+.storm.st-sun  {border-color:rgba(0,255,136,.32);}   .storm.st-sun   .st-label{color:var(--green);}
+.storm.st-cloud{border-color:rgba(255,204,0,.30);}   .storm.st-cloud .st-label{color:var(--yellow);}
+.storm.st-rain {border-color:rgba(0,212,255,.34);}   .storm.st-rain  .st-label{color:var(--teal);}
+.storm.st-storm{border-color:rgba(255,138,0,.42);box-shadow:0 0 18px rgba(255,138,0,.08);} .storm.st-storm .st-label{color:var(--orange);}
+.storm.st-crash{border-color:rgba(255,58,58,.55);box-shadow:0 0 20px rgba(255,58,58,.12);} .storm.st-crash .st-label{color:var(--red);}
+.storm .st-score{color:var(--text);}
+.storm.st-storm .st-score,.storm.st-crash .st-score{color:#fff;}
+@media (max-width:639px){ .storm{order:2;width:100%;flex-direction:row;align-items:center;gap:10px;margin:11px 0 0;}
+  .storm .st-top{flex:none;} .storm .st-mid{flex:1;min-width:0;}
+  .hd-top .hd-clock{order:1;} }
+
+/* ━━ v3.9: 📌 메모판 (핀보드) — localStorage + /memo 동기화 ━━ */
+.memo{margin:10px 16px 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;}
+.memo-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;}
+.memo-title{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);letter-spacing:.5px;}
+.memo-date{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-left:auto;}
+.memo-list{display:flex;flex-direction:column;gap:5px;margin-bottom:9px;}
+.memo-empty{font-size:11px;color:var(--text3);padding:3px 1px;}
+.memo-item{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:9px;padding:6px 9px;}
+.memo-tag{flex:none;font-family:var(--mono);font-size:8.5px;font-weight:800;padding:2px 6px;border-radius:6px;letter-spacing:.3px;}
+.mt-sch {background:rgba(0,212,255,.13);color:var(--teal);}
+.mt-iss {background:rgba(255,58,58,.13);color:var(--red);}
+.mt-note{background:rgba(184,132,255,.13);color:var(--purple);}
+.memo-txt{flex:1;min-width:0;font-size:12px;color:var(--text);line-height:1.4;}
+.memo-txt small{color:var(--text3);font-family:var(--mono);font-size:9px;}
+.memo-auth{flex:none;font-size:9px;color:var(--text3);font-family:var(--mono);}
+.memo-x{flex:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0 2px;}
+.memo-x:active{color:var(--red);}
+.memo-add{display:flex;gap:6px;}
+.memo-add select{flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text2);font-size:10.5px;font-family:var(--mono);padding:0 6px;}
+.memo-add input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);font-size:11.5px;padding:8px 10px;outline:none;}
+.memo-add input:focus{border-color:rgba(0,212,255,.35);}
+.memo-add button{flex:none;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:var(--teal);
+  border-radius:9px;font-size:13px;padding:0 11px;cursor:pointer;}
+
+/* ━━ v3.9: 검색창을 SCAN 패널 안으로 이전 (상단 자리는 Storm에 양보) ━━ */
+.finder.finder-inline{width:100%;max-width:none;margin:10px 0 0;justify-content:flex-start;}
+.finder.finder-inline input{flex:1;min-width:0;}
+.finder.finder-inline .f-name{margin-left:auto;}
+
+/* ━━ v4.0: 🧭 Macro Barometer 스트립 (시장상태·기준시각·FED·FOMC) ━━ */
+.macro{display:flex;flex-wrap:wrap;align-items:center;gap:7px 9px;margin:8px 16px 0;
+  font-family:var(--mono);font-size:10px;color:var(--text2);}
+.macro .mk{font-weight:800;padding:3px 9px;border-radius:999px;border:1px solid var(--border);letter-spacing:.3px;}
+.macro .mk.mk-open  {color:var(--green); border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.08);}
+.macro .mk.mk-pre   {color:var(--yellow);border-color:rgba(255,204,0,.4);}
+.macro .mk.mk-after,
+.macro .mk.mk-closed{color:var(--text3);border-color:var(--border);}
+.macro .mk.mk-weekend{color:var(--teal);border-color:rgba(0,212,255,.35);}
+.macro .mk-upd{color:var(--text3);}
+.macro .mk-sep{flex:1;min-width:8px;}
+.macro .fed{cursor:pointer;padding:3px 9px;border-radius:999px;border:1px solid rgba(184,132,255,.3);color:var(--purple);font-weight:700;}
+.macro .fed.unset{color:var(--text3);border-color:var(--border);font-weight:400;}
+.macro .fomc{color:var(--text2);font-weight:700;}
+@media (min-width:640px){ .macro{margin:8px 0 0;} }
+
+/* ━━ v4.0: 🔁 재평가 (손실 종목엔 '추가 가능' 대신 — Rule 6 보호) ━━ */
+.ws.hp-reval{border-color:rgba(184,132,255,.45);color:var(--purple);}
+.hp-reval{background:rgba(184,132,255,.13);color:var(--purple);}
+
+/* ━━ v4.1: 🚢 Portfolio Health (계좌 건강 — Storm=시장, PH=내 책) ━━ */
+.phealth{display:flex;align-items:center;gap:13px;margin:10px 16px 0;padding:12px 15px;
+  border-radius:14px;background:var(--surface);border:1px solid var(--border);cursor:pointer;
+  transition:border-color .25s,box-shadow .25s;}
+.phealth .ph-emoji{font-size:21px;line-height:1;}
+.phealth .ph-l{display:flex;flex-direction:column;gap:1px;}
+.phealth .ph-cap{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;}
+.phealth .ph-label{font-family:var(--display);font-size:14px;font-weight:700;}
+.phealth .ph-score{font-family:var(--mono);font-size:26px;font-weight:800;margin-left:auto;line-height:1;}
+.phealth .ph-score small{font-size:10px;color:var(--text3);font-weight:600;}
+.phealth .ph-r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0;}
+.phealth .ph-advice{font-size:9.5px;color:var(--text2);text-align:right;line-height:1.4;}
+.phealth .ph-break{font-family:var(--mono);font-size:8.5px;color:var(--text3);text-align:right;}
+.phealth.ph-good{border-color:rgba(0,255,136,.32);}  .phealth.ph-good .ph-label,.phealth.ph-good .ph-score{color:var(--green);}
+.phealth.ph-ok  {border-color:rgba(255,204,0,.30);}  .phealth.ph-ok   .ph-label,.phealth.ph-ok   .ph-score{color:var(--yellow);}
+.phealth.ph-warn{border-color:rgba(255,138,0,.42);box-shadow:0 0 16px rgba(255,138,0,.07);} .phealth.ph-warn .ph-label,.phealth.ph-warn .ph-score{color:var(--orange);}
+.phealth.ph-risk{border-color:rgba(255,58,58,.55);box-shadow:0 0 18px rgba(255,58,58,.11);}  .phealth.ph-risk .ph-label,.phealth.ph-risk .ph-score{color:var(--red);}
+
+/* ━━ v4.2: 👀 WATCH Center (기회 대기실 — SCAN과 JUDGE 사이) ━━ */
+.watch-tier{font-family:var(--mono);font-size:11px;color:var(--text2);letter-spacing:1px;margin:13px 0 7px;}
+.watch-tier:first-child{margin-top:2px;}
+.watch-tier small{color:var(--text3);font-size:9.5px;margin-left:5px;}
+.wlist{display:flex;flex-direction:column;gap:7px;}
+.w-empty{font-size:11.5px;color:var(--text3);padding:6px 2px;}
+.wcard{display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:11px;padding:9px 11px;cursor:pointer;transition:border-color .2s;}
+.wcard .w-grade{flex:none;width:22px;height:22px;border-radius:7px;font-family:var(--mono);font-weight:800;font-size:11px;
+  display:flex;align-items:center;justify-content:center;background:var(--surface);}
+.w-grade.g-a{color:var(--green);} .w-grade.g-b{color:var(--yellow);} .w-grade.g-c{color:var(--orange);} .w-grade.g-d{color:var(--text3);}
+.wcard .w-name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wcard .wsc{flex:none;font-family:var(--mono);font-weight:800;font-size:13px;padding:1px 8px;border-radius:7px;background:var(--surface);color:var(--text2);}
+.wsc.ws-green{color:var(--green);} .wsc.ws-yellow{color:var(--yellow);} .wsc.ws-red{color:var(--red);}
+.wcard .wa-badge{flex:none;font-family:var(--mono);font-size:9.5px;font-weight:800;color:var(--green);
+  padding:2px 7px;border-radius:999px;border:1px solid rgba(0,255,136,.4);white-space:nowrap;}
+.wcard .w-charts{flex:none;display:flex;gap:3px;}
+.wcard .w-charts button{background:var(--surface);border:1px solid var(--border);color:var(--text2);
+  border-radius:6px;font-size:9.5px;padding:3px 6px;cursor:pointer;font-family:var(--mono);}
+.wcard .w-charts button:active{border-color:var(--teal);color:var(--teal);}
+.wcard .w-x{flex:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0 2px;}
+.wcard .w-rrwarn{flex:none;font-size:12px;}
+/* 5상태 라이프사이클: 깜박(0~1분) → 점멸(1~4분) → 골드(4분~, 유지) */
+.wcard.wa-blink{border-color:var(--green);animation:waBlink .72s steps(2,jump-none) infinite;}
+.wcard.wa-pulse{border-color:rgba(0,255,136,.55);animation:waPulse 1.8s ease-in-out infinite;}
+.wcard.wa-gold {border-color:var(--yellow);box-shadow:0 0 14px rgba(255,204,0,.18);}
+@keyframes waBlink{0%{box-shadow:0 0 0 rgba(0,255,136,0);}50%{box-shadow:0 0 18px rgba(0,255,136,.6);border-color:#eafff4;}100%{box-shadow:0 0 0 rgba(0,255,136,0);}}
+@keyframes waPulse{0%,100%{box-shadow:0 0 4px rgba(0,255,136,.12);}50%{box-shadow:0 0 16px rgba(0,255,136,.42);}}
+@media (prefers-reduced-motion: reduce){
+  .wcard.wa-blink,.wcard.wa-pulse{animation:none;border-color:var(--yellow);box-shadow:0 0 12px rgba(255,204,0,.18);}
+}
+</style>
+</head>
+<body>
+<div class="utopia-shell">
+  <aside class="side">
+    <div class="side-logo">🔱</div>
+    <div class="side-name">림빅</div>
+    <div class="side-role">MASTER</div>
+    <nav class="side-nav">
+      <a href="#" class="active" onclick="scrollToSec('secScan');return false;">🏠 대시보드</a>
+      <a href="#" onclick="scrollToSec('secScan');return false;">🔍 발견 SCAN</a>
+      <a href="#" onclick="scrollToSec('secJudge');return false;">🎯 판단 JUDGE</a>
+      <a href="#" onclick="scrollToSec('secStrike');return false;">⚡ 실행 STRIKE</a>
+      <a href="#" onclick="scrollToSec('secWave');return false;">🌊 보유 WAVE</a>
+      <a href="#" onclick="document.querySelector('details.sys').open=true;document.querySelector('details.sys').scrollIntoView({behavior:'smooth'});return false;">⚙ 시스템</a>
+    </nav>
+    <div class="side-foot">TRINITY<br>Built for Disciplined Traders</div>
+  </aside>
+  <div class="wrap">
+
+<header>
+  <div class="hd-top">
+    <div>
+      <div class="hd-title">🔱 TRINITY</div>
+      <div class="hd-sub">DECISION CENTER · v4.1 UTOPIA</div>
+    </div>
+    <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
+      <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
+      <div class="st-mid">
+        <div class="st-label" id="stLabel">측정 대기</div>
+        <div class="st-advice" id="stAdvice">지수 불러오는 중…</div>
+      </div>
+    </div>
+    <div class="hd-clock">
+      <div class="hd-time" id="clock">--:--:--</div>
+      <div class="hd-date" id="cdate">--</div>
+    </div>
+  </div>
+</header>
+
+<!-- 시장 온도 -->
+<div class="temp-bar">
+  <div class="temp-pill temp-neutral" id="tempPill">🟡 측정 중</div>
+  <div class="temp-detail" id="tempDetail">지수 불러오는 중…</div>
+  <button class="warm-btn" id="warmBtn" onclick="warmup()">🔌 웜업</button>
+</div>
+
+<!-- 🧭 Macro Barometer -->
+<div class="macro" id="macroStrip">
+  <span class="mk mk-weekend" id="mkState">🔵 주말</span>
+  <span class="mk-upd" id="mkUpd">업데이트 --</span>
+  <span class="mk-sep"></span>
+  <span class="fed unset" id="fedChip" onclick="editFed()">🏦 FED 설정</span>
+  <span class="fomc" id="fomcChip"></span>
+</div>
+
+<!-- 🚢 Portfolio Health -->
+<div class="phealth ph-ok" id="phCard" onclick="explainPH()">
+  <span class="ph-emoji" id="phEmoji">🚢</span>
+  <div class="ph-l"><span class="ph-cap">PORTFOLIO</span><span class="ph-label" id="phLabel">측정 대기</span></div>
+  <div class="ph-score" id="phScore">--<small> /100</small></div>
+  <div class="ph-r"><span class="ph-advice" id="phAdvice">보유 갱신 필요</span><span class="ph-break" id="phBreak"></span></div>
+</div>
+
+<div id="focusCard" style="display:none" class="focus"></div>
+
+<!-- 📌 메모판 (핀보드) -->
+<div class="memo" id="memoCard">
+  <div class="memo-head">
+    <span class="memo-title">📌 메모판</span>
+    <span class="memo-date" id="memoDate">--</span>
+  </div>
+  <div class="memo-list" id="memoList"></div>
+  <div class="memo-add">
+    <select id="memoTag">
+      <option value="일정">일정</option>
+      <option value="이슈">이슈</option>
+      <option value="메모" selected>메모</option>
+    </select>
+    <input id="memoInput" placeholder="발표·이슈·일정 핀 (예: FOMC 새벽 3시 · 옵션만기 목)"
+           onkeydown="if(event.key==='Enter')addMemo()">
+    <button onclick="addMemo()">📌</button>
+  </div>
+</div>
+
+<!-- 카운트 -->
+<div class="counts">
+  <div class="cnt cnt-scan" onclick="scrollToSec('secScan')"><div class="cnt-num" id="cntScan">0</div><div class="cnt-lbl">후보</div></div>
+  <div class="cnt cnt-judge" onclick="showGoList()"><div class="cnt-num" id="cntGo">0</div><div class="cnt-lbl">진입 가능</div></div>
+  <div class="cnt cnt-wave" onclick="scrollToSec('secWave')"><div class="cnt-num" id="cntHold">0</div><div class="cnt-lbl">보유 관리</div></div>
+</div>
+
+<!-- 1. 발견 -->
+<section class="s-scan" id="secScan">
+  <div class="sec-head"><span class="sec-num">1. 발견 / SCAN</span><span class="sec-q">— 무엇을 볼 것인가?</span></div>
+  <div class="panel">
+    <div class="chips" id="chips"></div>
+    <div class="finder finder-inline">
+      <span class="f-ico">🔎</span>
+      <input id="fCode" type="search" placeholder="종목명 또는 코드 검색 (예: 한미반도체 / 042700)"
+             oninput="finderInput(this)" onkeydown="if(event.key==='Enter')finderInput(this,true)">
+      <span class="f-name" id="fName"></span>
+      <button class="f-add" id="fAdd" onclick="finderAdd()">＋후보</button>
+    </div>
+    <div class="scan-tools">
+      <button class="btn btn-ghost" onclick="presetTop10()">🌊 채피 Top10 채우기</button>
+      <button class="btn btn-purple" id="scanBtn" onclick="scanAll()">🔍 전체 스캔 (Grade 갱신)</button>
+    </div>
+  </div>
+</section>
+
+<!-- 1.5 대기실 / WATCH -->
+<section class="s-watch" id="secWatch">
+  <div class="sec-head"><span class="sec-num">👀 WATCH</span><span class="sec-q">— 언제 행동할까? (기회 대기실)</span></div>
+  <div class="panel">
+    <div class="watch-tier">🤖 TOP5 <small>엔진 추천 · 점수순</small></div>
+    <div id="watchAuto" class="wlist"></div>
+    <div class="watch-tier">👤 MY <small>관망 지정 · 최대 5</small></div>
+    <div id="watchMy" class="wlist"></div>
+    <div class="scan-row" style="margin-top:9px;">
+      <input id="myWatchIn" placeholder="관망 추가 (예: 한미반도체 / 042700)" onkeydown="if(event.key==='Enter')addMyWatch()">
+      <button class="btn btn-teal" onclick="addMyWatch()">＋ 관망</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 판단 -->
+<section class="s-judge" id="secJudge">
+  <div class="sec-head"><span class="sec-num">2. 판단 / JUDGE</span><span class="sec-q">— 지금 상태가 좋은가?</span></div>
+  <div class="panel jcard" id="judgeCard">
+    <div class="j-empty">위 후보를 탭하면 MRI 진단서가 여기 나옵니다 🩻</div>
+  </div>
+</section>
+
+<!-- 3. 실행 -->
+<section class="s-strike" id="secStrike">
+  <div class="sec-head"><span class="sec-num">3. 실행 / STRIKE</span><span class="sec-q">— 지금 진입 가능한가?</span></div>
+  <div class="panel">
+    <div id="strikeHero" style="display:none"></div>
+    <div id="sigList"><div class="sig-empty">신호 없음 — 장중 BREAK·FIRE 신호가 여기 모입니다</div></div>
+    <div class="scan-tools" style="margin-top:9px;">
+      <button class="btn btn-yellow" onclick="go('strike_check_v2_3.html')">⚡ Strike Check 열기</button>
+      <button class="btn btn-ghost" onclick="openHantu()">🏦 한투 MTS</button>
+      <button class="btn btn-ghost" onclick="openToss()">💸 토스</button>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 보유 -->
+<section class="s-wave" id="secWave">
+  <div class="sec-head"><span class="sec-num">4. 보유 / WAVE</span><span class="sec-q">— 계속 들고 갈 이유가 있는가?</span></div>
+  <div class="panel">
+    <div id="holdList"></div>
+    <div class="hold-add">
+      <input class="hi-name" id="hName" placeholder="종목명/코드">
+      <input class="hi-buy" id="hBuy" placeholder="매수가" inputmode="numeric">
+      <input class="hi-qty" id="hQty" placeholder="수량" inputmode="numeric">
+      <button class="btn btn-teal" onclick="addHold()">담기</button>
+    </div>
+    <div class="scan-tools">
+      <button class="btn btn-teal" id="holdBtn" onclick="refreshHolds()">🌊 손절선 감시 갱신 (MRI)</button>
+      <button class="btn" onclick="openVavlog()">📒 매매일지 (복기)</button>
+    </div>
+  </div>
+</section>
+
+<!-- 📒 VAVLOG 청산 모달 -->
+<div class="vl-back" id="vlClose">
+  <div class="vl-modal">
+    <div class="vl-h" id="vlcTitle">청산 기록</div>
+    <div class="vl-sub">삭제 = 기록. 토스 실거래값 그대로 — 실측 우선.</div>
+    <div class="vl-row"><label class="vl-lbl">매도가 (실제 체결가)</label>
+      <input class="vl-in" id="vlcSell" inputmode="numeric" placeholder="예: 736000"></div>
+    <div class="vl-row"><label class="vl-lbl">수량</label>
+      <input class="vl-in" id="vlcQty" inputmode="numeric" placeholder="주"></div>
+    <div class="vl-row"><label class="vl-lbl">청산 사유</label>
+      <div class="vl-reasons" id="vlcReasons"></div></div>
+    <div class="vl-row"><label class="vl-lbl">그때 감정 (선택 · 패턴 학습용, 자책 X)</label>
+      <div class="vl-emos" id="vlcEmos"></div></div>
+    <div class="vl-row"><label class="vl-lbl">세후 실현손익 (토스 영수증 · 선택)</label>
+      <input class="vl-in" id="vlcNet" inputmode="numeric" placeholder="예: 50528"></div>
+    <div class="vl-calc" id="vlcCalc">세전 손익 — 매도가·수량 입력 시 자동 계산</div>
+    <div class="vl-btns">
+      <button class="btn" onclick="closeVlModal()">취소</button>
+      <button class="btn" style="opacity:.65" onclick="vlJustRemove()">기록없이 제거</button>
+      <button class="btn btn-teal" onclick="vlSubmit()">기록하고 제거</button>
+    </div>
+  </div>
+</div>
+<!-- 📒 VAVLOG 매매일지 / 복기 -->
+<div class="vl-back" id="vlBook">
+  <div class="vl-modal">
+    <div class="vl-h">📒 매매일지 · 복기</div>
+    <div class="vl-sub" id="vlbSub">이번 달 실측 통계</div>
+    <div class="vl-stat" id="vlbStat"></div>
+    <div class="vl-log" id="vlbLog"></div>
+    <div class="vl-btns"><button class="btn btn-teal" onclick="closeVlBook()">닫기</button></div>
+  </div>
+</div>
+
+<!-- 5. 시스템 (접힘 · 엔진은 여기 숨음) -->
+<details class="sys">
+  <summary><span>⚙ SYSTEM · 엔진룸</span><span>▾</span></summary>
+  <div class="sys-body">
+    <div class="sys-grid">
+      <button class="btn btn-ghost" onclick="go('trinity_v1_3.html')">🔱 Trinity 건눌재</button>
+      <button class="btn btn-ghost" onclick="go('ignition_v1_3.html')">🔥 Ignition</button>
+      <button class="btn btn-ghost" onclick="go('block_reset_engine_v2_6.html')">🧨 Block Reset</button>
+      <button class="btn btn-ghost" onclick="go('candidate_v2_2.html')">👁 Candidate</button>
+      <button class="btn btn-ghost" onclick="go('../judge_engine_v1-3.html')">🎯 Judge 상세</button>
+      <button class="btn btn-ghost" onclick="go('trinity_hub_v1_0.html')">🗂 구형 HUB(v2.0)</button>
+    </div>
+    <div class="feed" id="feed"><div class="feed-none">신호 로그 없음</div></div>
+  </div>
+</details>
+
+<footer>
+  <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.2 UTOPIA 🔱
+</footer>
+
+  </div>
+</div>
+<nav class="bnav">
+  <a href="#" onclick="scrollToSec('secScan');return false;"><span class="bi">🔍</span>SCAN</a>
+  <a href="#" onclick="scrollToSec('secJudge');return false;"><span class="bi">🎯</span>JUDGE</a>
+  <a href="#" onclick="scrollToSec('secStrike');return false;"><span class="bi">⚡</span>STRIKE</a>
+  <a href="#" onclick="scrollToSec('secWave');return false;"><span class="bi">🌊</span>WAVE</a>
+  <a href="#" onclick="const s=document.querySelector('details.sys');s.open=true;s.scrollIntoView({behavior:'smooth'});return false;"><span class="bi">⚙</span>SYSTEM</a>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+// ━━━━━━━━━ 상수 (Railway URL — hub v2.0과 동일, 추측 금지) ━━━━━━━━━
+const RAIL_MAIN = 'https://fastapi-production-f631.up.railway.app';
+const RAIL_CAND = 'https://candidate-angine-production.up.railway.app';
+
+// ━━━━━━━━━ 상태 ━━━━━━━━━
+const LS_WATCH = 'trinity3_watch';   // [{code,name,grade}]
+const LS_HOLD  = 'trinity3_hold';    // [{code,name,buy,price,stop,state}]
+let watch = load(LS_WATCH, []);
+let holds = load(LS_HOLD, []);
+let judgeCache = {};                  // code → 마지막 /judge 응답
+function load(k,d){ try{return JSON.parse(localStorage.getItem(k))||d;}catch{return d;} }
+function save(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
+
+// ━━━━━━━━━ 유틸 ━━━━━━━━━
+const $ = id => document.getElementById(id);
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function go(file){ window.location.href=file; }
+function scrollToSec(id){ $(id).scrollIntoView({behavior:'smooth'}); }
+function won(n){ return n==null?'--':Number(n).toLocaleString('ko-KR'); }
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+// ━━━━━━━━━ 시계 ━━━━━━━━━
+function tick(){
+  const n=new Date(), k=new Date(n.getTime()+n.getTimezoneOffset()*60000+9*3600000);
+  $('clock').textContent=[k.getHours(),k.getMinutes(),k.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  const d=['일','월','화','수','목','금','토'][k.getDay()];
+  $('cdate').textContent=`${k.getFullYear()}.${String(k.getMonth()+1).padStart(2,'0')}.${String(k.getDate()).padStart(2,'0')} (${d})`;
+  if(typeof updateMktState==='function') updateMktState();
+}
+setInterval(tick,1000); tick();
+
+// ━━━━━━━━━ 시장 온도 (/index_snapshot — v2.0과 동일 엔드포인트) ━━━━━━━━━
+async function fetchTemp(){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/index_snapshot`,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok) throw 0;
+    const d = await r.json();
+    const ks = d.kospi?.change_pct, kq = d.kosdaq?.change_pct;
+    const avg = (Number(ks||0)+Number(kq||0))/2;
+    const pill = $('tempPill');
+    if(avg >= 0.8){ pill.className='temp-pill temp-attack'; pill.innerHTML='🟢 ATTACK <small>공격</small>'; }
+    else if(avg >= 0.15){ pill.className='temp-pill temp-ready'; pill.innerHTML='🟡 READY <small>준비</small>'; }
+    else if(avg > -0.5){ pill.className='temp-pill temp-neutral'; pill.innerHTML='⚪ WATCH <small>관망</small>'; }
+    else { pill.className='temp-pill temp-defense'; pill.innerHTML='🔴 DEFENSE <small>방어</small>'; }
+    const f = (x)=> x==null?'--':`<b class="${x>=0?'up':'down'}">${x>0?'+':''}${Number(x).toFixed(2)}%</b>`;
+    const vix = d.vix, fx = d.usdkrw;
+    const vixTxt = vix?.price!=null ? `${Number(vix.price).toFixed(1)} ${f(vix.change_pct)}` : '--';
+    const fxTxt  = fx?.price!=null ? `${Math.round(fx.price).toLocaleString()}원 ${f(fx.change_pct)}` : '--';
+    $('tempDetail').innerHTML =
+      `<span>KOSPI ${f(ks)}</span><span>KOSDAQ ${f(kq)}</span><span>NASDAQ ${f(d.nasdaq?.change_pct)}</span>`+
+      `<span>S&P ${f((d.sp500||d.snp500)?.change_pct)}</span><span>VIX ${vixTxt}</span><span>환율 ${fxTxt}</span>`;
+    renderStorm(computeStorm(d));        // ⛈️ v3.9 — 같은 실측으로 Storm Index 산출
+    _lastSnapTs = d.ts || Math.floor(Date.now()/1000);
+    renderMacro();                       // 🧭 v4.0 — 시장상태·기준시각·FED
+  }catch(e){ $('tempDetail').textContent='지수 조회 실패 — 웜업 후 재시도'; renderStorm(null); renderMacro(); }
+}
+
+// ━━━━━━━━━ ⛈️ Storm Index v0.1 (채피 설계 / ATTACK과 분리 — 위험 환경 게이지) ━━━━━━━━━
+// 0~100. 높을수록 위험. 실측만 사용 — 결측 축은 가중치에서 제외하고 재정규화(추측 금지).
+const _clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+function _lerpSeg(x,pts){               // pts: x 오름차순 [[x,y],...], 양끝 클램프
+  if(x<=pts[0][0]) return pts[0][1];
+  if(x>=pts[pts.length-1][0]) return pts[pts.length-1][1];
+  for(let i=0;i<pts.length-1;i++){ const [x0,y0]=pts[i],[x1,y1]=pts[i+1];
+    if(x>=x0&&x<=x1) return y0+(y1-y0)*(x-x0)/(x1-x0); }
+  return pts[pts.length-1][1];
+}
+function stormInternal(){               // Trinity 내부신호 — HUB 실측 상태만
+  let s=0, out=0, warn=0;
+  holds.forEach(h=>{ const k=holdState(h)[0]; if(k==='hp-out')out++; else if(k==='hp-warn')warn++; });
+  s += out*35 + warn*20;
+  if(holds.length && (out+warn)/holds.length >= 0.3) return 100;   // 보유 30%+ 위험 → 즉시 100
+  if(watch.length){
+    if(goList().length===0) s += 20;                               // 진입 가능 0개
+    const ab = watch.filter(w=>w.grade==='A'||w.grade==='B').length;
+    if(ab/watch.length <= 0.2) s += 20;                            // A/B 비율 20% 이하
+  }
+  return _clamp(s,0,100);
+}
+function computeStorm(d){
+  const C=[];                           // {r:위험0~100, w:가중치}  — v2.0 가중치
+  if(d&&d.kospi?.change_pct!=null&&d.kosdaq?.change_pct!=null){
+    let r=_lerpSeg((+d.kospi.change_pct + +d.kosdaq.change_pct)/2, [[-3,100],[0,35],[3,0]]);
+    if(+d.kosdaq.change_pct<=-2) r+=10;                            // KOSDAQ 급락 가산
+    C.push({r:_clamp(r,0,100),w:25});                             // 국내 25
+  }
+  const sp=d&&(d.sp500||d.snp500);
+  if(d&&d.nasdaq?.change_pct!=null&&sp?.change_pct!=null)
+    C.push({r:_clamp(_lerpSeg((+d.nasdaq.change_pct + +sp.change_pct)/2,[[-2.5,100],[0,30],[2,0]]),0,100),w:20}); // 미국 20
+  if(d&&d.vix?.price!=null)
+    C.push({r:_clamp(_lerpSeg(+d.vix.price,[[15,0],[20,35],[25,70],[30,100]]),0,100),w:20}); // VIX 20
+  if(d&&d.usdkrw?.change_pct!=null){
+    let r=_lerpSeg(+d.usdkrw.change_pct,[[-1,0],[0,25],[1,60],[2,100]]);
+    const lv=+(d.usdkrw.price||0); if(lv>=1500) r+=20; else if(lv>=1450) r+=10;   // 환율 레벨 가산
+    C.push({r:_clamp(r,0,100),w:15});                             // 환율 15
+  }
+  C.push({r:stormInternal(),w:20});     // 내부신호 20 (클라이언트 실측 — 항상)
+  const wsum=C.reduce((a,c)=>a+c.w,0);
+  if(!wsum) return null;
+  return {score:Math.round(C.reduce((a,c)=>a+c.r*c.w,0)/wsum), full:wsum>=100};
+}
+function stormGrade(s){    // v2.0 + v4.1 현금비중 가이드
+  if(s<=20) return ['st-sun','☀️','맑음','공격 우위 · 현금 10~20%'];
+  if(s<=40) return ['st-cloud','🌤','양호','분할 진입 · 현금 20~30%'];
+  if(s<=60) return ['st-rain','⛅','주의','현금 확대 · 40~50%'];
+  if(s<=80) return ['st-storm','🌧','경계','신규 최소화 · 현금 60~80%'];
+  return ['st-crash','🌪️','피난','신규매수 금지 · 현금 최대'];
+}
+let _stormLast=null;
+function renderStorm(st){
+  const card=$('stormCard');
+  if(!st){ card.className='storm st-cloud'; $('stEmoji').textContent='⛅';
+    $('stScore').innerHTML='--<small>STORM</small>'; $('stLabel').textContent='측정 대기';
+    $('stAdvice').textContent='웜업 후 재시도'; _stormLast=null; return; }
+  _stormLast=st;
+  const [cls,emo,lbl,adv]=stormGrade(st.score);
+  card.className='storm '+cls;
+  $('stEmoji').textContent=emo;
+  $('stScore').innerHTML=`${st.score}<small>STORM</small>`;
+  $('stLabel').textContent=lbl + (st.full?'':' ·일부대기');
+  $('stAdvice').textContent=adv;
+}
+function explainStorm(){
+  if(!_stormLast){ toast('지수 측정 대기 중 — 웜업을 눌러보세요'); return; }
+  const [,emo,lbl,adv]=stormGrade(_stormLast.score);
+  toast(`${emo} Storm ${_stormLast.score} · ${lbl} — ${adv}`);
+}
+
+// ━━━━━━━━━ 📌 메모판 v1 (localStorage) + v2 (/memo 동기화) ━━━━━━━━━
+const LS_MEMO='trinity3_memo';
+let memos=load(LS_MEMO,[]);
+function memoToday(){ const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  return `${k.getFullYear()}-${String(k.getMonth()+1).padStart(2,'0')}-${String(k.getDate()).padStart(2,'0')}`; }
+function escHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderMemos(){
+  const today=memoToday(); $('memoDate').textContent=today.slice(5).replace('-','/');
+  const el=$('memoList');
+  const list=[...memos].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!list.length){ el.innerHTML='<div class="memo-empty">핀 고정된 메모가 없어요 — 오늘의 발표·일정을 적어두세요</div>'; return; }
+  el.innerHTML=list.map(m=>{
+    const tc={'일정':'mt-sch','이슈':'mt-iss','메모':'mt-note'}[m.tag]||'mt-note';
+    const auth=(m.author&&m.author!=='림빅')?`<span class="memo-auth">${escHtml(m.author)}</span>`:'';
+    const dchip=(m.date&&m.date!==today)?` <small>${m.date.slice(5)}</small>`:'';
+    return `<div class="memo-item"><span class="memo-tag ${tc}">${escHtml(m.tag||'메모')}</span>`+
+      `<span class="memo-txt">${escHtml(m.text)}${dchip}</span>${auth}`+
+      `<span class="memo-x" onclick="rmMemo('${m.id}')">✕</span></div>`;
+  }).join('');
+}
+function addMemo(){
+  const t=$('memoInput').value.trim(); if(!t) return;
+  const m={id:'m'+Date.now()+Math.random().toString(36).slice(2,5), date:memoToday(),
+           text:t, tag:$('memoTag').value, author:'림빅', ts:Date.now()};
+  memos.push(m); save(LS_MEMO,memos); $('memoInput').value=''; renderMemos();
+  pushMemoServer(m);                    // 백엔드 있으면 공유, 없으면 조용히 로컬만
+}
+function rmMemo(id){
+  memos=memos.filter(m=>m.id!==id); save(LS_MEMO,memos); renderMemos();
+  fetch(`${RAIL_MAIN}/memo/${id}`,{method:'DELETE',signal:AbortSignal.timeout(6000)}).catch(()=>{});
+}
+async function pushMemoServer(m){
+  try{ await fetch(`${RAIL_MAIN}/memo`,{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify(m),signal:AbortSignal.timeout(6000)}); }catch{}
+}
+async function syncMemos(){             // 부팅 시 서버 메모(채피/써니 등록분)와 병합
+  try{
+    const r=await fetch(`${RAIL_MAIN}/memo`,{signal:AbortSignal.timeout(6000)});
+    if(!r.ok) return;
+    const server=(await r.json()).memos||[];
+    const byId={}; memos.forEach(m=>byId[m.id]=m); server.forEach(m=>byId[m.id]=m);  // 서버 우선
+    memos=Object.values(byId); save(LS_MEMO,memos); renderMemos();
+  }catch{}
+}
+
+// ━━━━━━━━━ 🧭 v4.0 Macro Barometer (시장상태 · 기준시각 · FED · FOMC) ━━━━━━━━━
+function marketState(){     // 채피 4상태 — 평일 09:00~15:30 장중, 08:00~09:00 프리장, 주말, 그 외 장마감
+  const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  const day=k.getDay(), t=k.getHours()*60+k.getMinutes();
+  if(day===0||day===6) return ['mk-weekend','🔵','주말'];
+  if(t>=540&&t<=930)   return ['mk-open','🟢','장중'];
+  if(t>=480&&t<540)    return ['mk-pre','🟡','프리장'];
+  return ['mk-closed','⚫','장마감'];
+}
+function updateMktState(){
+  const [cls,emo,lbl]=marketState(), el=$('mkState');
+  if(el){ el.className='mk '+cls; el.textContent=`${emo} ${lbl}`; }
+}
+let _lastSnapTs=null;       // index_snapshot 기준시각 (epoch sec)
+function fmtUpd(ts){
+  if(!ts) return '업데이트 --';
+  const k=new Date(ts*1000+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  return `업데이트 ${String(k.getMonth()+1).padStart(2,'0')}.${String(k.getDate()).padStart(2,'0')} `+
+         `${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
+}
+// ── FED 수동 패널 — 림빅이 정확한 값을 직접 입력(추측 금지). FOMC D-N은 자동 계산 ──
+const LS_FED='trinity_fed';
+let fed=load(LS_FED,null);  // {rate, stance, fomc:'YYYY-MM-DD'}
+function fomcDday(dstr){ try{ return Math.round((new Date(dstr)-new Date(memoToday()))/86400000); }catch{ return null; } }
+function renderFed(){
+  const fc=$('fedChip'), foc=$('fomcChip'); if(!fc) return;
+  if(!fed||!fed.rate){ fc.textContent='🏦 FED 설정'; fc.className='fed unset'; foc.textContent=''; return; }
+  fc.className='fed'; fc.textContent=`🏦 FED ${fed.rate}${fed.stance?(' '+fed.stance):''}`;
+  if(fed.fomc){ const dn=fomcDday(fed.fomc);
+    foc.textContent = dn==null?'' : dn>0?`📅 FOMC D-${dn}` : dn===0?'📅 FOMC D-DAY':'📅 FOMC 지남'; }
+  else foc.textContent='';
+}
+function editFed(){
+  const rate=(prompt('현재 미국 기준금리 (예: 4.25%) — 실측값만','' + (fed?.rate||''))||'').trim();
+  if(!rate){ return; }
+  const stance=(prompt('스탠스 (예: 동결 / 인하 / 인상)', fed?.stance||'동결')||'').trim();
+  const fomc=(prompt('다음 FOMC 날짜 (YYYY-MM-DD)', fed?.fomc||'')||'').trim();
+  fed={rate, stance, fomc}; save(LS_FED, fed); renderFed();
+  toast('FED 정보 저장 — 직접 입력한 실측값');
+}
+function renderMacro(){ updateMktState(); $('mkUpd').textContent=fmtUpd(_lastSnapTs); renderFed(); }
+
+// ━━━━━━━━━ 🚢 v4.1 Portfolio Health (계좌 건강 — 보유 실측 100%) ━━━━━━━━━
+function portfolioHealth(){
+  if(!holds.length) return null;
+  let pen=0, out=0, warn=0, loss=0, profit=0, q=0;
+  holds.forEach(h=>{
+    const k=holdState(h)[0];
+    if(k==='hp-q'){ q++; return; }                         // 가격/손절 미설정 — 평가 보류
+    if(k==='hp-out'){ pen+=30; out++; return; }            // 손절선 이탈 — 최악
+    if(k==='hp-warn'){ pen+=16; warn++; return; }          // 손절선 근접
+    if(h.buy && h.price!=null){                            // 이탈/주의 아님 → 손익으로
+      if(h.price<h.buy){ pen+=Math.min(14, 3+(h.buy-h.price)/h.buy*100*0.6); loss++; }
+      else profit++;
+    }
+  });
+  return {score:Math.max(0,Math.min(100,Math.round(100-pen))), out, warn, loss, profit, q, n:holds.length};
+}
+function phGrade(s){
+  if(s>=80) return ['ph-good','🟢','건강','정상 운용'];
+  if(s>=60) return ['ph-ok','🟡','양호','관리 지속'];
+  if(s>=40) return ['ph-warn','🟠','주의','손실 종목 점검 권장'];
+  return ['ph-risk','🔴','위험','손실 과다 · 정리 우선 권장'];
+}
+let _phLast=null;
+function renderPH(){
+  const card=$('phCard'); if(!card) return;
+  const h=portfolioHealth(); _phLast=h;
+  if(!h){ card.className='phealth ph-ok'; $('phEmoji').textContent='🚢';
+    $('phLabel').textContent='보유 없음'; $('phScore').innerHTML='--<small> /100</small>';
+    $('phAdvice').textContent='담은 종목이 없어요'; $('phBreak').textContent=''; return; }
+  const [cls,emo,lbl,adv]=phGrade(h.score);
+  card.className='phealth '+cls;
+  $('phEmoji').textContent=emo;
+  $('phLabel').textContent=lbl + (h.q?` ·${h.q} 갱신대기`:'');
+  $('phScore').innerHTML=`${h.score}<small> /100</small>`;
+  $('phAdvice').textContent=adv;
+  $('phBreak').textContent=`이탈 ${h.out} · 주의 ${h.warn} · 손실 ${h.loss} · 수익 ${h.profit}`;
+}
+function explainPH(){
+  if(!_phLast){ toast('보유 종목을 담고 손절선 갱신을 눌러보세요'); return; }
+  const [,emo,lbl,adv]=phGrade(_phLast.score);
+  toast(`${emo} Portfolio ${_phLast.score} · ${lbl} — ${adv} (이탈 ${_phLast.out}·주의 ${_phLast.warn}·손실 ${_phLast.loss}·수익 ${_phLast.profit})`);
+}
+
+// ━━━━━━━━━ 웜업 (v2.0과 동일 대상) ━━━━━━━━━
+async function warmup(){
+  const b=$('warmBtn'); b.classList.add('spin'); b.textContent='⏳';
+  try{
+    await fetch(`${RAIL_MAIN}/stock/005930`,{signal:AbortSignal.timeout(15000)});
+    await fetch(`${RAIL_CAND}/candidates?limit=1`,{signal:AbortSignal.timeout(10000)}).catch(()=>{});
+    b.textContent='✅ 완료'; b.classList.add('done'); toast('서버 웜업 완료');
+    fetchTemp();
+  }catch{ b.textContent='⚠ 실패'; toast('웜업 실패 — Railway 확인'); }
+  b.classList.remove('spin');
+  setTimeout(()=>{b.textContent='🔌 웜업'; b.classList.remove('done');},20000);
+}
+
+// ━━━━━━━━━ 1. 발견 ━━━━━━━━━
+const TOP10 = [
+  {code:'000660',name:'SK하이닉스'},{code:'034220',name:'LG디스플레이'},
+  {code:'009150',name:'삼성전기'},{code:'042700',name:'한미반도체'},
+  {code:'007660',name:'이수페타시스'},{code:'267260',name:'HD현대일렉트릭'},
+  {code:'010120',name:'LS ELECTRIC'},{code:'454910',name:'두산로보틱스'},
+  {code:'035420',name:'NAVER'},{code:'307950',name:'현대오토에버'}
+];
+function renderChips(){
+  const el=$('chips');
+  if(!watch.length){ el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:6px 2px;">후보가 비었습니다 — 추가하거나 채피 Top10을 불러오세요</div>'; }
+  else el.innerHTML = watch.map((w,i)=>{
+    const d = judgeCache[w.code], m = d?.mri;
+    const rrV = m?.rr ?? w.rr, spV = d?.spark || w.spark;
+    const rr = rrV!=null ? `<span class="c-rr">R/R <b>${rrV}</b></span>` : '';
+    const sp = spV ? sparkSVG(spV) : '';
+    return `<div class="chip" onclick="loadJudge('${w.code}')">
+      <div class="c-top">
+        <span class="g ${w.grade?('g'+w.grade):'gq'}">${w.grade||'?'}</span>
+        <span class="c-nm">${w.name}</span>
+        ${/^\d{6}$/.test(w.name)?`<span class="x" title="이름 짓기" onclick="event.stopPropagation();renameChip(${i})">✏</span>`:''}
+        <span class="x" onclick="event.stopPropagation();rmWatch(${i})">✕</span>
+      </div>
+      ${(sp||rr)?`<div class="c-bot">${sp}${rr}</div>`:''}
+    </div>`;}).join('');
+  $('cntScan').textContent = watch.length;
+  updateGoCount(); save(LS_WATCH, watch); syncSentinelWatch(); renderFocus();
+}
+function rmWatch(i){ watch.splice(i,1); renderChips(); }
+function presetTop10(){
+  TOP10.forEach(t=>{ if(!watch.some(w=>w.code===t.code)) watch.push({...t,grade:null}); });
+  renderChips(); toast('채피 Top10 추가 — 전체 스캔 ㄱㄱ');
+}
+async function addCandidate(){
+  let q = $('addWatch').value.trim(); if(!q) return;
+  $('addWatch').value=''; toast('확인 중…');
+  if(!/^\d{6}$/.test(q)){
+    const c=nameToCode(q);
+    if(c) q=c;
+    else{ const m=await resolveNameRemote(q); if(m) q=m.code; }   // 전 종목 서버 검색
+  }
+  const d = await fetchJudge(q);
+  if(!d){ toast('종목을 찾지 못했어요 — 코드 6자리로 시도해보세요'); return; }
+  if(watch.some(w=>w.code===d.code)){ toast('이미 후보에 있어요'); return; }
+  // 이름 해석: 서버 응답 재귀탐색 → 이름캐시 → 입력값(이름으로 추가한 경우) → 직접 입력
+  let nm = digName(d) || nameCache[d.code] || ((q!==d.code && !/^\d{6}$/.test(q)) ? q : '');
+  if(!nm){
+    nm = (prompt(`${d.code} 종목명을 알려주세요 (예: 예스티)`)||'').trim() || d.code;
+  }
+  if(nm !== d.code){ nameCache[d.code]=nm; saveNameCache(); }
+  watch.push({code:d.code, name:nm, grade:d.mri?.grade||null, rr:d.mri?.rr??null, spark:d.spark||null});
+  renderChips(); renderJudge(d);
+}
+// ━━━━━━━━━ 🔎 Name Finder (v3.2) — 토스 대응: 코드 → 이름 ━━━━━━━━━
+// 캐시 키는 단독 Finder 페이지와 공유. 칩 이름짓기 → 보초 names 동기화까지 한 몸.
+const NAMECACHE_KEY='trinity_name_cache';
+const nameCache = JSON.parse(localStorage.getItem(NAMECACHE_KEY)||'{}');
+const saveNameCache = ()=>localStorage.setItem(NAMECACHE_KEY,JSON.stringify(nameCache));
+const NAME_KEYS=['name','stock_name','hts_kor_isnm','kor_name','stk_name'];
+function digName(o,dep=0){
+  if(!o||typeof o!=='object'||dep>4) return '';
+  for(const k of NAME_KEYS){const v=o[k];
+    if(typeof v==='string'&&v.trim()&&!/^\d{6}$/.test(v.trim())) return v.trim();}
+  for(const v of Object.values(o)){
+    if(typeof v==='object'){const r=digName(v,dep+1); if(r) return r;}}
+  return '';
+}
+// 시드 사전 (실측 확신 종목만 — 잘못된 코드는 잘못된 매매로 이어지므로 보수적으로)
+const SEED_NAMES = {
+"005930":"삼성전자","005935":"삼성전자우","000660":"SK하이닉스","005380":"현대차","000270":"기아",
+"005490":"POSCO홀딩스","035420":"NAVER","035720":"카카오","051910":"LG화학","373220":"LG에너지솔루션",
+"006400":"삼성SDI","207940":"삼성바이오로직스","068270":"셀트리온","105560":"KB금융","055550":"신한지주",
+"086790":"하나금융지주","316140":"우리금융지주","024110":"기업은행","138040":"메리츠금융지주","071050":"한국금융지주",
+"032830":"삼성생명","000810":"삼성화재","012330":"현대모비스","028260":"삼성물산","010130":"고려아연",
+"042660":"한화오션","010140":"삼성중공업","064350":"현대로템","012450":"한화에어로스페이스","047810":"한국항공우주",
+"079550":"LIG넥스원","272210":"한화시스템","000720":"현대건설","034020":"두산에너빌리티","000150":"두산",
+"042700":"한미반도체","009150":"삼성전기","034220":"LG디스플레이","066570":"LG전자","003550":"LG",
+"267260":"HD현대일렉트릭","010120":"LS ELECTRIC","086280":"현대글로비스","011200":"HMM","003490":"대한항공",
+"017670":"SK텔레콤","030200":"KT","032640":"LG유플러스","033780":"KT&G","097950":"CJ제일제당",
+"090430":"아모레퍼시픽","051900":"LG생활건강","307950":"현대오토에버","018260":"삼성에스디에스","036570":"엔씨소프트",
+"259960":"크래프톤","352820":"하이브","086520":"에코프로","247540":"에코프로비엠","196170":"알테오젠",
+"058470":"리노공업","095340":"ISC","007660":"이수페타시스","454910":"두산로보틱스","122640":"예스티",
+"015760":"한국전력","010950":"S-Oil","096770":"SK이노베이션","034730":"SK","004020":"현대제철",
+"009830":"한화솔루션","011170":"롯데케미칼","011070":"LG이노텍","402340":"SK스퀘어","323410":"카카오뱅크",
+"326030":"SK바이오팜","302440":"SK바이오사이언스","000100":"유한양행","128940":"한미약품","039490":"키움증권"
+};
+// 시드를 캐시에 합류 (사용자가 직접 지은 이름이 항상 우선)
+for(const c in SEED_NAMES){ if(!nameCache[c]) nameCache[c]=SEED_NAMES[c]; }
+saveNameCache();
+// 이름 → 코드 (정확일치 > 시작일치 > 포함)
+function nameToCode(q){
+  const n = q.replace(/\s+/g,'').toLowerCase(); if(!n) return null;
+  let starts=null, incl=null;
+  for(const [code,nm] of Object.entries(nameCache)){
+    const m = nm.replace(/\s+/g,'').toLowerCase();
+    if(m===n) return code;
+    if(!starts && m.startsWith(n)) starts=code;
+    if(!incl && m.includes(n)) incl=code;
+  }
+  return starts || incl;
+}
+
+// 전 종목 검색 — 로컬 사전 실패 시 서버(/search_stock, 네이버 크롤) 호출. 결과는 학습 저장.
+async function resolveNameRemote(q){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/search_stock/${encodeURIComponent(q)}`,{signal:AbortSignal.timeout(9000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    const m = (d.matches||[])[0];
+    if(m && m.code){ nameCache[m.code]=m.name||q; saveNameCache(); return m; }
+  }catch{}
+  return null;
+}
+let _fCode='';
+function finderInput(el,force){
+  const q = el.value.trim();
+  const digits = q.replace(/\D/g,'');
+  if(/^\d+$/.test(q)){                       // 코드 모드
+    if(digits.length===6) finderLookup(digits);
+    else { $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); }
+    return;
+  }
+  if(q.length<2 && !force){                  // 이름 모드 (2글자부터)
+    $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return;
+  }
+  const code = nameToCode(q);                // ① 로컬 사전
+  if(code){
+    _fCode = code;
+    $('fName').textContent = `${nameCache[code]} → ${code}`;
+    $('fName').className='f-name'; $('fAdd').classList.add('on');
+    return;
+  }
+  if(!force && q.length<3){ $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on'); return; }
+  $('fName').textContent='…'; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+  resolveNameRemote(q).then(m=>{             // ② 서버 전 종목 검색 (학습 저장)
+    if($('fCode').value.trim()!==q) return;  // 그 사이 입력 변경 시 무시
+    if(m){ _fCode=m.code;
+      $('fName').textContent=`${m.name} → ${m.code}`;
+      $('fName').className='f-name'; $('fAdd').classList.add('on');
+    }else{ _fCode='';
+      $('fName').textContent='미등록'; $('fName').className='f-name miss';
+    }
+  });
+}
+async function finderLookup(code){
+  _fCode=code;
+  const out=$('fName'), add=$('fAdd');
+  if(nameCache[code]){ out.textContent=nameCache[code]; out.className='f-name'; add.classList.add('on'); return; }
+  out.textContent='…'; out.className='f-name miss'; add.classList.remove('on');
+  const d = await fetchJudge(code);
+  const nm = d ? digName(d) : '';
+  if(nm){ nameCache[code]=nm; saveNameCache();
+    out.textContent=nm; out.className='f-name'; add.classList.add('on'); }
+  else{
+    out.textContent='미확인 · 탭하여 입력'; out.className='f-name miss';
+    out.onclick=()=>{ const n=(prompt(`${code} 종목명 입력 (예: 예스티)`)||'').trim();
+      if(n){ nameCache[code]=n; saveNameCache(); out.textContent=n; out.className='f-name'; add.classList.add('on'); }
+      out.onclick=null; };
+    if(d){ add.classList.add('on'); } // 데이터는 있으니 이름만 지으면 후보 추가 가능
+  }
+}
+async function finderAdd(){
+  if(!_fCode) return;
+  if(watch.some(w=>w.code===_fCode)){ toast('이미 후보에 있어요'); return; }
+  const d = judgeCache[_fCode] || await fetchJudge(_fCode);
+  if(!d){ toast('데이터를 못 가져왔어요'); return; }
+  watch.push({code:_fCode, name:nameCache[_fCode]||_fCode, grade:d.mri?.grade||null});
+  renderChips(); toast(`${nameCache[_fCode]||_fCode} 후보 추가`);
+  $('fCode').value=''; $('fName').textContent=''; $('fName').className='f-name miss'; $('fAdd').classList.remove('on');
+}
+function renameChip(i){
+  const w=watch[i];
+  const n=(prompt(`${w.code} 종목명 입력`, w.name!==w.code?w.name:'')||'').trim();
+  if(!n) return;
+  w.name=n; nameCache[w.code]=n; saveNameCache();
+  _swSig='';            // 시그니처 리셋 → 보초에 새 이름 강제 동기화
+  renderChips(); toast(`이름 저장 — 보초에도 전달됩니다`);
+}
+async function scanAll(){
+  if(!watch.length){ toast('후보가 없어요'); return; }
+  const b=$('scanBtn'); b.classList.add('spin'); b.textContent='⏳ 스캔 중…';
+  let done=0;
+  for(const w of watch){
+    const d = await fetchJudge(w.code);
+    if(d){ w.grade = d.mri?.grade||w.grade; w.rr = d.mri?.rr??w.rr; w.spark = d.spark||w.spark;
+           if(d.name&&d.name!==d.code) w.name=d.name; done++; renderChips(); }
+    await sleep(400); // KIS 예의
+  }
+  b.classList.remove('spin'); b.textContent='🔍 전체 스캔 (Grade 갱신)';
+  toast(`스캔 완료 — ${done}/${watch.length}`); addFeed(`🔍 전체 스캔 ${done}종목 완료`);
+}
+// 토스식 미니 가격추이 — /judge spark(최근 30일 종가)로 그림. 기간 상승=빨강, 하락=파랑.
+function sparkSVG(arr){
+  if(!arr || arr.length < 2) return '';
+  const w=62, hh=24, mn=Math.min(...arr), mx=Math.max(...arr), rg=(mx-mn)||1;
+  const pts = arr.map((v,i)=>((i/(arr.length-1))*w).toFixed(1)+','+((hh-2)-((v-mn)/rg)*(hh-4)).toFixed(1)).join(' ');
+  const col = arr[arr.length-1] >= arr[0] ? 'var(--red)' : '#4d8dff';
+  return '<svg class="spark" width="'+w+'" height="'+hh+'" viewBox="0 0 '+w+' '+hh+'">'+
+         '<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
+function updateGoCount(){
+  const n = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')).length;
+  $('cntGo').textContent = n;
+  if(typeof renderWatch==='function') renderWatch();   // 👀 v4.2 — TOP5 실시간 갱신
+}
+function goList(){
+  return Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'));
+}
+function showGoList(){
+  const list = goList();
+  scrollToSec('secJudge');
+  if(!list.length){
+    $('judgeCard').innerHTML='<div class="j-empty">진입 가능 종목 없음 — 🔍 전체 스캔으로 Grade를 갱신해보세요</div>';
+    return;
+  }
+  $('judgeCard').innerHTML =
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">✅ 진입 가능 '+list.length+'종목 — 탭하면 MRI 카드</div>' +
+    list.map(d=>{
+      const nm = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
+      return `<div class="hold" onclick="loadJudge('${d.code}')" style="cursor:pointer;">
+        <div class="h-info"><div class="h-name">${nm}</div>
+          <div class="h-sub">Grade ${d.mri.grade} · R/R ${d.mri.rr??'-'} · STOP ${won(d.mri.stop)}</div></div>
+        ${sparkSVG(d.spark)}
+        <div class="h-num"><div class="h-price">${won(d.price)}</div></div>
+        <div class="h-pill hp-keep">진입 후보</div>
+      </div>`;
+    }).join('');
+}
+
+
+// ━━━━━━━━━ 👀 v4.2 WATCH Center (기회 대기실) ━━━━━━━━━
+const LS_MYWATCH='trinity_mywatch';
+let myWatch=load(LS_MYWATCH,[]);     // [{code,name}] 최대 5
+const _waState={};                   // code → {enter: ts}  (CONFIRM 진입 시각)
+
+function watchScore(d){               // WATCH 점수 = TODAY 복합점수 재사용 (실측 유도)
+  const m=d&&d.mri; if(!m) return null;
+  const grade={'A':100,'B':75,'C':50}[m.grade]??25;
+  const rrN=m.rr!=null?_clamp(Number(m.rr)/4*100,0,100):0;
+  const mom=d.change_pct!=null?_clamp((Number(d.change_pct)+5)/10*100,0,100):50;
+  const stormFit=_stormLast?(100-_stormLast.score):60;
+  return Math.round(grade*0.4 + rrN*0.3 + mom*0.2 + stormFit*0.1);
+}
+function isConfirm(d){ return !!(d&&d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입')); }
+function scoreCls(s){ return s>=80?'ws-green':s>=60?'ws-yellow':'ws-red'; }
+function autoTop5(){
+  return Object.values(judgeCache).filter(d=>d.mri && watchScore(d)!=null)
+    .map(d=>({d,s:watchScore(d)})).sort((a,b)=>b.s-a.s).slice(0,5).map(x=>x.d);
+}
+function watchStage(code){            // 깜박(0~1분) → 점멸(1~4분) → 골드(4분~, CONFIRM 유지중)
+  const w=_waState[code]; if(!w) return '';
+  const e=(Date.now()-w.enter)/1000;
+  if(e<60)  return 'wa-blink';
+  if(e<240) return 'wa-pulse';
+  return 'wa-gold';
+}
+function watchCardHTML(code, my){
+  const cd = judgeCache[code];
+  const nm = (cd&&cd.name&&cd.name!==code) ? cd.name
+           : (myWatch.find(w=>w.code===code)?.name || watch.find(w=>w.code===code)?.name || code);
+  const sc = cd?watchScore(cd):null;
+  const scChip = sc==null?'<span class="wsc">--</span>':`<span class="wsc ${scoreCls(sc)}">${sc}</span>`;
+  const rrWarn = (cd&&cd.mri&&cd.mri.rr!=null&&Number(cd.mri.rr)>5) ? '<span class="w-rrwarn" title="R/R 과대 — stop 왜곡 의심">⚠️</span>' : '';
+  const grade = (cd&&cd.mri)?cd.mri.grade:'';
+  const gcls = {'A':'g-a','B':'g-b','C':'g-c'}[grade]||'g-d';
+  const stage = watchStage(code);
+  const badge = stage?`<span class="wa-badge">🟢 CONFIRM</span>`:'';
+  const rmBtn = my?`<span class="w-x" onclick="event.stopPropagation();rmMyWatch('${code}')">✕</span>`:'';
+  return `<div class="wcard ${stage}" data-code="${code}" onclick="loadJudge('${code}')">
+    <span class="w-grade ${gcls}">${grade||'·'}</span>
+    <span class="w-name">${nm}</span>${badge}${rrWarn}${scChip}
+    <span class="w-charts" onclick="event.stopPropagation()">
+      <button onclick="openNaver('${code}')" title="네이버 차트">📈네</button>
+      <button onclick="openTossStock('${code}')" title="토스">토스</button>
+      <button onclick="openHantu()" title="한투">한투</button>
+    </span>${rmBtn}
+  </div>`;
+}
+function renderWatch(){
+  const a=$('watchAuto'), m=$('watchMy'); if(!a||!m) return;
+  const top=autoTop5();
+  a.innerHTML = top.length ? top.map(d=>watchCardHTML(d.code,false)).join('')
+                           : '<div class="w-empty">전체 스캔(Grade 갱신)하면 점수 TOP5가 채워져요</div>';
+  m.innerHTML = myWatch.length ? myWatch.map(w=>watchCardHTML(w.code,true)).join('')
+                               : '<div class="w-empty">관망할 종목을 추가하세요 (최대 5)</div>';
+}
+function tickWatchStages(){           // 배지/테두리 단계만 갱신 — 애니메이션 끊김 방지
+  if(!Object.keys(_waState).length) return;
+  document.querySelectorAll('.wcard').forEach(el=>{
+    const code=el.getAttribute('data-code'), st=watchStage(code);
+    const had=el.classList.contains('wa-blink')||el.classList.contains('wa-pulse')||el.classList.contains('wa-gold');
+    el.classList.remove('wa-blink','wa-pulse','wa-gold');
+    if(st) el.classList.add(st);
+    const hasBadge=!!el.querySelector('.wa-badge');
+    if((st&&!hasBadge)||(!st&&hasBadge)) renderWatch();   // 배지 유무 바뀌면 재렌더
+  });
+}
+async function watchScan(){
+  const live = (typeof marketState==='function') ? marketState()[0]==='mk-open' : true;
+  for(const w of myWatch){            // MY 관망은 직접 갱신 (TOP5는 judgeCache 재사용)
+    if(!judgeCache[w.code] || live){ try{ await fetchJudge(w.code); }catch{} }
+  }
+  if(live){                           // CONFIRM 전환 감지는 장중에만 (주말 오발 방지)
+    const codes = new Set([...autoTop5().map(d=>d.code), ...myWatch.map(w=>w.code)]);
+    codes.forEach(code=>{
+      const conf=isConfirm(judgeCache[code]);
+      if(conf && !_waState[code]){      // ▶ 새 CONFIRM 진입 → 라이프사이클 시작
+        _waState[code]={enter:Date.now()};
+        const cd=judgeCache[code], nm=(cd.name&&cd.name!==code)?cd.name:code;
+        const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+        addFeed(`👀 컨펌: <b>${nm}</b> ${cd.mri.grade} R/R ${cd.mri.rr??'-'} · ${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`);
+      } else if(!conf && _waState[code]){ delete _waState[code]; }  // ◀ CONFIRM 해제 → 원복
+    });
+  }
+  renderWatch();
+}
+function addMyWatch(){
+  const q=$('myWatchIn').value.trim(); if(!q) return;
+  if(myWatch.length>=5){ toast('MY 관망은 최대 5개예요'); return; }
+  const commit=(code,name)=>{
+    if(!code) { toast('종목을 찾지 못했어요'); return; }
+    if(myWatch.some(w=>w.code===code)){ toast('이미 관망 중'); return; }
+    myWatch.push({code,name:name||code}); save(LS_MYWATCH,myWatch);
+    $('myWatchIn').value=''; renderWatch(); fetchJudge(code).then(renderWatch).catch(()=>{});
+  };
+  if(/^\d{6}$/.test(q)){ commit(q, judgeCache[q]?.name||q); return; }
+  const local = (typeof nameToCode==='function') ? nameToCode(q) : null;
+  if(local){ commit(local, q); return; }
+  if(typeof resolveNameRemote==='function'){ toast('찾는 중…'); resolveNameRemote(q).then(c=>commit(c,q)).catch(()=>toast('조회 실패')); }
+  else toast('종목을 찾지 못했어요');
+}
+function rmMyWatch(code){ myWatch=myWatch.filter(w=>w.code!==code); save(LS_MYWATCH,myWatch); delete _waState[code]; renderWatch(); }
+function openNaver(code){ window.location.href='https://m.stock.naver.com/domestic/stock/'+code+'/total'; }
+function openTossStock(code){ window.location.href='https://www.tossinvest.com/stocks/A'+code; }
+
+
+// 🎯 TODAY — 우선순위: 오늘 Strike BREAK(85+) > Judge 진입가능 중 최고 R/R > 스캔 최고 R/R
+function pickFocus(){
+  try{
+    const s=JSON.parse(localStorage.getItem('trinity_strike_last')||'null');
+    if(s&&s.score>=85){
+      const k=new Date(s.ts+(new Date().getTimezoneOffset()*60000)+9*3600000), nk=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+      if(k.toDateString()===nk.toDateString())
+        return {name:s.name, sub:`BREAK · ${s.score}점${s.pattern?(' · '+s.pattern):''}`, why:'진입 구간 접근 — Strike 신호', code:null};
+    }
+  }catch{}
+  // TODAY SCORE = Judge 40 · R/R 30 · Momentum 20 · Storm 적합도 10 (전부 실측 유도)
+  const todayScore=(d)=>{
+    const m=d.mri; if(!m) return -1;
+    const grade={'A':100,'B':75,'C':50}[m.grade]??25;
+    const rrN=m.rr!=null?_clamp(Number(m.rr)/4*100,0,100):0;
+    const mom=d.change_pct!=null?_clamp((Number(d.change_pct)+5)/10*100,0,100):50;
+    const stormFit=_stormLast?(100-_stormLast.score):60;          // 맑을수록 진입 유리
+    return Math.round(grade*0.4 + rrN*0.3 + mom*0.2 + stormFit*0.1);
+  };
+  const cand = Object.values(judgeCache).filter(d=>d.mri&&d.mri.tradeable&&(d.mri.action_label||'').includes('진입'))
+    .map(d=>({d, ts:todayScore(d)})).sort((a,b)=>b.ts-a.ts)[0];
+  if(cand){ const d=cand.d, m=d.mri, w=watch.find(x=>x.code===d.code);
+    const held=holds.some(h=>h.code===d.code);
+    const rrWarn=(m.rr!=null && Number(m.rr)>5);                   // R/R 과대 = stop 왜곡 의심
+    const badge=(held?'🏠 보유중 ':'')+(rrWarn?'⚠️ R/R 과대 ':'');
+    return {name:(w?.name)||d.name||d.code,
+      sub:`${m.grade||''} · R/R ${m.rr??'--'} · TODAY ${cand.ts}점`,
+      why:`${badge}오늘 최우선 — Judge 진입 가능`, code:d.code}; }
+  const best = watch.filter(w=>w.rr!=null).sort((a,b)=>(b.rr||0)-(a.rr||0))[0];
+  if(best){ const held=holds.some(h=>h.code===best.code);
+    return {name:best.name, sub:`${best.grade||'?'} · R/R ${best.rr}`, why:`${held?'🏠 보유중 ':''}스캔 최고 R/R — 관찰 1순위`, code:best.code}; }
+  return null;
+}
+function renderFocus(){
+  const el=$('focusCard'); if(!el) return;
+  const f=pickFocus();
+  if(!f){ el.style.display='none'; return; }
+  el.innerHTML=`<div class="fc-tag">🎯 TODAY</div>
+    <div class="fc-body"><div class="fc-name">${f.name}</div>
+    <div class="fc-sub">${f.sub}</div><div class="fc-why">${f.why}</div></div>`;
+  el.style.display='flex';
+  el.onclick=()=>{ if(f.code) loadJudge(f.code); };
+}
+// ━━━━━━━━━ 🛰 Trinity Sentinel 동기화 (v3.1) ━━━━━━━━━
+// HUB가 주인, 서버는 복제본 — 워치/보유가 바뀔 때마다 보초에게 자동 전달.
+// HUB를 열기만 해도 1회 동기화 → Railway 재배포로 서버 명단이 증발해도 자동 복구.
+let _swT=null,_shT=null,_swSig='',_shSig='';
+function syncSentinelWatch(){
+  const sig = watch.map(w=>w.code).join(',');
+  if(sig===_swSig) return;                      // 코드 변동 없으면 침묵 (grade 갱신 등)
+  clearTimeout(_swT);
+  _swT=setTimeout(async()=>{
+    try{
+      const r=await fetch(`${RAIL_MAIN}/sentinel/watch`,{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({codes:watch.map(w=>w.code), names:Object.fromEntries(watch.filter(w=>w.name&&w.name!==w.code).map(w=>[w.code,w.name]))})});
+      const d=await r.json();
+      if(d.ok){ _swSig=sig; addFeed(`🛰 보초 워치 동기화 — ${d.count}종목`); }
+    }catch(e){ addFeed('🛰 보초 워치 동기화 실패 — 네트워크 확인'); }
+  },1500);
+}
+function syncSentinelHold(){
+  const sig = holds.map(h=>h.code+':'+(h.buy||0)).join(',');
+  if(sig===_shSig) return;
+  clearTimeout(_shT);
+  _shT=setTimeout(async()=>{
+    try{
+      const r=await fetch(`${RAIL_MAIN}/sentinel/holding`,{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({holdings:holds.map(h=>({code:h.code,buy_price:h.buy||0,name:h.name||''}))})});
+      const d=await r.json();
+      if(d.ok){ _shSig=sig; addFeed(`🛰 보초 보유 동기화 — ${d.count}종목 손절선 감시`); }
+    }catch(e){ addFeed('🛰 보초 보유 동기화 실패 — 네트워크 확인'); }
+  },1500);
+}
+async function sentinelBoot(){
+  try{
+    const r=await fetch(`${RAIL_MAIN}/sentinel/status`,{signal:AbortSignal.timeout(8000)});
+    const d=await r.json();
+    addFeed(`🛰 보초 ${d.market_open_now?'순찰 중':'장외 대기'} · 오늘 알림 ${d.alerts_sent_today}건 · 서버 워치 ${d.watch_count}/보유 ${d.holdings_count}`);
+  }catch(e){ addFeed('🛰 보초 상태 조회 실패 — 웜업 필요할 수 있어요'); }
+}
+
+// ━━━━━━━━━ 2. 판단// ━━━━━━━━━ 2. 판단 (오늘 만든 /judge + mri SSOT) ━━━━━━━━━
+async function fetchJudge(q){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/judge/${encodeURIComponent(q)}`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    if(d.code) judgeCache[d.code]=d;
+    updateGoCount();
+    return d;
+  }catch{ return null; }
+}
+async function loadJudge(q){
+  $('judgeCard').innerHTML='<div class="j-empty">⏳ MRI 촬영 중…</div>';
+  scrollToSec('secJudge');
+  const d = await fetchJudge(q);
+  if(!d){ $('judgeCard').innerHTML='<div class="j-empty">조회 실패 — 웜업 후 다시 시도해주세요</div>'; return; }
+  renderJudge(d);
+}
+
+// 오각 레이더 — /judge 실측값에서 유도한 5축. 원천 없는 축은 만들지 않는다.
+//  R/R(mri.rr 0~4) · 안전(risk_pct 작을수록↑) · 추세(spark 30일 위치) ·
+//  모멘텀(change_pct ±5%) · 등급(A100/B75/C50/D25)
+function radarSVG(d){
+  const m=d.mri; if(!m) return '';
+  const clamp=x=>Math.max(0,Math.min(100,x));
+  const sparkPos=(()=>{ const s=d.spark;
+    if(!Array.isArray(s)||s.length<2) return null;
+    const v=s.map(Number).filter(n=>n>0); if(v.length<2) return null;
+    const mn=Math.min(...v),mx=Math.max(...v);
+    return mx>mn? (v[v.length-1]-mn)/(mx-mn)*100 : 50; })();
+  const axes=[
+    ['R/R',     m.rr!=null? clamp(Number(m.rr)/4*100):null],
+    ['안전',    m.risk_pct!=null? clamp((1-Number(m.risk_pct)/10)*100):null],
+    ['추세',    sparkPos],
+    ['모멘텀',  d.change_pct!=null? clamp((Number(d.change_pct)+5)/10*100):null],
+    ['등급',    {'A':100,'B':75,'C':50}[m.grade]??25],
+  ];
+  const C=62,R=44,n=5;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[(C+r*Math.cos(a)).toFixed(1),(C+r*Math.sin(a)).toFixed(1)];};
+  const ring=r=>Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' ');
+  const poly=axes.map((a,i)=>pt(i,(a[1]??0)/100*R).join(',')).join(' ');
+  const labels=axes.map((a,i)=>{const[x,y]=pt(i,R+11);
+    return `<text x="${x}" y="${y}" font-size="8.5" fill="${a[1]==null?'rgba(138,154,176,.35)':'var(--text2)'}" text-anchor="middle" dominant-baseline="middle">${a[0]}</text>`;}).join('');
+  return `<svg class="radar" width="124" height="124" viewBox="0 0 124 124">
+    <polygon points="${ring(R)}" fill="none" stroke="rgba(255,255,255,.10)"/>
+    <polygon points="${ring(R*2/3)}" fill="none" stroke="rgba(255,255,255,.07)"/>
+    <polygon points="${ring(R/3)}" fill="none" stroke="rgba(255,255,255,.05)"/>
+    <polygon points="${poly}" fill="rgba(0,212,255,.16)" stroke="var(--teal)" stroke-width="1.5"/>
+    ${labels}</svg>`;
+}
+function renderJudge(d){
+  const m = d.mri;
+  const name = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
+  const chg = d.change_pct==null?'':` <span class="${d.change_pct>=0?'up':'down'}">${d.change_pct>0?'+':''}${d.change_pct}%</span>`;
+  if(!m){
+    $('judgeCard').innerHTML = `
+      <div class="j-top"><div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div></div>
+      <div class="j-verdict">MRI 데이터 없음${d.mri_error?(' — <b>'+d.mri_error+'</b>'):''} · 장 전이거나 서버 웜업이 필요할 수 있어요</div>`;
+    return;
+  }
+  const gc = {'A':'var(--green)','B':'var(--yellow)','C':'var(--orange)'}[m.grade]||'var(--red)';
+  const stopPct = m.risk_pct!=null? ('-'+m.risk_pct+'%') : '--';
+  const stateCls = m.tradeable ? 'st-go' : ((m.grade==='C')?'st-watch':'st-no');
+  const stateTxt = m.tradeable ? '✅ '+(m.action_label||'진입 후보') : '👁 '+(m.action_label||'관찰');
+  $('judgeCard').innerHTML = `
+    <div class="j-top">
+      <div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div>
+      ${sparkSVG(d.spark)}
+      <div class="j-grade" style="color:${gc}">${m.grade}<small>${m.grade_label||''}</small></div>
+    </div>
+    <div class="j-mid">
+      ${radarSVG(d)}
+      <div class="j-metrics">
+        <div class="jm"><div class="jm-v" style="color:var(--teal)">${m.rr??'--'}</div><div class="jm-l">R/R</div></div>
+        <div class="jm"><div class="jm-v" style="color:var(--red)">${stopPct}</div><div class="jm-l">STOP ${won(m.stop)}</div></div>
+        <div class="jm"><div class="jm-v" style="color:var(--purple)">${(m.recommended_mode||m.mode||'--').toUpperCase()}</div><div class="jm-l">MODE</div></div>
+      </div>
+    </div>
+    <div class="j-verdict">🩻 <b>${m.verdict||'-'}</b></div>
+    <div class="j-act">
+      <div class="j-state ${stateCls}">${stateTxt}</div>
+      <button class="btn btn-yellow" onclick="go('../judge_engine_v1-3.html')">상세 ›</button>
+    </div>`;
+}
+
+// ━━━━━━━━━ 3. 실행 — 엔진 신호 수신 (Ignition·Block은 무대 뒤) ━━━━━━━━━
+let _b=0,_c=0,_s=0;
+const sigs=[];
+
+// STRIKE 히어로 — strike_check가 localStorage에 남긴 실측만 표시. 없는 필드는 그리지 않는다.
+function renderStrikeHero(d){
+  if(!d||d.score==null){ return; }
+  const sc=Number(d.score), col=sc>=85?'var(--green)':sc>=70?'var(--yellow)':'var(--red)';
+  const deg=Math.max(0,Math.min(100,sc))*3.6;
+  // 가격 4종: 있는 실측값만 그린다
+  const kv=[['진입',d.entry],['손절',d.stop],['목표1',d.target1??d.target],['목표2',d.target2]]
+    .filter(x=>x[1]!=null)
+    .map(x=>`<div class="sh-cell"><small>${x[0]}</small><b>${won(x[1])}</b></div>`).join('');
+  $('strikeHero').innerHTML=`
+    <div class="sh-ring" style="background:conic-gradient(${col} ${deg}deg, rgba(255,255,255,.06) 0)">
+      <div class="sh-core"><b>${sc}</b><small>/100</small></div></div>
+    <div class="sh-body">
+      <div class="sh-name">${d.name||''}</div>
+      ${d.pattern?`<div class="sh-pattern">${d.pattern}</div>`:''}
+      <div class="sh-verdict" style="color:${col}">${d.verdict||''}</div>
+      ${d.reason?`<div class="sh-reason">${d.reason}</div>`:''}
+      ${kv?`<div class="sh-grid">${kv}</div>`:''}
+    </div>`;
+  $('strikeHero').style.display='flex';
+}
+function pushSig(ico,text){
+  const k=new Date(Date.now()+ (new Date().getTimezoneOffset()*60000) + 9*3600000);
+  const ts=`${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
+  sigs.unshift({ico,text,ts}); if(sigs.length>6) sigs.pop();
+  $('sigList').innerHTML = sigs.map(s=>`
+    <div class="sig"><div class="sig-ico">${s.ico}</div>
+      <div class="sig-body">${s.text}</div><div class="sig-meta">${s.ts}</div></div>`).join('');
+  addFeed(s0(sigs[0]));
+}
+function s0(s){return s.ico+' '+s.text;}
+function pollSignals(){
+  const live = (typeof marketState==='function') ? marketState()[0]==='mk-open' : true;  // v4.1.1: 장중에만 알림
+  try{ const d=JSON.parse(localStorage.getItem('trinity_block_last')||'null');
+    if(d&&d.ts&&d.ts!==_b){ _b=d.ts; if(live){
+      if((d.fire||0)>0) pushSig('🔥',`급락 회복 신호 <b>FIRE ${d.fire}건</b> · SHOCK ${d.shock||0}건`);
+      else if((d.shock||0)>0) pushSig('🚨',`급락 충격 SHOCK ${d.shock}건 감지`); } } }catch{}
+  try{ const d=JSON.parse(localStorage.getItem('trinity_candidate_last')||'null');
+    if(d&&d.ts&&d.ts!==_c){ _c=d.ts; if(live){
+      if((d.fire||0)>0) pushSig('🔥',`후보 FIRE <b>${d.fire}건</b>`);
+      else if((d.armed||0)>0) pushSig('🔒',`후보 ARMED ${d.armed}건 · 총 ${d.total||'-'}개`); } } }catch{}
+  try{ const d=JSON.parse(localStorage.getItem('trinity_strike_last')||'null');
+    if(d&&d.ts&&d.ts!==_s){ _s=d.ts;
+      if(live){ const e=d.score>=85?'🟢':d.score>=70?'🟡':'🔴';
+        pushSig(e,`Strike — <b>${d.name}</b> ${d.score}점 ${d.verdict||''}`); }
+      renderStrikeHero(d); renderFocus(); } }catch{}   // 히어로 카드는 표시 상태라 항상 갱신
+}
+setInterval(pollSignals,2000);
+
+// ━━━━━━━━━ 4. 보유 — MRI 손절선 감시 ━━━━━━━━━
+function holdState(h){
+  if(h.price==null||h.stop==null) return ['hp-q','⚪ 감시'];
+  if(h.price < h.stop) return ['hp-out','🔴 이탈'];
+  if((h.price-h.stop)/h.price < 0.03) return ['hp-warn','🟡 주의'];
+  if(h.buy && h.price < h.buy) return ['hp-reval','🔁 재평가'];   // v4.1.1: 손실이면 진입후보 여부 무관 재평가 (초록 유지는 수익 전용)
+  const j = judgeCache[h.code];
+  const addable = j ? (j.mri?.tradeable && (j.mri.action_label||'').includes('진입')) : h.addable;
+  if(addable) return ['hp-add','🔵 추가 가능'];
+  return ['hp-keep','🟢 유지'];
+}
+function holdSummary(){
+  const order=[['hp-out','이탈'],['hp-warn','주의'],['hp-reval','재평가'],['hp-add','추가 가능'],['hp-keep','유지'],['hp-q','감시']];
+  const cnt={}; holds.forEach(h=>{const k=holdState(h)[0]; cnt[k]=(cnt[k]||0)+1;});
+  const parts=order.filter(([k])=>cnt[k]).map(([k,l])=>`<span class="ws ${k}">${l} <b>${cnt[k]}</b></span>`);
+  return parts.length?`<div class="wsum">${parts.join('')}</div>`:'';
+}
+function renderHolds(){
+  const el=$('holdList');
+  if(!holds.length){ el.innerHTML='<div style="color:var(--text3);font-size:11.5px;padding:4px 2px 8px;">보유 종목을 담으면 MRI 손절선으로 감시합니다</div>'; }
+  else el.innerHTML = holdSummary() + holds.map((h,i)=>{
+    const pl = (h.price!=null&&h.buy)? ((h.price-h.buy)/h.buy*100) : null;
+    const plTxt = pl==null?'':`<div class="h-pl ${pl>=0?'up':'down'}">${pl>0?'+':''}${pl.toFixed(2)}%</div>`;
+    const [cls,txt]=holdState(h);
+    const evalTxt = (h.qty&&h.price!=null&&h.buy)
+      ? ` · ${won(h.qty)}주 · 평가 <span class="${(h.price-h.buy)>=0?'up':'down'}">${(h.price-h.buy)*h.qty>0?'+':''}${won(Math.round((h.price-h.buy)*h.qty))}</span>`
+      : (h.qty?` · ${won(h.qty)}주`:'');
+    return `<div class="hold">
+      <div class="h-info"><div class="h-name">${h.name}</div>
+        <div class="h-sub">매수 ${won(h.buy)} · STOP ${won(h.stop)}${evalTxt}</div></div>
+      ${sparkSVG(h.spark)}
+      <div class="h-num"><div class="h-price">${won(h.price)}</div>${plTxt}</div>
+      <div class="h-pill ${cls}">${txt}</div>
+      <div class="h-x" onclick="rmHold(${i})">✕</div>
+    </div>`;
+  }).join('');
+  $('cntHold').textContent = holds.length;
+  save(LS_HOLD, holds); syncSentinelHold();
+  if(typeof renderPH==='function') renderPH();    // 🚢 v4.1 — 계좌 건강 갱신
+}
+function rmHold(i){ openCloseModal(i); }   // 📒 삭제 = 청산 기록 모달
+async function addHold(){
+  let q=$('hName').value.trim(); const buy=parseInt($('hBuy').value.replace(/,/g,''),10);
+  const qty=parseInt(($('hQty').value||'').replace(/,/g,''),10)||null;   // 수량(수동 — 토스 실거래)
+  if(!q||!buy){ toast('종목과 매수가를 입력해주세요'); return; }
+  toast('확인 중…');
+  if(!/^\d{6}$/.test(q)){
+    const c=nameToCode(q);
+    if(c) q=c;
+    else{ const m=await resolveNameRemote(q); if(m) q=m.code; }   // 전 종목 서버 검색
+  }
+  const d=await fetchJudge(q);
+  if(!d){ toast('종목을 찾지 못했어요'); return; }
+  // 📒 진입 스냅샷 — "왜 들어갔나"를 청산 시점이 아니라 '진입 시점' 값으로 박제 (복기 정확도)
+  const gMap={'A':100,'B':75,'C':50}, g=gMap[d.mri?.grade]??25;
+  const rrN=d.mri?.rr!=null?Math.max(0,Math.min(100,Number(d.mri.rr)/4*100)):0;
+  holds.push({code:d.code, name:(d.name&&d.name!==d.code)?d.name:q, buy, qty,
+              price:d.price??null, stop:d.mri?.stop??null, spark:d.spark||null,
+              entry:{date:kstDate(), grade:d.mri?.grade??null, rr:d.mri?.rr??null,
+                     stop:d.mri?.stop??null, verdict:d.mri?.verdict??null,
+                     score:Math.round(g*0.5+rrN*0.5)}});
+  $('hName').value=''; $('hBuy').value=''; $('hQty').value='';
+  renderHolds(); toast('보유 감시 시작 🌊');
+}
+async function refreshHolds(){
+  if(!holds.length){ toast('보유 종목이 없어요'); return; }
+  const b=$('holdBtn'); b.classList.add('spin'); b.textContent='⏳ 감시 갱신 중…';
+  for(const h of holds){
+    const d=await fetchJudge(h.code);
+    if(d){ h.price=d.price??h.price; h.stop=d.mri?.stop??h.stop; h.spark=d.spark||h.spark;
+           h.addable = !!(d.mri?.tradeable && (d.mri.action_label||'').includes('진입'));
+           if(d.name&&d.name!==d.code) h.name=d.name; renderHolds(); }
+    await sleep(400);
+  }
+  b.classList.remove('spin'); b.textContent='🌊 손절선 감시 갱신 (MRI)';
+  const out=holds.filter(h=>holdState(h)[0]==='hp-out').length;
+  toast(out?`⚠ 손절선 이탈 ${out}종목!`:'전 종목 점검 완료');
+  addFeed(`🌊 보유 ${holds.length}종목 손절선 점검 — 이탈 ${out}건`);
+}
+
+// ━━━━━━━━━ 📒 VAVLOG — 청산 기록 + 복기 ━━━━━━━━━
+function kstDate(){ const n=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  return n.toISOString().slice(0,10); }
+const VL_REASONS=['목표가도달','손절','Judge경고','시스템종료','수동익절','기타'];
+const VL_EMOS=[['자신감','😀'],['중립','😐'],['불안','😨'],['조급','😡']];
+let _vlIdx=null, _vlReason=null, _vlEmo=null;
+
+function openCloseModal(i){
+  const h=holds[i]; if(!h) return;
+  _vlIdx=i; _vlReason=null; _vlEmo=null;
+  $('vlcTitle').textContent=`청산 기록 — ${h.name}`;
+  $('vlcSell').value = h.price!=null?h.price:'';
+  $('vlcQty').value  = h.qty||'';
+  $('vlcNet').value  = '';
+  $('vlcReasons').innerHTML = VL_REASONS.map(r=>`<span class="vl-chip" onclick="pickReason(this,'${r}')">${r}</span>`).join('');
+  $('vlcEmos').innerHTML = VL_EMOS.map(([k,e])=>`<span class="vl-emo" title="${k}" onclick="pickEmo(this,'${k}')">${e}</span>`).join('');
+  vlCalc();
+  $('vlcSell').oninput=vlCalc; $('vlcQty').oninput=vlCalc;
+  $('vlClose').classList.add('show');
+}
+function pickReason(el,r){ _vlReason=r; document.querySelectorAll('#vlcReasons .vl-chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function pickEmo(el,k){ _vlEmo=k; document.querySelectorAll('#vlcEmos .vl-emo').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function vlCalc(){
+  const h=holds[_vlIdx]; if(!h) return;
+  const sell=parseInt(($('vlcSell').value||'').replace(/,/g,''),10);
+  const qty =parseInt(($('vlcQty').value||'').replace(/,/g,''),10);
+  if(sell&&qty&&h.buy){
+    const g=(sell-h.buy)*qty, p=((sell-h.buy)/h.buy*100);
+    $('vlcCalc').innerHTML=`세전 손익 <b class="${g>=0?'up':'down'}">${g>0?'+':''}${won(g)}원 (${p>0?'+':''}${p.toFixed(2)}%)</b> <span style="color:var(--text3)">· 세후는 토스 영수증값</span>`;
+  } else $('vlcCalc').textContent='세전 손익 — 매도가·수량 입력 시 자동 계산';
+}
+function closeVlModal(){ $('vlClose').classList.remove('show'); _vlIdx=null; }
+function vlJustRemove(){ if(_vlIdx==null) return; if(!confirm('기록 없이 제거할까요? (오입력 정리용)')) return;
+  holds.splice(_vlIdx,1); closeVlModal(); renderHolds(); toast('기록 없이 제거됨'); }
+async function vlSubmit(){
+  const h=holds[_vlIdx]; if(!h) return;
+  const sell=parseInt(($('vlcSell').value||'').replace(/,/g,''),10);
+  const qty =parseInt(($('vlcQty').value||'').replace(/,/g,''),10)||h.qty||null;
+  const net =parseInt(($('vlcNet').value||'').replace(/,/g,''),10)||null;
+  if(!sell){ toast('매도가를 입력해주세요'); return; }
+  if(!_vlReason){ toast('청산 사유를 골라주세요'); return; }
+  const rec={ code:h.code, name:h.name, buy_price:h.buy, sell_price:sell, qty,
+    pnl_net:net, exit_reason:_vlReason, emotion:_vlEmo,
+    entry_date:h.entry?.date||null, exit_date:kstDate(),
+    planned_stop:h.entry?.stop??h.stop??null,
+    entry_grade:h.entry?.grade||null, entry_rr:h.entry?.rr??null,
+    entry_score:h.entry?.score??null, entry_verdict:h.entry?.verdict||null,
+    source:'hub' };
+  toast('기록 중…');
+  try{
+    const r=await fetch(`${RAIL_MAIN}/vavlog`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(rec),signal:AbortSignal.timeout(10000)});
+    const d=await r.json();
+    if(d.ok){
+      addFeed(`📒 청산 — ${h.name} ${d.pnl_gross>=0?'+':''}${won(d.pnl_gross)}원${d.rule_violation?' ⚠️Rule위반':''}`);
+      holds.splice(_vlIdx,1); closeVlModal(); renderHolds(); toast(`기록 완료 — ${h.name}`);
+    } else { toast('저장 실패: '+(d.reason||'Supabase 확인')); }
+  }catch(e){ toast('네트워크 오류 — 잠시 후 재시도'); }
+}
+
+function openVavlog(){ $('vlBook').classList.add('show'); loadBook(); }
+function closeVlBook(){ $('vlBook').classList.remove('show'); }
+async function loadBook(){
+  const month=kstDate().slice(0,7);
+  $('vlbSub').textContent=`${month} 실측 통계`;
+  $('vlbStat').innerHTML='<div class="s"><b>…</b><small>불러오는 중</small></div>';
+  $('vlbLog').innerHTML='';
+  try{
+    const [sR,lR]=await Promise.all([
+      fetch(`${RAIL_MAIN}/vavlog/stats?month=${month}`,{signal:AbortSignal.timeout(10000)}),
+      fetch(`${RAIL_MAIN}/vavlog?limit=60`,{signal:AbortSignal.timeout(10000)})]);
+    const s=await sR.json(), l=await lR.json();
+    if(s.ok&&s.n){
+      $('vlbStat').innerHTML=`
+        <div class="s"><b class="${s.realized_pnl>=0?'up':'down'}">${s.realized_pnl>0?'+':''}${won(s.realized_pnl)}</b><small>실현손익(세전)</small></div>
+        <div class="s"><b>${s.winrate}%</b><small>승률 (${s.n}건)</small></div>
+        <div class="s"><b>${s.rr_realized??'--'}</b><small>실측 손익비</small></div>
+        <div class="s"><b>${s.rule_adherence}%</b><small>Rule 준수율</small></div>
+        <div class="s"><b class="up">${s.best?won(s.best.pnl):'--'}</b><small>최고 ${s.best?.name||''}</small></div>
+        <div class="s"><b class="down">${s.worst?won(s.worst.pnl):'--'}</b><small>최악 ${s.worst?.name||''}</small></div>`;
+    } else { $('vlbStat').innerHTML=`<div class="s"><b>0건</b><small>${s.ok?'이번 달 기록 없음':(s.reason||'연결 확인')}</small></div>`; }
+    if(l.ok&&l.rows&&l.rows.length){
+      $('vlbLog').innerHTML=l.rows.map(x=>`<div class="vl-le">
+        <div><div class="nm">${x.name||x.code} ${x.rule_violation?'⚠️':''}</div><div class="dt">${x.exit_date||''} · ${x.exit_reason||''}${x.emotion?(' · '+x.emotion):''}</div></div>
+        <div style="text-align:right"><div class="${(x.pnl_gross||0)>=0?'up':'down'}">${(x.pnl_gross||0)>0?'+':''}${won(x.pnl_gross)}</div><div class="dt">${x.pnl_pct!=null?((x.pnl_pct>0?'+':'')+x.pnl_pct+'%'):''}</div></div>
+      </div>`).join('');
+    } else if(l.ok){ $('vlbLog').innerHTML='<div style="color:var(--text3);padding:12px 0;font-size:12px;">아직 기록이 없어요. 보유에서 청산하면 여기 쌓여요.</div>'; }
+  }catch(e){ $('vlbStat').innerHTML='<div class="s"><b>--</b><small>네트워크 오류</small></div>'; }
+}
+
+// ━━━━━━━━━ 증권·뱅킹 앱 바로 실행 (Android intent) ━━━━━━━━━
+function openToss(){
+  window.location.href='intent://open#Intent;scheme=supertoss;package=viva.republica.toss;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dviva.republica.toss;end';
+}
+function openHantu(){
+  window.location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.truefriend.neosmartarenewal;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.truefriend.neosmartarenewal;end';
+}
+
+// ━━━━━━━━━ 시스템 피드 ━━━━━━━━━
+const flog=[];
+function addFeed(text){
+  const k=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);
+  const ts=`${String(k.getHours()).padStart(2,'0')}:${String(k.getMinutes()).padStart(2,'0')}`;
+  flog.unshift({text,ts}); if(flog.length>15) flog.pop();
+  $('feed').innerHTML=flog.map(f=>`<div class="fi"><div class="fi-dot"></div><div class="fi-t">${f.text}</div><div class="fi-m">${f.ts}</div></div>`).join('');
+}
+
+// ━━━━━━━━━ 부팅 ━━━━━━━━━
+renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
+try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
+renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
+renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
+addFeed('🔱 Trinity HUB v4.2 — WATCH Center · R/R 과대 표시');
+setInterval(fetchTemp, 90000);
+setInterval(watchScan, 60000);                       // 장중 60초 감시
+setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
+</script>
+</body>
+</html>

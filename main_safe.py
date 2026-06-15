@@ -13,6 +13,13 @@ from fastapi.responses import FileResponse
 app = FastAPI(title="건눌재 Core Engine", version="5.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 
+# 📒 VAVLOG v1.0 — 매매 복기 로그 (독립 모듈). 실패해도 본체 무중단.
+try:
+    from vavlog import router as vavlog_router
+    app.include_router(vavlog_router)
+except Exception as _vav_e:
+    print(f"[vavlog] 라우터 로드 실패 — 스킵(본체는 정상): {_vav_e}")
+
 KIS_APP_KEY    = os.environ.get("KIS_APP_KEY", "")
 KIS_APP_SECRET = os.environ.get("KIS_APP_SECRET", "")
 KIS_MODE       = os.environ.get("KIS_MODE", "mock")
