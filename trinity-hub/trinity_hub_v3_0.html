@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.4 UTOPIA</title>
+<title>🔱 Trinity HUB v4.5 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -360,6 +360,32 @@ body{padding-bottom:74px;}
 .jm-act-sub{font-size:11px;color:var(--text2);margin-top:2px;line-height:1.45;}
 @media (min-width:560px){ .jm-grade-ring{width:80px;height:80px;} .jm-gr-grade{font-size:40px;} .jm-m-v{font-size:14px;} }
 
+/* ━━ v5.0: 🏆 Judge Hall of Fame (내가 발굴한 B+ 종목 자동 적립) ━━ */
+.hof-panel{margin:0 16px;background:linear-gradient(160deg,rgba(245,185,66,.06),rgba(12,17,27,.35));
+  border:1px solid rgba(245,185,66,.2);border-radius:16px;padding:14px;}
+.hof-head{display:flex;align-items:baseline;gap:9px;margin-bottom:2px;flex-wrap:wrap;}
+.hof-htitle{font-family:var(--display);font-size:16px;font-weight:800;color:#f5b942;letter-spacing:.5px;}
+.hof-hsub{font-size:9px;color:var(--text3);}
+.hof-empty{color:var(--text3);font-size:11.5px;text-align:center;padding:20px 6px;line-height:1.7;}
+.hof-empty b{color:#f5b942;}
+.hof-s{display:flex;align-items:center;gap:13px;margin-top:11px;cursor:pointer;border-radius:14px;padding:13px 15px;
+  background:linear-gradient(135deg,rgba(0,255,136,.12),transparent);border:1px solid rgba(0,255,136,.3);}
+.hof-s .hs-crown{font-size:25px;flex:none;}
+.hof-s .hs-nm{font-size:16px;font-weight:800;}
+.hof-s .hs-meta{font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:2px;}
+.hof-s .hs-sc{margin-left:auto;font-family:var(--mono);font-size:30px;font-weight:800;color:var(--green);line-height:1;}
+.hof-tier{margin-top:11px;}
+.hof-tier-lbl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:1.5px;margin-bottom:6px;}
+.hof-row{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px;-webkit-overflow-scrolling:touch;}
+.hof-row::-webkit-scrollbar{height:0;}
+.hof-chip{flex:none;width:108px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:9px 11px;cursor:pointer;border-top:3px solid var(--tc,var(--border));}
+.hof-chip .hc-nm{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hof-chip .hc-sc{font-family:var(--mono);font-size:21px;font-weight:800;color:var(--tc);line-height:1.1;margin-top:3px;}
+.hof-chip .hc-meta{font-family:var(--mono);font-size:8.5px;color:var(--text3);margin-top:2px;}
+.hof-grad{margin-top:11px;font-size:10px;color:var(--text3);border-top:1px solid var(--border);padding-top:9px;}
+.hof-grad b{color:var(--text2);}
+
 
 /* ━━ v3.5: WAVE 전략판 요약 ━━ */
 .wsum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
@@ -526,6 +552,7 @@ body{padding-bottom:74px;}
       <a href="#" onclick="scrollToSec('secScan');return false;">🔍 발견 SCAN</a>
       <a href="#" onclick="scrollToSec('secWatch');return false;">👀 WATCH</a>
       <a href="#" onclick="scrollToSec('secJudge');return false;">🎯 판단 JUDGE</a>
+      <a href="#" onclick="scrollToSec('secHof');return false;">🏆 명예의 전당</a>
       <a href="#" onclick="scrollToSec('secStrike');return false;">⚡ 실행 STRIKE</a>
       <a href="#" onclick="scrollToSec('secWave');return false;">🌊 보유 WAVE</a>
       <a href="#" onclick="document.querySelector('details.sys').open=true;document.querySelector('details.sys').scrollIntoView({behavior:'smooth'});return false;">⚙ 시스템</a>
@@ -538,7 +565,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.4 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.5 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -651,6 +678,14 @@ body{padding-bottom:74px;}
 </section>
 
 <!-- 2. 판단 -->
+<section class="s-judge" id="secHof">
+  <div class="sec-head"><span class="sec-num" style="color:#f5b942">🏆 명예의 전당</span><span class="sec-q">— 내가 발굴한 명작들</span></div>
+  <div class="hof-panel">
+    <div class="hof-head"><span class="hof-htitle">HALL OF FAME</span><span class="hof-hsub">JUDGE로 본 종목 중 MRI 70+ 자동 헌액 · 60 미만 시 졸업</span></div>
+    <div id="hofBody"></div>
+  </div>
+</section>
+
 <section class="s-judge" id="secJudge">
   <div class="sec-head"><span class="sec-num">2. 판단 / JUDGE</span><span class="sec-q">— 지금 상태가 좋은가?</span></div>
   <div class="panel jcard" id="judgeCard">
@@ -742,7 +777,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.4 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.5 UTOPIA 🔱
 </footer>
 
   </div>
@@ -1612,6 +1647,49 @@ function mriRadar(m5){
     <text x="${CX}" y="${CY+15}" font-size="9" fill="#566179" text-anchor="middle" letter-spacing="1">/ 100</text>
     ${labels}</svg>`;
 }
+// ━━━━━━━━━ 🏆 Hall of Fame — JUDGE로 본 종목 중 MRI 70+ 자동 헌액 (localStorage) ━━━━━━━━━
+function hofLoad(){ try{return JSON.parse(localStorage.getItem('trinity_hof')||'{}');}catch{return{};} }
+function hofSave(o){ try{localStorage.setItem('trinity_hof',JSON.stringify(o));}catch{} }
+function hofDays(a,b){ try{return Math.max(0,Math.round((new Date(b)-new Date(a))/864e5))+1;}catch{return 1;} }
+function hofUpsert(code,name,score,grade){
+  if(code==null||score==null) return;
+  const o=hofLoad(), t=kstDate(), e=o[code];
+  if(score>=70){                              // B+ → 헌액/갱신
+    if(!e) o[code]={code,name,grade,score,best:score,first:t,last:t,status:'활성'};
+    else { e.name=name; e.grade=grade; e.score=score; e.best=Math.max(e.best||0,score); e.last=t; e.status='활성'; }
+    hofSave(o); renderHof();
+  } else if(e){                               // 이미 헌액된 종목이 60 미만 → 졸업(History)
+    if(score<60 && e.status!=='졸업'){ e.status='졸업'; e.score=score; e.last=t; hofSave(o); renderHof(); }
+  }
+}
+function renderHof(){
+  const wrap=$('hofBody'); if(!wrap) return;
+  const all=Object.values(hofLoad());
+  const active=all.filter(x=>x.status==='활성').sort((a,b)=>b.score-a.score);
+  const grad=all.filter(x=>x.status==='졸업').sort((a,b)=>b.best-a.best);
+  if(!active.length && !grad.length){
+    wrap.innerHTML='<div class="hof-empty">아직 헌액된 종목이 없어요.<br>JUDGE로 본 종목이 <b>MRI 70+</b>면 자동으로 전당에 올라가요. 🏆</div>';
+    return;
+  }
+  const chip=x=>`<div class="hof-chip" style="--tc:${mriColor(x.score)}" onclick="loadJudge('${x.code}')">
+    <div class="hc-nm">${x.name}</div><div class="hc-sc">${x.score}</div>
+    <div class="hc-meta">최고 ${x.best} · ${hofDays(x.first,x.last)}일</div></div>`;
+  const S=active.filter(x=>x.score>=90), A=active.filter(x=>x.score>=80&&x.score<90), B=active.filter(x=>x.score>=70&&x.score<80);
+  let html='';
+  if(S.length){ const s=S[0];
+    html+=`<div class="hof-s" onclick="loadJudge('${s.code}')">
+      <div class="hs-crown">👑</div>
+      <div><div class="hs-nm">${s.name}</div>
+        <div class="hs-meta">S RANK · 최고 ${s.best} · ${hofDays(s.first,s.last)}일 유지</div></div>
+      <div class="hs-sc">${s.score}</div></div>`;
+    if(S.length>1) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(95)}">S RANK</div><div class="hof-row">${S.slice(1).map(chip).join('')}</div></div>`;
+  }
+  if(A.length) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(85)}">A RANK</div><div class="hof-row">${A.map(chip).join('')}</div></div>`;
+  if(B.length) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(75)}">B RANK</div><div class="hof-row">${B.map(chip).join('')}</div></div>`;
+  if(grad.length) html+=`<div class="hof-grad">📜 졸업 ${grad.length}종목 — ${grad.slice(0,4).map(x=>`<b>${x.name}</b>(최고 ${x.best})`).join(' · ')}</div>`;
+  wrap.innerHTML=html;
+}
+
 function renderJudge(d, m5){
   const m = d.mri;                          // /judge 실행정보 (R/R·STOP·목표가·verdict·tradeable)
   const name = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
@@ -1631,6 +1709,7 @@ function renderJudge(d, m5){
               : (m5===undefined ? '<div class="mri-loading">🩻 5축 분석 중…</div>'
                                 : '<div class="mri-loading">🩻 5축 데이터 준비 중 — 장 전이거나 웜업 필요</div>');
   const gradeLabel = (m && m.grade_label) ? m.grade_label : 'MRI 종합';
+  if(hasMri) hofUpsert(d.code, name, score, grade);   // 🏆 MRI 70+ 자동 헌액
 
   // ── 5축 리스트 (아이콘 + 영문 + 점수 + 실측 설명) ──
   const axisRows = MRI_AXIS.map(a=>{
@@ -1934,11 +2013,11 @@ function addFeed(text){
 }
 
 // ━━━━━━━━━ 부팅 ━━━━━━━━━
-initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
+initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot(); renderHof();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
-addFeed('🔱 Trinity HUB v4.4 — Judge MRI 진단서 (멀티컬러 레이더·5축·목표가)');
+addFeed('🔱 Trinity HUB v4.5 — 🏆 명예의 전당(베타) · MRI 70+ 자동 헌액');
 setInterval(fetchTemp, 90000);
 setInterval(watchScan, 60000);                       // 장중 60초 감시
 setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
