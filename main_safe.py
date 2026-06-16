@@ -561,9 +561,19 @@ async def supply_flow(code: str):
         orgn = _num(t.get("orgn_ntby_tr_pbmn"))   # 기관계 순매수대금
         net = frgn + orgn
 
-        # 2) 당일 거래대금 (fetch_price → acml_tr_pbmn)
-        p = await fetch_price(code, token)
-        turnover = _num(p.get("acml_tr_pbmn"))
+        # 2) 당일 거래대금 — KIS 연속호출 간격(rate limit 회피) 후 직접 호출(원본 에러 노출)
+        await asyncio.sleep(0.35)
+        ph = dict(_wave_build_headers(token))  # tr_id 기본 FHKST01010100(현재가)
+        async with httpx.AsyncClient(timeout=10) as c:
+            res2 = await c.get(
+                f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price",
+                params={"fid_cond_mrkt_div_code": "UN", "fid_input_iscd": code},
+                headers=ph,
+            )
+        d2 = res2.json()
+        if d2.get("rt_cd") != "0":
+            return {"ok": False, "code": code, "score": None, "reason": "price_error", "msg": d2.get("msg1", "")}
+        turnover = _num((d2.get("output") or {}).get("acml_tr_pbmn"))
         if turnover <= 0:
             return {"ok": False, "code": code, "score": None, "reason": "no_turnover"}
 
