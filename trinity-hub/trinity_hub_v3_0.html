@@ -1357,15 +1357,14 @@ function addMyWatch(){
 function rmMyWatch(code){ myWatch=myWatch.filter(w=>w.code!==code); save(LS_MYWATCH,myWatch); delete _waState[code]; renderWatch(); }
 function openNaver(code){ window.location.href='https://m.stock.naver.com/domestic/stock/'+code+'/total'; }
 function openTossStock(code){
-  // 토스증권 웹(tossinvest.com)은 휴대폰 미지원 → 폴드/안드로이드에서 'PC로 접속' 안내가 뜸.
-  // 안드로이드는 intent로 토스 앱에 종목을 직접 넘겨 종목 화면 직행(앱 미설치 시 웹으로 폴백).
-  const path='www.tossinvest.com/stocks/A'+code;
-  const web='https://'+path;
-  if(/Android/i.test(navigator.userAgent||'')){
-    window.location.href='intent://'+path+'#Intent;scheme=https;package=viva.republica.toss;S.browser_fallback_url='+encodeURIComponent(web)+';end';
-  } else {
-    window.location.href=web;  // PC·태블릿은 웹 정상 지원
+  // 토스증권 웹(tossinvest.com)은 휴대폰 미지원 → 폴드에서 'PC로 접속' 안내가 뜸.
+  // 안드로이드: ① 토스 앱으로 종목 직행 시도 → ② 1.2초 내 앱 전환이 안 되면 토스 앱 메인(openToss)으로.
+  if(!/Android/i.test(navigator.userAgent||'')){
+    window.location.href='https://www.tossinvest.com/stocks/A'+code;  // PC·태블릿은 웹 정상
+    return;
   }
+  window.location.href='intent://www.tossinvest.com/stocks/A'+code+'#Intent;scheme=https;package=viva.republica.toss;end';
+  setTimeout(function(){ if(!document.hidden) openToss(); }, 1200);   // 종목 딥링크 실패 → 토스 앱 메인
 }
 
 
