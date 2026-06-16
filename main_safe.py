@@ -578,7 +578,10 @@ async def supply_flow(code: str):
             return {"ok": False, "code": code, "score": None, "reason": "no_turnover"}
 
         # 3) v1 점수화: r = 순매수 / 거래대금 → 0~100 (50=중립, ±20%≈양 끝)
-        r = net / turnover
+        # 단위 보정(실측 확인): inquire-investor 순매수대금=백만원, acml_tr_pbmn=원
+        #   → net을 ×100만 해서 원 단위로 일치시킨 뒤 비율 계산.
+        net_won = net * 1_000_000
+        r = net_won / turnover
         score = max(0, min(100, round(50 + r * 250)))
 
         # 4) 잠정/확정 (평일 09:00~15:30 KST = 장중 추정)
@@ -590,7 +593,7 @@ async def supply_flow(code: str):
             "ratio_pct": round(r * 100, 2),
             "frgn_pbmn": frgn, "orgn_pbmn": orgn, "net_pbmn": net,
             "turnover_pbmn": turnover, "date": t.get("stck_bsop_date", ""),
-            "note": "v1: (외인+기관 순매수)/거래대금 · 단위 일치는 실측 보정 가능",
+            "note": "v1: (외인+기관 순매수)/거래대금 · net=백만원→원 보정완료 · 지속성은 v2",
         }
     except Exception as e:
         return {"ok": False, "code": code, "score": None, "reason": "exception", "msg": str(e)[:80]}
