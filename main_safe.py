@@ -641,6 +641,24 @@ def _resolve_scan_universe(universe: str):
     # MVP: wave 고정(67종목). 추후 MY universe(림빅 지정) 확장 지점.
     return [c for (_, c) in _WAVE_UNIVERSE]
 
+async def _quick_name(code: str, token: str) -> str:
+    """통과 종목 이름 보강 — KIS 현재가(hts_kor_isnm) 1콜. JUDGE_STOCK_MAP 미등록 종목용."""
+    try:
+        h = dict(_wave_build_headers(token))   # 기본 tr_id=현재가(FHKST01010100)
+        async with httpx.AsyncClient(timeout=8) as c:
+            res = await c.get(
+                f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price",
+                params={"fid_cond_mrkt_div_code": "UN", "fid_input_iscd": code}, headers=h)
+        o = res.json().get("output") or {}
+        return (o.get("hts_kor_isnm") or "").strip()
+    except Exception:
+        return ""
+
+async def _fill_name(it, token):
+    nm = await _quick_name(it["code"], token)
+    if nm:
+        it["name"] = nm
+
 @app.get("/mri/scan")
 async def mri_scan(universe: str = "wave", min_score: int = 80, limit: int = 10):
     codes = _resolve_scan_universe(universe)
@@ -678,10 +696,20 @@ async def mri_scan(universe: str = "wave", min_score: int = 80, limit: int = 10)
             "supply_status": r.get("supply_status", ""),
         })
     items.sort(key=lambda x: x["mri"], reverse=True)
+    _passed = len(items)
+    items = items[:limit]
+    # 이름 미해결(코드=이름)인 통과 종목만 KIS 현재가로 보강 — 소수라 콜 부담 적음
+    _unres = [it for it in items if it["name"] == it["code"]]
+    if _unres:
+        try:
+            _tok = await get_token()
+            await asyncio.gather(*[_fill_name(it, _tok) for it in _unres], return_exceptions=True)
+        except Exception:
+            pass
     return {
         "ok": True, "universe": universe, "count": len(codes),
-        "passed": len(items), "min_score": min_score,
-        "items": items[:limit],
+        "passed": _passed, "min_score": min_score,
+        "items": items,
         "note": "S·A Hunter v1 · Wave 유니버스 · judge_mri SSOT · 5분 캐시",
     }
 
