@@ -631,6 +631,61 @@ def _mri_grade(s):
             else "C" if s >= 60 else "D" if s >= 50 else "F")
 
 
+# ── 🎯 S·A Hunter — 유니버스 자동 MRI 스캔 (2026.06.16, 채피 설계 × 써니 구현) ──
+#    선택 유니버스를 순회하며 judge_mri(SSOT)를 돌려 min_score 이상만 반환.
+#    중복계산 0(judge_mri 재사용) · 종목 결과 5분 캐시 · 동시 3개(KIS rate limit).
+#    ⚠️ 반드시 /mri/{code} 보다 먼저 등록 — 아니면 "scan"이 종목코드로 매칭됨.
+_mri_scan_cache: dict = {}   # code -> (epoch, judge_mri 결과)
+
+def _resolve_scan_universe(universe: str):
+    # MVP: wave 고정(67종목). 추후 MY universe(림빅 지정) 확장 지점.
+    return [c for (_, c) in _WAVE_UNIVERSE]
+
+@app.get("/mri/scan")
+async def mri_scan(universe: str = "wave", min_score: int = 80, limit: int = 10):
+    codes = _resolve_scan_universe(universe)
+    name_map = {v: k for k, v in JUDGE_STOCK_MAP.items()}
+    sem = asyncio.Semaphore(3)
+
+    async def _one(code):
+        async with sem:
+            ent = _mri_scan_cache.get(code)
+            if ent and (time.time() - ent[0]) < 300:   # 5분 캐시
+                return ent[1]
+            try:
+                r = await judge_mri(code)
+            except Exception as e:
+                r = {"ok": False, "code": code, "reason": "exception", "msg": str(e)[:60]}
+            _mri_scan_cache[code] = (time.time(), r)
+            return r
+
+    results = await asyncio.gather(*[_one(c) for c in codes], return_exceptions=True)
+    items = []
+    for r in results:
+        if not isinstance(r, dict) or not r.get("ok"):
+            continue
+        sc = r.get("score")
+        if sc is None or sc < min_score:
+            continue
+        a = r.get("axes") or {}
+        code = r.get("code")
+        items.append({
+            "code": code,
+            "name": name_map.get(code) or _sentinel_name(code) or code,
+            "mri": sc, "grade": r.get("grade"),
+            "supply": a.get("supply"), "volume": a.get("volume"),
+            "momentum": a.get("momentum"), "safety": a.get("safety"), "tech": a.get("tech"),
+            "supply_status": r.get("supply_status", ""),
+        })
+    items.sort(key=lambda x: x["mri"], reverse=True)
+    return {
+        "ok": True, "universe": universe, "count": len(codes),
+        "passed": len(items), "min_score": min_score,
+        "items": items[:limit],
+        "note": "S·A Hunter v1 · Wave 유니버스 · judge_mri SSOT · 5분 캐시",
+    }
+
+
 @app.get("/mri/{code}")
 async def judge_mri(code: str):
     """Judge MRI v1.0 — 1종목 5축 오각형 + 종합점수 + 등급 + 자동해석.
