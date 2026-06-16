@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.2 UTOPIA</title>
+<title>🔱 Trinity HUB v4.3 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -305,6 +305,18 @@ body{padding-bottom:74px;}
 .sh-kv{display:flex;gap:8px;font-size:11px;color:var(--text2);line-height:1.7;}
 .sh-kv b{color:var(--text);font-family:var(--mono);}
 
+/* ━━ v4.3: JUDGE MRI 5축 오각 레이더 (수급·거래량·모멘텀·기술·안전) ━━ */
+.mri-wrap{display:flex;flex-direction:column;align-items:center;margin:12px 0 4px;}
+.mri-svg{width:100%;max-width:280px;height:auto;display:block;}
+.mri-prov{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:3px 11px;border-radius:999px;margin-top:4px;letter-spacing:.3px;}
+.mri-prov.prov{color:var(--yellow);border:1px solid rgba(255,204,0,.35);background:rgba(255,204,0,.06);}
+.mri-prov.conf{color:var(--green);border:1px solid rgba(0,255,136,.3);background:rgba(0,255,136,.06);}
+.mri-loading{color:var(--text3);font-size:12px;padding:46px 0;text-align:center;font-family:var(--mono);}
+.mri-interp{margin-top:11px;font-size:12px;line-height:1.55;color:var(--text2);
+  background:var(--surface2);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;padding:9px 12px;}
+.mri-interp b{color:var(--text);}
+.j-grade small{letter-spacing:2px;}
+
 /* ━━ v3.5: WAVE 전략판 요약 ━━ */
 .wsum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
 .ws{font-size:10.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--text2);}
@@ -482,7 +494,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.2 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.3 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -686,7 +698,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.2 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.3 UTOPIA 🔱
 </footer>
 
   </div>
@@ -1074,7 +1086,8 @@ async function addCandidate(){
   }
   if(nm !== d.code){ nameCache[d.code]=nm; saveNameCache(); }
   watch.push({code:d.code, name:nm, grade:d.mri?.grade||null, rr:d.mri?.rr??null, spark:d.spark||null});
-  renderChips(); renderJudge(d);
+  renderChips(); renderJudge(d, mri5Cache[d.code]);
+  fetchMri(d.code).then(m5=>renderJudge(d, m5));   // 5축 비동기 촬영
 }
 // ━━━━━━━━━ 🔎 Name Finder (v3.2) — 토스 대응: 코드 → 이름 ━━━━━━━━━
 // 캐시 키는 단독 Finder 페이지와 공유. 칩 이름짓기 → 보초 names 동기화까지 한 몸.
@@ -1461,74 +1474,105 @@ async function fetchJudge(q){
     return d;
   }catch{ return null; }
 }
+let mri5Cache = {};                  // code → 마지막 /mri 5축 응답 (종목 탭했을 때만 호출)
+async function fetchMri(code){
+  try{
+    const r = await fetch(`${RAIL_MAIN}/mri/${encodeURIComponent(code)}`,{signal:AbortSignal.timeout(15000)});
+    if(!r.ok) return null;
+    const m5 = await r.json();
+    if(m5 && m5.ok){ mri5Cache[code]=m5; return m5; }
+    return null;
+  }catch{ return null; }
+}
 async function loadJudge(q){
   $('judgeCard').innerHTML='<div class="j-empty">⏳ MRI 촬영 중…</div>';
   scrollToSec('secJudge');
   const d = await fetchJudge(q);
   if(!d){ $('judgeCard').innerHTML='<div class="j-empty">조회 실패 — 웜업 후 다시 시도해주세요</div>'; return; }
-  renderJudge(d);
+  renderJudge(d, mri5Cache[d.code]);          // 1차: 실행정보 즉시 표시 (캐시 있으면 레이더까지)
+  const m5 = await fetchMri(d.code);          // 2차: 진짜 5축 촬영
+  renderJudge(d, m5);
 }
 
-// 오각 레이더 — /judge 실측값에서 유도한 5축. 원천 없는 축은 만들지 않는다.
-//  R/R(mri.rr 0~4) · 안전(risk_pct 작을수록↑) · 추세(spark 30일 위치) ·
-//  모멘텀(change_pct ±5%) · 등급(A100/B75/C50/D25)
-function radarSVG(d){
-  const m=d.mri; if(!m) return '';
-  const clamp=x=>Math.max(0,Math.min(100,x));
-  const sparkPos=(()=>{ const s=d.spark;
-    if(!Array.isArray(s)||s.length<2) return null;
-    const v=s.map(Number).filter(n=>n>0); if(v.length<2) return null;
-    const mn=Math.min(...v),mx=Math.max(...v);
-    return mx>mn? (v[v.length-1]-mn)/(mx-mn)*100 : 50; })();
-  const axes=[
-    ['R/R',     m.rr!=null? clamp(Number(m.rr)/4*100):null],
-    ['안전',    m.risk_pct!=null? clamp((1-Number(m.risk_pct)/10)*100):null],
-    ['추세',    sparkPos],
-    ['모멘텀',  d.change_pct!=null? clamp((Number(d.change_pct)+5)/10*100):null],
-    ['등급',    {'A':100,'B':75,'C':50}[m.grade]??25],
-  ];
-  const C=62,R=44,n=5;
-  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[(C+r*Math.cos(a)).toFixed(1),(C+r*Math.sin(a)).toFixed(1)];};
-  const ring=r=>Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' ');
-  const poly=axes.map((a,i)=>pt(i,(a[1]??0)/100*R).join(',')).join(' ');
-  const labels=axes.map((a,i)=>{const[x,y]=pt(i,R+11);
-    return `<text x="${x}" y="${y}" font-size="8.5" fill="${a[1]==null?'rgba(138,154,176,.35)':'var(--text2)'}" text-anchor="middle" dominant-baseline="middle">${a[0]}</text>`;}).join('');
-  return `<svg class="radar" width="124" height="124" viewBox="0 0 124 124">
-    <polygon points="${ring(R)}" fill="none" stroke="rgba(255,255,255,.10)"/>
-    <polygon points="${ring(R*2/3)}" fill="none" stroke="rgba(255,255,255,.07)"/>
-    <polygon points="${ring(R/3)}" fill="none" stroke="rgba(255,255,255,.05)"/>
-    <polygon points="${poly}" fill="rgba(0,212,255,.16)" stroke="var(--teal)" stroke-width="1.5"/>
+// MRI 종합점수 → 색 (채피 규칙: 90+초록·80+청록·70+보라·60+노랑·<60빨강)
+function mriColor(s){
+  if(s==null) return 'var(--text3)';
+  return s>=90?'var(--green)':s>=80?'var(--teal)':s>=70?'var(--purple)':s>=60?'var(--yellow)':'var(--red)';
+}
+// Judge MRI v1.0 오각 레이더 — /mri 진짜 5축(수급·거래량·모멘텀·기술·안전).
+//  axes는 백엔드 실측 점수. 데이터 없는 축(수급 등)은 폴리곤에서 빼고 라벨 '준비중'. 가짜 0점 금지.
+function mriRadar(m5){
+  if(!m5||!m5.ok||!m5.axes) return '<div class="mri-loading">🩻 5축 데이터 준비 중…</div>';
+  const A=m5.axes;
+  const axes=[['수급',A.supply],['거래량',A.volume],['모멘텀',A.momentum],['기술',A.tech],['안전',A.safety]];
+  const score=(m5.score!=null)?m5.score:0, col=mriColor(m5.score);
+  const n=5, C=115, CY=92, R=64;                       // viewBox 230x190
+  const ang=i=>-Math.PI/2 + i*2*Math.PI/n;
+  const pt=(i,r)=>[(C+r*Math.cos(ang(i))).toFixed(1),(CY+r*Math.sin(ang(i))).toFixed(1)];
+  const ring=r=>axes.map((_,i)=>pt(i,r).join(',')).join(' ');
+  const grid=[1,0.66,0.33].map(f=>`<polygon points="${ring(R*f)}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/>`).join('');
+  const spokes=axes.map((_,i)=>{const[x,y]=pt(i,R);return `<line x1="${C}" y1="${CY}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;}).join('');
+  const poly=axes.map((a,i)=> a[1]==null?null:pt(i,a[1]/100*R)).filter(Boolean).map(p=>p.join(',')).join(' ');
+  const dots=axes.map((a,i)=>{ if(a[1]==null) return ''; const[x,y]=pt(i,a[1]/100*R);
+    return `<circle cx="${x}" cy="${y}" r="2.6" fill="${col}"/>`;}).join('');
+  const labels=axes.map((a,i)=>{const[lx,ly]=pt(i,R+15);
+    const cx=Math.cos(ang(i)); const anc=cx>0.3?'start':cx<-0.3?'end':'middle';
+    const isNull=a[1]==null;
+    return `<text x="${lx}" y="${ly}" font-size="10.5" font-weight="700" fill="${isNull?'var(--text3)':'var(--text2)'}" text-anchor="${anc}" dominant-baseline="middle">${a[0]}</text>`
+      + `<text x="${lx}" y="${(+ly)+12}" font-size="9.5" font-family="var(--mono)" fill="${isNull?'var(--text3)':col}" text-anchor="${anc}" dominant-baseline="middle">${isNull?'준비중':a[1]}</text>`;}).join('');
+  return `<svg class="mri-svg" viewBox="0 0 230 190" role="img" aria-label="MRI 5축 레이더 종합 ${score}점">
+    ${grid}${spokes}
+    ${poly?`<polygon points="${poly}" fill="${col}" fill-opacity="0.18" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`:''}
+    ${dots}
+    <circle cx="${C}" cy="${CY}" r="27" fill="var(--surface)" stroke="${col}" stroke-opacity=".4" stroke-width="1"/>
+    <text x="${C}" y="${CY-2}" font-size="27" font-weight="800" font-family="var(--mono)" fill="${col}" text-anchor="middle">${score}</text>
+    <text x="${C}" y="${CY+14}" font-size="8" fill="var(--text3)" text-anchor="middle" letter-spacing="1.5">MRI</text>
     ${labels}</svg>`;
 }
-function renderJudge(d){
-  const m = d.mri;
+function renderJudge(d, m5){
+  const m = d.mri;                          // /judge 실행정보 (R/R·STOP·MODE·verdict·tradeable)
   const name = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
   const chg = d.change_pct==null?'':` <span class="${d.change_pct>=0?'up':'down'}">${d.change_pct>0?'+':''}${d.change_pct}%</span>`;
-  if(!m){
-    $('judgeCard').innerHTML = `
-      <div class="j-top"><div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div></div>
-      <div class="j-verdict">MRI 데이터 없음${d.mri_error?(' — <b>'+d.mri_error+'</b>'):''} · 장 전이거나 서버 웜업이 필요할 수 있어요</div>`;
-    return;
-  }
-  const gc = {'A':'var(--green)','B':'var(--yellow)','C':'var(--orange)'}[m.grade]||'var(--red)';
-  const stopPct = m.risk_pct!=null? ('-'+m.risk_pct+'%') : '--';
-  const stateCls = m.tradeable ? 'st-go' : ((m.grade==='C')?'st-watch':'st-no');
-  const stateTxt = m.tradeable ? '✅ '+(m.action_label||'진입 후보') : '👁 '+(m.action_label||'관찰');
+
+  // ── MRI 5축 종합 (카드의 주인공) ──
+  const hasMri = m5 && m5.ok;
+  const score  = hasMri ? m5.score : null;
+  const grade  = hasMri ? m5.grade : '…';
+  const gcol   = mriColor(score);           // m5 없으면 회색
+  const stat   = hasMri ? (m5.supply_status||'') : '';
+  const provBadge = stat
+    ? `<span class="mri-prov ${stat==='잠정'?'prov':'conf'}">${stat==='잠정'?'🟡 잠정 · 장중 수급':'🟢 확정'}</span>`
+    : '';
+  const radar = hasMri ? mriRadar(m5)
+              : (m5===undefined ? '<div class="mri-loading">🩻 5축 분석 중…</div>'
+                                : '<div class="mri-loading">🩻 5축 데이터 준비 중 — 장 전이거나 웜업 필요</div>');
+
+  // ── 실행정보 (보조) ──
+  const stopPct = m && m.risk_pct!=null ? ('-'+m.risk_pct+'%') : '--';
+  const stopWon = m ? won(m.stop) : '--';
+  const rr      = m && m.rr!=null ? m.rr : '--';
+  const mode    = m ? (m.recommended_mode||m.mode||'--').toUpperCase() : '--';
+  const stateCls = m ? (m.tradeable?'st-go':(m.grade==='C'?'st-watch':'st-no')) : 'st-watch';
+  const stateTxt = m ? (m.tradeable?'✅ '+(m.action_label||'진입 후보'):'👁 '+(m.action_label||'관찰')) : '⏳ 판단 대기';
+
   $('judgeCard').innerHTML = `
     <div class="j-top">
       <div><div class="j-name">${name}</div><div class="j-code">${d.code} · ${won(d.price)}원${chg}</div></div>
       ${sparkSVG(d.spark)}
-      <div class="j-grade" style="color:${gc}">${m.grade}<small>${m.grade_label||''}</small></div>
+      <div class="j-grade" style="color:${gcol}">${grade}<small>MRI</small></div>
     </div>
-    <div class="j-mid">
-      ${radarSVG(d)}
-      <div class="j-metrics">
-        <div class="jm"><div class="jm-v" style="color:var(--teal)">${m.rr??'--'}</div><div class="jm-l">R/R</div></div>
-        <div class="jm"><div class="jm-v" style="color:var(--red)">${stopPct}</div><div class="jm-l">STOP ${won(m.stop)}</div></div>
-        <div class="jm"><div class="jm-v" style="color:var(--purple)">${(m.recommended_mode||m.mode||'--').toUpperCase()}</div><div class="jm-l">MODE</div></div>
-      </div>
+    <div class="mri-wrap">
+      ${radar}
+      ${provBadge}
     </div>
-    <div class="j-verdict">🩻 <b>${m.verdict||'-'}</b></div>
+    <div class="j-metrics">
+      <div class="jm"><div class="jm-v" style="color:var(--teal)">${rr}</div><div class="jm-l">R/R</div></div>
+      <div class="jm"><div class="jm-v" style="color:var(--red)">${stopPct}</div><div class="jm-l">STOP ${stopWon}</div></div>
+      <div class="jm"><div class="jm-v" style="color:var(--purple)">${mode}</div><div class="jm-l">MODE</div></div>
+    </div>
+    ${ hasMri && m5.interpretation ? `<div class="mri-interp">🩻 ${m5.interpretation}</div>` : '' }
+    ${ m && m.verdict ? `<div class="j-verdict"><b>${m.verdict}</b></div>`
+       : (!m && d.mri_error ? `<div class="j-verdict" style="border-left-color:var(--text3)">실행정보 준비 중 — <b>${d.mri_error}</b></div>` : '') }
     <div class="j-act">
       <div class="j-state ${stateCls}">${stateTxt}</div>
       <button class="btn btn-yellow" onclick="go('../judge_engine_v1-3.html')">상세 ›</button>
@@ -1780,7 +1824,7 @@ initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot();
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
-addFeed('🔱 Trinity HUB v4.2 — WATCH Center · R/R 과대 표시');
+addFeed('🔱 Trinity HUB v4.3 — Judge MRI 5축 오각 레이더 점등');
 setInterval(fetchTemp, 90000);
 setInterval(watchScan, 60000);                       // 장중 60초 감시
 setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
