@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.5 UTOPIA</title>
+<title>🔱 Trinity HUB v4.6 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -565,7 +565,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.5 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.6 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -681,7 +681,7 @@ body{padding-bottom:74px;}
 <section class="s-judge" id="secHof">
   <div class="sec-head"><span class="sec-num" style="color:#f5b942">🏆 명예의 전당</span><span class="sec-q">— 내가 발굴한 명작들</span></div>
   <div class="hof-panel">
-    <div class="hof-head"><span class="hof-htitle">HALL OF FAME</span><span class="hof-hsub">JUDGE로 본 종목 중 MRI 70+ 자동 헌액 · 60 미만 시 졸업</span></div>
+    <div class="hof-head"><span class="hof-htitle">HALL OF FAME</span><span class="hof-hsub">MRI 70+ 자동 헌액 · 60 미만 시 졸업</span><button class="btn btn-yellow" id="saHuntBtn" onclick="saHunt()" style="margin-left:auto;">🎯 S·A 사냥</button></div>
     <div id="hofBody"></div>
   </div>
 </section>
@@ -777,7 +777,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.5 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.6 UTOPIA 🔱
 </footer>
 
   </div>
@@ -1690,6 +1690,24 @@ function renderHof(){
   wrap.innerHTML=html;
 }
 
+// 🎯 S·A Hunter — Wave 유니버스 스캔 → MRI 80+ 자동 헌액
+async function saHunt(){
+  const b=$('saHuntBtn'); if(!b||b.disabled) return;
+  const orig=b.textContent; b.disabled=true; b.textContent='🎯 사냥 중…';
+  const body=$('hofBody');
+  if(body) body.insertAdjacentHTML('afterbegin','<div id="saMsg" class="hof-empty">🎯 Wave 유니버스 스캔 중… 잠시만요 (최대 1~2분)</div>');
+  try{
+    const r=await fetch(`${RAIL_MAIN}/mri/scan?universe=wave&min_score=80&limit=12`,{signal:AbortSignal.timeout(150000)});
+    const d=await r.json();
+    if(d&&d.ok){
+      (d.items||[]).forEach(x=>hofUpsert(x.code,x.name,x.mri,x.grade));
+      addFeed(`🎯 S·A 사냥 — ${d.count}종목 스캔 · ${d.passed}개 발견 (80+)`);
+      toast(d.passed? `🏆 S·A ${d.passed}종목 헌액!` : '오늘은 80+ 없음 — 시장이 차갑네요');
+    } else { toast('스캔 실패 — '+((d&&d.reason)||'웜업 후 재시도')); }
+  }catch(e){ toast('스캔 시간초과 — 잠시 후 다시 시도'); }
+  finally{ const m=$('saMsg'); if(m) m.remove(); b.disabled=false; b.textContent=orig; renderHof(); }
+}
+
 function renderJudge(d, m5){
   const m = d.mri;                          // /judge 실행정보 (R/R·STOP·목표가·verdict·tradeable)
   const name = (d.name&&d.name!==d.code)?d.name:(watch.find(w=>w.code===d.code)?.name||d.code);
@@ -2017,7 +2035,7 @@ initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot(); rende
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
-addFeed('🔱 Trinity HUB v4.5 — 🏆 명예의 전당(베타) · MRI 70+ 자동 헌액');
+addFeed('🔱 Trinity HUB v4.6 — 🎯 S·A Hunter · Wave 유니버스 자동 사냥');
 setInterval(fetchTemp, 90000);
 setInterval(watchScan, 60000);                       // 장중 60초 감시
 setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
