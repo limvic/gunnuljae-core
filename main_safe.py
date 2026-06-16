@@ -599,6 +599,114 @@ async def supply_flow(code: str):
         return {"ok": False, "code": code, "score": None, "reason": "exception", "msg": str(e)[:80]}
 
 
+# ── Judge MRI v1.0 점수화 엔진 (2026.06.16, 채피 공식 확정) ──────────────────
+def _mri_interp(x, pts):
+    """구간 선형보간. pts=[(x0,y0)...] x 오름차순. 범위 밖은 끝값으로 클램프."""
+    if x <= pts[0][0]:
+        return float(pts[0][1])
+    if x >= pts[-1][0]:
+        return float(pts[-1][1])
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if x0 <= x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return float(pts[-1][1])
+
+def _mri_vol_score(r):    # 거래량 배율(현재/20일평균)
+    return round(_mri_interp(r, [(0.5, 20), (1.0, 50), (1.5, 65), (2.0, 75), (3.0, 90), (5.0, 100)]))
+def _mri_mom_score(p):    # 모멘텀: 5일 수익률 %
+    return round(_mri_interp(p, [(-10, 10), (-5, 30), (0, 50), (5, 70), (10, 85), (20, 100)]))
+def _mri_safe_score(a):   # 안전성: ATR%(낮을수록 안전) — x 오름차순, y 감소
+    return round(_mri_interp(a, [(3, 100), (5, 80), (7, 60), (10, 40), (15, 20)]))
+def _mri_tech_score(ma5, ma20, ma60):  # 기술: 이동평균 배열 (보너스는 v2)
+    if ma5 > ma20 > ma60:
+        return 100
+    if ma5 > ma20:
+        return 80
+    if ma20 > ma60:
+        return 60
+    return 20
+
+def _mri_grade(s):
+    return ("S" if s >= 90 else "A" if s >= 80 else "B" if s >= 70
+            else "C" if s >= 60 else "D" if s >= 50 else "F")
+
+
+@app.get("/mri/{code}")
+async def judge_mri(code: str):
+    """Judge MRI v1.0 — 1종목 5축 오각형 + 종합점수 + 등급 + 자동해석.
+    축: 수급(/supply)·거래량·모멘텀·기술·안전. 종합 가중치 = 수급30·거래량25·모멘텀20·기술15·안전10.
+    데이터 없는 축은 null('준비 중') — 가짜 점수 금지. 장중 수급은 잠정."""
+    code = (code or "").strip()
+    if not (len(code) == 6 and code.isdigit()):
+        return {"ok": False, "code": code, "reason": "invalid_code"}
+    try:
+        token = await get_token()
+        rows = await _wave_fetch_daily_rows(code, token)   # 일봉 60일 (최신이 [0])
+        if not rows or len(rows) < 20:
+            return {"ok": False, "code": code, "reason": "no_daily"}
+        closes = [_to_int_safe(r.get("stck_clpr")) for r in rows]
+        highs  = [_to_int_safe(r.get("stck_hgpr")) for r in rows]
+        lows   = [_to_int_safe(r.get("stck_lwpr")) for r in rows]
+        vols   = [_to_int_safe(r.get("acml_vol")) for r in rows]
+        cur = closes[0] or 1
+        ma5  = sum(closes[:5]) / 5
+        ma20 = sum(closes[:20]) / 20
+        ma60 = sum(closes[:60]) / min(60, len(closes))
+        # 거래량비 = 당일 / 20일 평균
+        avg_vol20 = (sum(vols[:20]) / 20) or 1
+        vol_ratio = vols[0] / avg_vol20 if avg_vol20 > 0 else 1.0
+        # 모멘텀 = 5일 수익률(%)
+        mom_pct = (cur - closes[5]) / closes[5] * 100 if len(closes) > 5 and closes[5] > 0 else 0.0
+        # 안전성 = ATR14 근사(고-저 평균) / 현재가 %
+        trs = [highs[i] - lows[i] for i in range(min(14, len(rows)))]
+        atr = (sum(trs) / len(trs)) if trs else 0
+        atr_pct = atr / cur * 100 if cur > 0 else 0.0
+
+        # 4축 점수 (실데이터)
+        vol_s  = _mri_vol_score(vol_ratio)
+        mom_s  = _mri_mom_score(mom_pct)
+        safe_s = _mri_safe_score(atr_pct)
+        tech_s = _mri_tech_score(ma5, ma20, ma60)
+
+        # 수급축 — /supply 재사용 (없으면 null·가짜 금지)
+        sup = await supply_flow(code)
+        sup_s = sup.get("score") if sup.get("ok") else None
+        sup_status = sup.get("status", "")
+
+        # 종합 (채피 가중치). 수급 빠지면 나머지 4축을 70%로 재정규화.
+        if sup_s is not None:
+            comp = sup_s * 0.30 + vol_s * 0.25 + mom_s * 0.20 + tech_s * 0.15 + safe_s * 0.10
+        else:
+            comp = (vol_s * 0.25 + mom_s * 0.20 + tech_s * 0.15 + safe_s * 0.10) / 0.70
+        comp = round(comp)
+        grade = _mri_grade(comp)
+
+        # "왜 이 등급인가" 자동 해석
+        notes = []
+        if sup_s is not None and sup_s >= 70:   notes.append("외인·기관 순매수 강함")
+        elif sup_s is not None and sup_s < 40:   notes.append("수급 매도 우위")
+        if vol_s >= 75:   notes.append("거래량 급증")
+        elif vol_s < 40:  notes.append("거래량 부진")
+        if mom_s >= 70:   notes.append("단기 상승 모멘텀")
+        elif mom_s < 40:  notes.append("단기 하락 압력")
+        if tech_s >= 80:  notes.append("정배열 유지")
+        elif tech_s <= 20: notes.append("역배열")
+        if safe_s < 40:   notes.append("변동성 큼")
+
+        return {
+            "ok": True, "code": code, "score": comp, "grade": grade,
+            "axes": {"supply": sup_s, "volume": vol_s, "momentum": mom_s,
+                     "tech": tech_s, "safety": safe_s},
+            "supply_status": sup_status,
+            "detail": {"vol_ratio": round(vol_ratio, 2), "mom_pct": round(mom_pct, 2),
+                       "atr_pct": round(atr_pct, 2), "aligned": ma5 > ma20 > ma60},
+            "interpretation": " · ".join(notes) if notes else "특이 신호 없음",
+            "note": "Judge MRI v1.0 · 수급30·거래량25·모멘텀20·기술15·안전10 · 52주보너스/지속성은 v2",
+        }
+    except Exception as e:
+        return {"ok": False, "code": code, "reason": "exception", "msg": str(e)[:80]}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "5.1.0", "mode": KIS_MODE}
