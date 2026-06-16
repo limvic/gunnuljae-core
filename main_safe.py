@@ -525,6 +525,67 @@ def classify_pattern(p: dict) -> dict:
     return {"pattern": pat, "gap_pct": gap}
 
 
+@app.get("/supply/{code}")
+async def supply_flow(code: str):
+    """Judge MRI 수급축 v1 (2026.06.16) — 종목별 당일 외인·기관 순매수 수급 점수.
+    소스: KIS inquire-investor(FHKST01010900) 당일 외인/기관 순매수대금 ÷ 당일 거래대금.
+    장중(평일 09:00~15:30 KST)=잠정, 그 외=확정. 데이터 없으면 score=null('준비 중') — 가짜 점수 금지."""
+    code = (code or "").strip()
+    if not (len(code) == 6 and code.isdigit()):
+        return {"ok": False, "code": code, "score": None, "reason": "invalid_code"}
+
+    def _num(v):  # 음수(순매도) 안전 파싱
+        try:
+            return float(str(v).replace(",", "").strip())
+        except Exception:
+            return 0.0
+
+    try:
+        token = await get_token()
+        # 1) 당일 외인·기관 순매수대금 (inquire-investor = FHKST01010900)
+        headers = dict(_wave_build_headers(token)); headers["tr_id"] = "FHKST01010900"
+        params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}
+        async with httpx.AsyncClient(timeout=10) as c:
+            res = await c.get(
+                f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor",
+                params=params, headers=headers,
+            )
+        d = res.json()
+        if d.get("rt_cd") != "0":
+            return {"ok": False, "code": code, "score": None, "reason": "kis_error", "msg": d.get("msg1", "")}
+        rows = d.get("output") or []
+        if not rows:
+            return {"ok": False, "code": code, "score": None, "reason": "no_data"}
+        t = rows[0]
+        frgn = _num(t.get("frgn_ntby_tr_pbmn"))   # 외국인 순매수대금
+        orgn = _num(t.get("orgn_ntby_tr_pbmn"))   # 기관계 순매수대금
+        net = frgn + orgn
+
+        # 2) 당일 거래대금 (fetch_price → acml_tr_pbmn)
+        p = await fetch_price(code, token)
+        turnover = _num(p.get("acml_tr_pbmn"))
+        if turnover <= 0:
+            return {"ok": False, "code": code, "score": None, "reason": "no_turnover"}
+
+        # 3) v1 점수화: r = 순매수 / 거래대금 → 0~100 (50=중립, ±20%≈양 끝)
+        r = net / turnover
+        score = max(0, min(100, round(50 + r * 250)))
+
+        # 4) 잠정/확정 (평일 09:00~15:30 KST = 장중 추정)
+        now = datetime.now(KST); mins = now.hour * 60 + now.minute
+        stat = "잠정" if (now.weekday() < 5 and 540 <= mins <= 930) else "확정"
+
+        return {
+            "ok": True, "code": code, "score": score, "status": stat,
+            "ratio_pct": round(r * 100, 2),
+            "frgn_pbmn": frgn, "orgn_pbmn": orgn, "net_pbmn": net,
+            "turnover_pbmn": turnover, "date": t.get("stck_bsop_date", ""),
+            "note": "v1: (외인+기관 순매수)/거래대금 · 단위 일치는 실측 보정 가능",
+        }
+    except Exception as e:
+        return {"ok": False, "code": code, "score": None, "reason": "exception", "msg": str(e)[:80]}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "5.1.0", "mode": KIS_MODE}
