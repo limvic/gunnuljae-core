@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.7 UTOPIA</title>
+<title>🔱 Trinity HUB v4.8 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -576,7 +576,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.7 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.8 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -788,7 +788,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.7 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.8 UTOPIA 🔱
 </footer>
 
   </div>
@@ -1701,8 +1701,11 @@ function hofUpsert(code,name,score,grade){
     if(!e) o[code]={code,name,grade,score,best:score,first:t,last:t,status:'활성'};
     else { e.name=name; e.grade=grade; e.score=score; e.best=Math.max(e.best||0,score); e.last=t; e.status='활성'; }
     hofSave(o); renderHof();
-  } else if(e){                               // 이미 헌액된 종목이 60 미만 → 졸업(History)
-    if(score<60 && e.status!=='졸업'){ e.status='졸업'; e.score=score; e.last=t; hofSave(o); renderHof(); }
+  } else if(e){                               // 이미 헌액된 종목이 70 밑으로
+    e.score=score; e.last=t;                  // 점수는 항상 갱신 (82 박제 방지)
+    if(name) e.name=name; if(grade) e.grade=grade;
+    e.status = (score<60) ? '졸업' : '활성';   // <60 졸업 · 60~69 유지
+    hofSave(o); renderHof();
   }
 }
 function renderHof(){
@@ -1717,7 +1720,7 @@ function renderHof(){
   const chip=x=>`<div class="hof-chip" style="--tc:${mriColor(x.score)}" onclick="loadJudge('${x.code}')">
     <div class="hc-nm">${x.name}</div><div class="hc-sc">${x.score}</div>
     <div class="hc-meta">최고 ${x.best} · ${hofDays(x.first,x.last)}일</div></div>`;
-  const S=active.filter(x=>x.score>=90), A=active.filter(x=>x.score>=80&&x.score<90), B=active.filter(x=>x.score>=70&&x.score<80);
+  const S=active.filter(x=>x.score>=90), A=active.filter(x=>x.score>=80&&x.score<90), B=active.filter(x=>x.score>=70&&x.score<80), C=active.filter(x=>x.score>=60&&x.score<70);
   let html='';
   if(S.length){ const s=S[0];
     html+=`<div class="hof-s" onclick="loadJudge('${s.code}')">
@@ -1729,6 +1732,7 @@ function renderHof(){
   }
   if(A.length) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(85)}">A RANK</div><div class="hof-row">${A.map(chip).join('')}</div></div>`;
   if(B.length) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(75)}">B RANK</div><div class="hof-row">${B.map(chip).join('')}</div></div>`;
+  if(C.length) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(65)}">유지 (60~69 · 졸업 임박)</div><div class="hof-row">${C.map(chip).join('')}</div></div>`;
   if(grad.length) html+=`<div class="hof-grad">📜 졸업 ${grad.length}종목 — ${grad.slice(0,4).map(x=>`<b>${x.name}</b>(최고 ${x.best})`).join(' · ')}</div>`;
   wrap.innerHTML=html;
 }
@@ -2082,7 +2086,7 @@ initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot(); rende
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
-addFeed('🔱 Trinity HUB v4.7 — 5축 상세 Accordion · 축 누르면 해석 펼침');
+addFeed('🔱 Trinity HUB v4.8 — 명예의 전당 점수 갱신 버그 수정 (60~69 유지)');
 setInterval(fetchTemp, 90000);
 setInterval(watchScan, 60000);                       // 장중 60초 감시
 setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
