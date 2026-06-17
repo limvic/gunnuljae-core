@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>🔱 Trinity HUB v4.6 UTOPIA</title>
+<title>🔱 Trinity HUB v4.7 UTOPIA</title>
 <style>
 :root{
   --bg:#05070c; --surface:#0c111b; --surface2:#101726; --border:#1b2438;
@@ -341,6 +341,17 @@ body{padding-bottom:74px;}
 .mri-ax-sc{flex:none;font-family:var(--mono);font-size:18px;font-weight:800;color:var(--ac,var(--text3));min-width:30px;text-align:right;}
 .mri-ax.pending{opacity:.5;}
 .mri-ax.pending .mri-ax-sc{font-size:10px;color:var(--text3);}
+/* v4.7: 5축 Accordion (클릭하면 상세 펼침) */
+.mri-ax-wrap{background:var(--surface2);border-radius:11px;border-left:3px solid var(--ac,var(--border));overflow:hidden;}
+.mri-ax-wrap > summary.mri-ax{background:transparent;border-left:0;border-radius:0;list-style:none;cursor:pointer;}
+.mri-ax-wrap > summary.mri-ax::-webkit-details-marker{display:none;}
+.mri-ax-wrap.pending{opacity:.55;}
+.mri-ax-wrap.pending .mri-ax-sc{font-size:10px;color:var(--text3);}
+.mri-ax-caret{flex:none;color:var(--text3);font-size:10px;transition:transform .2s;}
+.mri-ax-wrap[open] .mri-ax-caret{transform:rotate(180deg);}
+.mri-ax-detail{padding:0 13px 11px 53px;font-size:11px;line-height:1.65;color:var(--text2);}
+.mri-ax-detail b{color:var(--text);font-family:var(--mono);}
+.axd-tag{display:inline-block;margin-top:6px;font-size:9.5px;color:var(--text3);}
 
 .jm-metrics5{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:12px;}
 .jm-m{background:var(--surface2);border-radius:10px;padding:9px 3px;text-align:center;}
@@ -565,7 +576,7 @@ body{padding-bottom:74px;}
   <div class="hd-top">
     <div>
       <div class="hd-title">🔱 TRINITY</div>
-      <div class="hd-sub">DECISION CENTER · v4.6 UTOPIA</div>
+      <div class="hd-sub">DECISION CENTER · v4.7 UTOPIA</div>
     </div>
     <div class="storm st-cloud" id="stormCard" onclick="explainStorm()">
       <div class="st-top"><span class="st-emoji" id="stEmoji">⛅</span><span class="st-score" id="stScore">--<small>STORM</small></span></div>
@@ -777,7 +788,7 @@ body{padding-bottom:74px;}
 
 <footer>
   <b>판단은 인간 · 구조는 AI · 실행은 시스템</b><br>
-  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.6 UTOPIA 🔱
+  엔진은 숨고, 결정만 남는다 — Trinity HUB v4.7 UTOPIA 🔱
 </footer>
 
   </div>
@@ -1609,6 +1620,38 @@ function axisDesc(key,val,det){
   }
   return '';
 }
+// 축 클릭 시 상세 — 점수 의미 + detail 실측 + 해석. 데이터 없는 값은 만들지 않음.
+function axisDetail(key,val,det,supplyStatus){
+  if(val==null) return '데이터 준비 중이에요 — 장 전이거나 수급 미집계 상태예요.';
+  det=det||{};
+  const tier=s=>s>=80?'매우 강함':s>=65?'양호':s>=45?'보통':s>=30?'약함':'매우 약함';
+  const head=nm=>`현재 ${nm} 점수 <b>${val}</b> · ${tier(val)}.<br>`;
+  switch(key){
+    case 'supply':
+      return head('수급')
+        + `외국인·기관의 순매수 흐름을 점수화한 축이에요. `
+        + (val>=70?'기관·외인이 적극 사들이는 중':val>=50?'매수세가 매도세보다 우위':val>=42?'매수·매도 균형':'매도 우위 — 돈이 빠지는 중')+'.'
+        + `<br><span class="axd-tag">${supplyStatus==='잠정'?'🟡 장중 잠정치 (마감 후 확정)':supplyStatus==='확정'?'🟢 마감 확정치':''}</span>`;
+    case 'volume':
+      return head('거래량')
+        + (det.vol_ratio!=null?`20일 평균 대비 <b>${det.vol_ratio}배</b> 거래되고 있어요. `:'')
+        + ((det.vol_ratio||0)>=1.5?'평소보다 확연히 많은 거래 — 관심이 몰리는 신호':(det.vol_ratio||0)>=1?'평균 수준의 거래량':'평소보다 한산 — 아직 시선이 안 모인 상태')+'.';
+    case 'momentum':
+      return head('모멘텀')
+        + (det.mom_pct!=null?`최근 5일 수익률 <b>${det.mom_pct>0?'+':''}${det.mom_pct}%</b>. `:'')
+        + ((det.mom_pct||0)>5?'단기 상승 탄력이 강해요':(det.mom_pct||0)>0?'완만한 상승 흐름':(det.mom_pct||0)>-5?'약보합 — 방향 탐색 중':'단기 하락 압력')+'.';
+    case 'safety':
+      return head('안전성')
+        + (det.atr_pct!=null?`일간 변동성(ATR) <b>${det.atr_pct}%</b>. `:'')
+        + `변동성이 낮을수록 점수가 높아요 — `
+        + ((det.atr_pct||0)<4?'잔잔한 흐름, 리스크 낮음':(det.atr_pct||0)<7?'보통 수준의 출렁임':'변동성 큼, 손절폭 넓게 잡아야 함')+'.';
+    case 'tech':
+      return head('기술')
+        + `이동평균선 배열 구조예요. `
+        + (val>=100?'5 > 20 > 60 완전 정배열 — 추세 최강':val>=80?'정배열 진행 중':val>=60?'중기선 위 회복 국면':'역배열 — 추세가 아직 꺾인 상태')+'.';
+  }
+  return '';
+}
 function manWon(v){ if(v==null) return '--'; const m=v/10000; return m>=100? Math.round(m)+'만' : m.toFixed(1)+'만'; }
 
 // Judge MRI 레이더 — /mri 진짜 5축. 동심원 그리드 + 축별 멀티컬러 폴리곤 + 중앙 종합점수.
@@ -1733,14 +1776,18 @@ function renderJudge(d, m5){
   const axisRows = MRI_AXIS.map(a=>{
     const v = hasMri ? m5.axes[a.key] : null;
     const pend = v==null;
-    return `<div class="mri-ax ${pend?'pending':''}" style="--ac:${a.c}">
-      <div class="mri-ax-ic">${axisIcon(a.key)}</div>
-      <div class="mri-ax-main">
-        <div class="mri-ax-nm">${a.nm}<small>${a.en}</small></div>
-        <div class="mri-ax-desc">${axisDesc(a.key,v,det)}</div>
-      </div>
-      <div class="mri-ax-sc">${pend?'준비중':v}</div>
-    </div>`;}).join('');
+    return `<details class="mri-ax-wrap${pend?' pending':''}" style="--ac:${a.c}">
+      <summary class="mri-ax">
+        <div class="mri-ax-ic">${axisIcon(a.key)}</div>
+        <div class="mri-ax-main">
+          <div class="mri-ax-nm">${a.nm}<small>${a.en}</small></div>
+          <div class="mri-ax-desc">${axisDesc(a.key,v,det)}</div>
+        </div>
+        <div class="mri-ax-sc">${pend?'준비중':v}</div>
+        <span class="mri-ax-caret">▾</span>
+      </summary>
+      <div class="mri-ax-detail">${axisDetail(a.key,v,det,hasMri?m5.supply_status:'')}</div>
+    </details>`;}).join('');
 
   // ── 5메트릭 (R/R·STOP·목표가·손절폭 실측 / 신호강도 = 종합점수 번개) ──
   const rr      = m && m.rr!=null ? m.rr : '--';
@@ -2035,7 +2082,7 @@ initScanCtrl(); renderChips(); renderHolds(); fetchTemp(); sentinelBoot(); rende
 try{renderStrikeHero(JSON.parse(localStorage.getItem('trinity_strike_last')||'null'));}catch{}
 renderFocus(); renderMemos(); syncMemos(); renderMacro(); renderPH();
 renderWatch(); watchScan();                          // 👀 v4.2 WATCH Center
-addFeed('🔱 Trinity HUB v4.6 — 🎯 S·A Hunter · Wave 유니버스 자동 사냥');
+addFeed('🔱 Trinity HUB v4.7 — 5축 상세 Accordion · 축 누르면 해석 펼침');
 setInterval(fetchTemp, 90000);
 setInterval(watchScan, 60000);                       // 장중 60초 감시
 setInterval(tickWatchStages, 2000);                  // 깜박→점멸→골드 단계 진행
