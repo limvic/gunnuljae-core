@@ -59,6 +59,12 @@ def _risk_budget() -> int:
     return round(SEED_KRW * (_RISK_PCT / 100.0))
 
 
+# ── 트레이더 유니버스 (헌법 잠금 — 여기서만 수정하면 됨) ─────────────────────────
+TRADER_CORE  = ["005930", "000660", "036930", "267260", "007660"]  # 삼성전자·SK하이닉스·주성엔지니어링·HD현대일렉트릭·이수페타시스
+TRADER_WATCH = ["034220"]                                          # LG디스플레이
+SCAN_MAX     = 25                                                  # 1회 스캔 종목 상한(KIS 부하·타임아웃 방지)
+
+
 # ── 의존성 주입 (순환 import 회피 — wave_alert_router 패턴) ──────────────────────
 _judge_mri:        Optional[Callable[[str], Awaitable[dict]]] = None
 _support_zone:     Optional[Callable[..., Awaitable[dict]]]   = None
@@ -201,26 +207,9 @@ async def set_mode(req: ModeReq):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# GET /trader/{code} — 표준 리포트 (정적 라우트 뒤에 선언)
+# 표준 리포트 생성 (단일 조회 · 스캔 공용 헬퍼 — 코드 확정 후 호출)
 # ══════════════════════════════════════════════════════════════════════════════
-@router.get("/{query}")
-async def trader_judge(query: str):
-    if not _ready():
-        raise HTTPException(status_code=503,
-                            detail="register_trader 미호출 — SSOT 함수 미주입")
-    q = (query or "").strip()
-    # 교차검색: 이름이든 코드든 _judge_resolve로 6자리 코드 확정 (SSOT 재사용)
-    if _judge_resolve is not None:
-        code = _judge_resolve(q)
-        if not code:
-            raise HTTPException(status_code=404,
-                                detail="'" + q + "' 종목 못 찾음 — 종목명 또는 6자리 코드 확인")
-    else:
-        code = q
-        if not (len(code) == 6 and code.isdigit()):
-            raise HTTPException(status_code=400,
-                                detail="검색기 미연결 — 6자리 종목코드를 입력하세요")
-
+async def _report_for_code(code: str) -> dict:
     rr_gate     = _RR_GATE
     risk_pct    = _RISK_PCT
     risk_budget = _risk_budget()
@@ -337,7 +326,7 @@ async def trader_judge(query: str):
 
     # ── 7) 표준 출력 ──────────────────────────────────────────────────────────
     return {
-        "engine": "Risk Judge v1.1 · Trinity Trader",
+        "engine": "Risk Judge v1.2 · Trinity Trader",
         "code": code, "name": name,
         "operation_mode": {"mode": mode, "label": MODE_LABEL[mode]},
         "settings": {"rr_gate": rr_gate, "risk_pct": risk_pct,
@@ -396,3 +385,88 @@ async def trader_judge(query: str):
         "data": {"mri_ok": mri_ok, "support_data_pending": data_pending,
                  "mri_reason": None if mri_ok else mri.get("reason")},
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 유니버스 일괄 스캔 + 단일 조회 라우트  (⚠️ 둘 다 정적이거나 /{query} — 순서 주의)
+#   라우트 등록 순서: /settings · /mode · /scan  →  /{query} (맨 마지막)
+# ══════════════════════════════════════════════════════════════════════════════
+def _scan_row(rep: dict) -> dict:
+    r, a, g, s = rep["report"], rep["analysis"], rep["gate"], rep["sizing"]
+    return {
+        "code": rep["code"], "name": rep["name"],
+        "포지션": r["포지션"], "점수": r["점수"], "등급": r["등급"],
+        "rr": a["RR"]["value"], "rr_bonus": a["RR"]["bonus_3"],
+        "진입가": r["진입가격"], "기대수익률": r["기대수익률"], "확신도": r["확신도"],
+        "trade": g["trade"], "gate_pass": g["pass"], "gate_fail": g["fail"],
+        "수량": s["shares"], "금액": s["amount_krw"],
+    }
+
+
+@router.get("/scan")
+async def trader_scan(codes: str = "", group: str = "all"):
+    """유니버스 일괄 스캔 — 게이트 통과(매수) 후보를 한 번에.
+    codes=005930,000660 (커스텀) · group=core|watch|all (기본 all=CORE+WATCH)."""
+    if not _ready():
+        raise HTTPException(status_code=503, detail="register_trader 미호출 — SSOT 함수 미주입")
+
+    if codes.strip():
+        raw = [c.strip() for c in codes.split(",") if c.strip()]
+        grp = "custom"
+    elif group == "core":
+        raw, grp = list(TRADER_CORE), "core"
+    elif group == "watch":
+        raw, grp = list(TRADER_WATCH), "watch"
+    else:
+        raw, grp = list(TRADER_CORE) + list(TRADER_WATCH), "all"
+    raw = raw[:SCAN_MAX]
+
+    rows, errors = [], []
+    for item in raw:
+        try:
+            c = _judge_resolve(item) if _judge_resolve is not None else item
+            if not c or not (len(c) == 6 and c.isdigit()):
+                errors.append({"input": item, "error": "코드 확정 실패"})
+                continue
+            rep = await _report_for_code(c)      # SSOT 동일 로직 재사용
+            rows.append(_scan_row(rep))
+        except HTTPException as he:
+            errors.append({"input": item, "error": "HTTP " + str(he.status_code)})
+        except Exception as e:
+            errors.append({"input": item, "error": type(e).__name__})
+
+    # 정렬: 매수(진입 가능) 먼저 → 점수 내림차순(None 뒤로)
+    rows.sort(key=lambda x: (0 if x["trade"] else 1,
+                             -(x["점수"] if x["점수"] is not None else -1)))
+
+    summary = {
+        "scanned": len(rows),
+        "매수": sum(1 for x in rows if x["포지션"] == "매수"),
+        "관망": sum(1 for x in rows if x["포지션"] == "관망"),
+        "보류": sum(1 for x in rows if x["포지션"] == "보류"),
+        "error": len(errors),
+    }
+    return {
+        "engine": "Risk Judge v1.2 · Universe Scan",
+        "operation_mode": {"mode": _TRADER_MODE, "label": MODE_LABEL[_TRADER_MODE]},
+        "settings": {"rr_gate": _RR_GATE, "risk_pct": _RISK_PCT, "risk_budget_krw": _risk_budget()},
+        "group": grp, "summary": summary, "results": rows, "errors": errors,
+        "rule_a": "스캔은 후보 제시. 최종 결정은 림빅. NO = 즉시 정지.",
+    }
+
+
+@router.get("/{query}")
+async def trader_judge(query: str):
+    if not _ready():
+        raise HTTPException(status_code=503, detail="register_trader 미호출 — SSOT 함수 미주입")
+    q = (query or "").strip()
+    if _judge_resolve is not None:                # 종목명↔코드 교차검색 재사용
+        code = _judge_resolve(q)
+        if not code:
+            raise HTTPException(status_code=404,
+                                detail="'" + q + "' 종목 못 찾음 — 종목명 또는 6자리 코드 확인")
+    else:
+        code = q
+        if not (len(code) == 6 and code.isdigit()):
+            raise HTTPException(status_code=400, detail="검색기 미연결 — 6자리 종목코드를 입력하세요")
+    return await _report_for_code(code)
