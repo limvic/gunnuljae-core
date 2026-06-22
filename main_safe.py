@@ -20,14 +20,6 @@ try:
 except Exception as _vav_e:
     print(f"[vavlog] 라우터 로드 실패 — 스킵(본체는 정상): {_vav_e}")
 
-# 📈 Judge History v1.0 — Daily Judge Snapshot 적재기 (독립 모듈). 실패해도 본체 무중단.
-try:
-    from judge_history import judge_history_loop, run_snapshot, jh_status
-    _JH_OK = True
-except Exception as _jh_e:
-    print(f"[judge_history] 모듈 로드 실패 — 스킵(본체는 정상): {_jh_e}")
-    _JH_OK = False
-
 KIS_APP_KEY    = os.environ.get("KIS_APP_KEY", "")
 KIS_APP_SECRET = os.environ.get("KIS_APP_SECRET", "")
 KIS_MODE       = os.environ.get("KIS_MODE", "mock")
@@ -801,34 +793,6 @@ async def judge_mri(code: str):
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "5.1.0", "mode": KIS_MODE}
-
-
-# ── 📈 Judge History 적재기 — 상태 확인 / 수동 트리거 ────────────────────────
-@app.get("/judge_history/status")
-async def judge_history_status():
-    """적재기 상태: 설정 여부 · 마지막 실행 · 마지막 결과."""
-    if not _JH_OK:
-        return {"ok": False, "reason": "module_not_loaded"}
-    return {"ok": True, "state": jh_status()}
-
-
-@app.get("/judge_history/run")
-async def judge_history_run():
-    """수동 1회 스냅샷 (16:00 안 기다리고 지금 적재 — 테스트/보충용).
-    KIS_MODE=real + Supabase env 필요. 가짜 데이터 금지."""
-    if not _JH_OK:
-        return {"ok": False, "reason": "module_not_loaded"}
-    _c2n = {v: k for k, v in JUDGE_STOCK_MAP.items()}
-    res = await run_snapshot(
-        judge_mri=judge_mri,
-        code_to_name=_c2n,
-        wave_universe=[(_c2n.get(c, ""), c) for (_, c) in _WAVE_UNIVERSE],
-        kst=KST,
-        core_codes=["005930", "000660", "036930", "267260", "007660"],
-        extra_codes=["034220"],
-        kis_mode=KIS_MODE,
-    )
-    return res
 
 
 @app.get("/stock/{code}")
@@ -2752,20 +2716,6 @@ async def start_scheduler():
     # 🛰 Trinity Sentinel v0.1 — 장중 보초 (정의는 파일 하단, startup 시점엔 로드 완료)
     asyncio.create_task(sentinel_loop())
 
-    # 📈 Judge History v1.0 — Daily Snapshot 적재기 (평일 16:00 KST 1회)
-    #    judge_mri(SSOT) 재사용. CORE 3 + WATCH(LGD) + Wave 유니버스 적재.
-    if _JH_OK:
-        asyncio.create_task(judge_history_loop(
-            judge_mri=judge_mri,
-            code_to_name={v: k for k, v in JUDGE_STOCK_MAP.items()},
-            wave_universe=_named_universe,
-            kst=KST,
-            core_codes=["005930", "000660", "036930", "267260", "007660"],
-            #          삼성전자·SK하이닉스·주성엔지니어링·HD현대일렉트릭·이수페타시스 (Quad-Core)
-            extra_codes=["034220"],                        # WATCH: LG디스플레이(LGD)
-            kis_mode=KIS_MODE,
-        ))
-
 # ============================================
 # 🔥 AUTO ORDER ROUTER — IGNITION AUTO v0.1
 # AUTO 전용 계좌 (KIS_AUTO_ACCOUNT) 전용
@@ -4153,3 +4103,15 @@ async def memo_delete(mid: str):
     _memos = [m for m in _memos if m.get("id") != mid]
     _memo_save()
     return {"ok": True, "removed": before - len(_memos), "count": len(_memos)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 🎯 RISK JUDGE v1.1 — Trinity Trader 연결 (2026.06.22 · 림빅 × 채피 × 써니)
+#    독립 모듈 risk_judge.py · SSOT 재사용(judge_mri · support_zone · _judge_resolve).
+#    ⚠️ 반드시 파일 맨 끝 — 세 함수가 모두 정의된 뒤여야 register_trader가 이름을 잡는다.
+#       (register_wave_alert를 함수 정의 뒤에 두는 원칙과 동일)
+#    실패 격리: risk_judge는 독립 모듈 — 본 시스템 영향 0.
+# ══════════════════════════════════════════════════════════════════════════════
+from risk_judge import router as trader_router, register_trader
+register_trader(judge_mri=judge_mri, support_zone=support_zone, judge_resolve=_judge_resolve)
+app.include_router(trader_router)
