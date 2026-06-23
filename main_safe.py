@@ -4116,3 +4116,7 @@ from risk_judge import router as trader_router, register_trader
 register_trader(judge_mri=judge_mri, support_zone=support_zone,
                 judge_resolve=_judge_resolve, scan_universe=mri_scan)
 app.include_router(trader_router)
+
+# ── 📒 TRADER LOG — Risk Judge 판단 로그 (복기 자산) · 독립 모듈 (Supabase 공유) ──
+from trader_log import router as trader_log_router
+app.include_router(trader_log_router)

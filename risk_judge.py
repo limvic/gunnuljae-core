@@ -400,7 +400,8 @@ def _scan_row(rep: dict) -> dict:
         "code": rep["code"], "name": rep["name"],
         "포지션": r["포지션"], "점수": r["점수"], "등급": r["등급"],
         "rr": a["RR"]["value"], "rr_bonus": a["RR"]["bonus_3"],
-        "진입가": r["진입가격"], "기대수익률": r["기대수익률"], "확신도": r["확신도"],
+        "진입가": r["진입가격"], "손절": r["손절가격"], "목표": r["목표가격"],
+        "기대수익률": r["기대수익률"], "확신도": r["확신도"],
         "trade": g["trade"], "gate_pass": g["pass"], "gate_fail": g["fail"],
         "수량": s["shares"], "금액": s["amount_krw"],
     }
