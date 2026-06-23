@@ -70,14 +70,17 @@ _judge_mri:        Optional[Callable[[str], Awaitable[dict]]] = None
 _support_zone:     Optional[Callable[..., Awaitable[dict]]]   = None
 _fetch_index_ret5: Optional[Callable[[], Awaitable[Optional[float]]]] = None
 _judge_resolve:    Optional[Callable[[str], Optional[str]]]   = None   # 종목명↔코드 교차검색 (SSOT 재사용)
+_scan_universe:    Optional[Callable[..., Awaitable[dict]]]   = None   # mri_scan — 67유니버스 1차 스코어링 (Stage1)
 
 
-def register_trader(*, judge_mri, support_zone, fetch_index_ret5=None, judge_resolve=None) -> None:
-    global _judge_mri, _support_zone, _fetch_index_ret5, _judge_resolve
+def register_trader(*, judge_mri, support_zone, fetch_index_ret5=None,
+                    judge_resolve=None, scan_universe=None) -> None:
+    global _judge_mri, _support_zone, _fetch_index_ret5, _judge_resolve, _scan_universe
     _judge_mri = judge_mri
     _support_zone = support_zone
     _fetch_index_ret5 = fetch_index_ret5
-    _judge_resolve = judge_resolve   # main_safe의 _judge_resolve 주입 — 이름으로도 조회
+    _judge_resolve = judge_resolve     # main_safe의 _judge_resolve 주입 — 이름으로도 조회
+    _scan_universe = scan_universe      # main_safe의 mri_scan 주입 — 전체 유니버스 2단계 스캔
 
 
 def _ready() -> bool:
@@ -404,15 +407,30 @@ def _scan_row(rep: dict) -> dict:
 
 
 @router.get("/scan")
-async def trader_scan(codes: str = "", group: str = "all"):
+async def trader_scan(codes: str = "", group: str = "all", min_score: int = 0, top: int = 15):
     """유니버스 일괄 스캔 — 게이트 통과(매수) 후보를 한 번에.
-    codes=005930,000660 (커스텀) · group=core|watch|all (기본 all=CORE+WATCH)."""
+    codes=005930,000660 (커스텀) · group=core|watch|all|universe.
+    group=universe → 2단계: mri_scan(67종목 1차) → 상위 top개만 정밀 판단."""
     if not _ready():
         raise HTTPException(status_code=503, detail="register_trader 미호출 — SSOT 함수 미주입")
 
+    stage1 = None
     if codes.strip():
         raw = [c.strip() for c in codes.split(",") if c.strip()]
         grp = "custom"
+    elif group == "universe":
+        if _scan_universe is None:
+            raise HTTPException(status_code=503,
+                                detail="scan_universe 미주입 — register_trader에 mri_scan 연결 필요")
+        top = max(1, min(top, SCAN_MAX))
+        s1 = await _scan_universe(universe="wave", min_score=min_score, limit=top)  # Stage 1
+        items = s1.get("items", []) if isinstance(s1, dict) else []
+        raw = [it.get("code") for it in items if it.get("code")]
+        grp = "universe"
+        stage1 = {"universe_count": (s1.get("count") if isinstance(s1, dict) else None),
+                  "passed": (s1.get("passed") if isinstance(s1, dict) else None),
+                  "shortlist": len(raw), "min_score": min_score, "top": top,
+                  "note": "Stage1 mri_scan(judge_mri SSOT · 5분캐시 · 동시3) → Stage2 정밀판단"}
     elif group == "core":
         raw, grp = list(TRADER_CORE), "core"
     elif group == "watch":
@@ -450,7 +468,7 @@ async def trader_scan(codes: str = "", group: str = "all"):
         "engine": "Risk Judge v1.2 · Universe Scan",
         "operation_mode": {"mode": _TRADER_MODE, "label": MODE_LABEL[_TRADER_MODE]},
         "settings": {"rr_gate": _RR_GATE, "risk_pct": _RISK_PCT, "risk_budget_krw": _risk_budget()},
-        "group": grp, "summary": summary, "results": rows, "errors": errors,
+        "group": grp, "stage1": stage1, "summary": summary, "results": rows, "errors": errors,
         "rule_a": "스캔은 후보 제시. 최종 결정은 림빅. NO = 즉시 정지.",
     }
 

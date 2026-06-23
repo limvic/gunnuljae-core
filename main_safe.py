@@ -4113,5 +4113,6 @@ async def memo_delete(mid: str):
 #    실패 격리: risk_judge는 독립 모듈 — 본 시스템 영향 0.
 # ══════════════════════════════════════════════════════════════════════════════
 from risk_judge import router as trader_router, register_trader
-register_trader(judge_mri=judge_mri, support_zone=support_zone, judge_resolve=_judge_resolve)
+register_trader(judge_mri=judge_mri, support_zone=support_zone,
+                judge_resolve=_judge_resolve, scan_universe=mri_scan)
 app.include_router(trader_router)
