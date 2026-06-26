@@ -2164,9 +2164,11 @@ async def search_stock(query: str):
 @app.get("/index_snapshot")
 async def index_snapshot():
     """
-    실시간 지수 스냅샷 (v2 — 안정성 강화)
-    - KOSPI / KOSDAQ : Naver 모바일 시세 페이지 (정규식 파싱)
-    - NASDAQ / S&P500 : Yahoo Finance chart API
+    실시간 지수 스냅샷 (v3 — KIS 정식 지수조회 SSOT)
+    - KOSPI / KOSDAQ : KIS 국내업종 현재지수(FHPUP02100000) → KRX 확정 등락률
+                       실패 시 Yahoo → Naver 자동 폴백 (무중단)
+    - NASDAQ / S&P500 / VIX / 원달러 : Yahoo Finance chart API
+    부호 SSOT: 국내=prdy_vrss_sign, 해외=price−prev
     캐시 TTL: 60초
     """
     import re
@@ -2324,16 +2326,66 @@ async def index_snapshot():
             result["_debug"][label] = f"err: {type(e).__name__}: {str(e)[:80]}"
             return None
 
-    # KOSPI / KOSDAQ : Yahoo 우선(부호 정확), 실패 시 Naver 백업
-    result["kospi"] = await fetch_yahoo("%5EKS11", "kospi")
-    if result["kospi"] is None:
-        result["_debug"]["kospi_src"] = "yahoo 실패 → naver 백업"
-        result["kospi"] = await fetch_naver_index_fallback("KOSPI", "kospi")
+    # ── 2.5 KOSPI/KOSDAQ 전용: KIS 정식 지수조회 (등락률 SSOT = KRX 공식 확정치)
+    #    TR_ID FHPUP02100000 · /uapi/domestic-stock/v1/quotations/inquire-index-price
+    #    부호 SSOT: prdy_vrss_sign (1/2=상승, 3=보합, 4/5=하락) — 절댓값에 부호를 곱한다.
+    #    Yahoo chartPreviousClose 기준일 오차(연속 하락장에서 낙폭 과장) 문제 제거.
+    #    → price·등락률 모두 KRX 확정치 = 토스와 일치. (2026.06.26 림빅 결정 ②)
+    async def fetch_kis_index(iscd, label):
+        try:
+            token = await get_token()
+            headers = {
+                "content-type": "application/json",
+                "authorization": f"Bearer {token}",
+                "appkey": KIS_APP_KEY, "appsecret": KIS_APP_SECRET,
+                "tr_id": "FHPUP02100000", "custtype": "P",
+            }
+            async with httpx.AsyncClient(timeout=8) as c:
+                res = await c.get(
+                    f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-price",
+                    params={"fid_cond_mrkt_div_code": "U", "fid_input_iscd": iscd},
+                    headers=headers,
+                )
+            data = res.json()
+            if data.get("rt_cd") != "0":
+                result["_debug"][label] = f"kis rt_cd={data.get('rt_cd')} {str(data.get('msg1',''))[:40]}"
+                return None
+            o = data.get("output") or {}
+            price = float(o.get("bstp_nmix_prpr", 0) or 0)
+            if price <= 0:
+                result["_debug"][label] = "kis price<=0"
+                return None
+            # 부호 SSOT — prdy_vrss_sign 기준 (텍스트/계산 추정 없음)
+            sign_raw = str(o.get("prdy_vrss_sign", "")).strip()
+            sign = 1 if sign_raw in ("1", "2") else -1 if sign_raw in ("4", "5") else 0
+            abs_pct = abs(float(o.get("bstp_nmix_prdy_ctrt", 0) or 0))
+            abs_chg = abs(float(o.get("bstp_nmix_prdy_vrss", 0) or 0))
+            return {
+                "price": round(price, 2),
+                "change": round(abs_chg * sign, 2),
+                "change_pct": round(abs_pct * sign, 2),
+                "sign": sign,
+            }
+        except Exception as e:
+            result["_debug"][label] = f"kis err: {type(e).__name__}: {str(e)[:60]}"
+            return None
 
-    result["kosdaq"] = await fetch_yahoo("%5EKQ11", "kosdaq")
+    # KOSPI / KOSDAQ : KIS 정식 지수조회 우선 → 실패 시 Yahoo → Naver (무중단 3단 폴백)
+    result["kospi"] = await fetch_kis_index("0001", "kospi")
+    if result["kospi"] is None:
+        result["_debug"]["kospi_src"] = "kis 실패 → yahoo 백업"
+        result["kospi"] = await fetch_yahoo("%5EKS11", "kospi")
+        if result["kospi"] is None:
+            result["_debug"]["kospi_src2"] = "yahoo 실패 → naver 백업"
+            result["kospi"] = await fetch_naver_index_fallback("KOSPI", "kospi")
+
+    result["kosdaq"] = await fetch_kis_index("1001", "kosdaq")
     if result["kosdaq"] is None:
-        result["_debug"]["kosdaq_src"] = "yahoo 실패 → naver 백업"
-        result["kosdaq"] = await fetch_naver_index_fallback("KOSDAQ", "kosdaq")
+        result["_debug"]["kosdaq_src"] = "kis 실패 → yahoo 백업"
+        result["kosdaq"] = await fetch_yahoo("%5EKQ11", "kosdaq")
+        if result["kosdaq"] is None:
+            result["_debug"]["kosdaq_src2"] = "yahoo 실패 → naver 백업"
+            result["kosdaq"] = await fetch_naver_index_fallback("KOSDAQ", "kosdaq")
 
     result["nasdaq"] = await fetch_yahoo("%5EIXIC", "nasdaq")
     result["sp500"]  = await fetch_yahoo("%5EGSPC", "sp500")
