@@ -2190,9 +2190,15 @@ async def index_snapshot():
         "_debug": {}
     }
 
-    # ── 1. KOSPI / KOSDAQ : Naver 금융 sise_index 페이지
-    async def fetch_naver_index(code, label):
-        """code: KOSPI / KOSDAQ"""
+    # ── 1. KOSPI / KOSDAQ : Naver 금융 sise_index 페이지 (백업 경로)
+    async def fetch_naver_index_fallback(code, label):
+        """[백업 전용] code: KOSPI / KOSDAQ
+        부호 판정 SSOT: 텍스트/클래스에 의존하지 않고
+        '현재가 vs 전일종가' 로만 부호를 계산한다 (Yahoo 경로와 동일 방식).
+        - 전일종가는 sise_index 페이지의 '전일' 값(.tah 셀)에서 읽는다.
+        - 전일종가를 못 읽으면 class(up/down)·텍스트(상승/하락)를 백업으로 사용.
+        - 끝내 부호를 못 정하면 가짜 양수를 만들지 않고 None 처리한다.
+        """
         try:
             url = f"https://finance.naver.com/sise/sise_index.naver?code={code}"
             async with httpx.AsyncClient(timeout=8, headers={"User-Agent": UA}) as c:
@@ -2203,38 +2209,91 @@ async def index_snapshot():
             # 현재 지수
             now_val_el = soup.select_one("#now_value")
             if not now_val_el:
-                result["_debug"][label] = "now_value not found"
+                result["_debug"][label] = "now_value not found (페이지 구조 변경 의심)"
                 return None
             price = float(now_val_el.text.strip().replace(",", ""))
 
-            # 전일 대비 + 등락률 (#change_value_and_rate 안에 텍스트로 들어있음)
+            # 등락폭·등락률 절댓값 추출
             chg_box = soup.select_one("#change_value_and_rate")
-            change = None
-            change_pct = None
+            abs_change = None
+            abs_pct = None
+            box_txt = ""
+            box_html = ""
             if chg_box:
-                txt = chg_box.get_text(" ", strip=True)
-                # 예: "8.72 +0.32%" 또는 "2.15 -0.25%" 또는 "상승 8.72 +0.32%"
-                nums = re.findall(r"[-+]?\d+\.?\d*", txt)
+                box_txt = chg_box.get_text(" ", strip=True)
+                box_html = str(chg_box)
+                nums = re.findall(r"\d+\.?\d*", box_txt)  # 절댓값만
                 if len(nums) >= 2:
-                    change = float(nums[0])
-                    change_pct = float(nums[1])
-                # 부호 보정: "하락" 또는 "▼" 포함 시 음수
-                if any(s in txt for s in ["하락", "▼"]):
-                    change = -abs(change) if change is not None else None
-                    change_pct = -abs(change_pct) if change_pct is not None else None
-                elif any(s in txt for s in ["상승", "▲"]):
-                    change = abs(change) if change is not None else None
-                    change_pct = abs(change_pct) if change_pct is not None else None
+                    abs_change = abs(float(nums[0]))
+                    abs_pct = abs(float(nums[1]))
 
-            return {"price": price, "change": change, "change_pct": change_pct}
+            # ── 부호 판정 SSOT: 전일종가 대비 ──
+            sign = 0  # +1 상승 / -1 하락 / 0 미정
+            prev_close = None
+            # sise_index 표에는 '전일' 종가가 .tah 셀들로 들어있음. 그 중
+            # price 와 가장 가깝고 다른 값을 전일종가 후보로 본다.
+            try:
+                cand = []
+                for el in soup.select("td.tah, .tah, em, span"):
+                    t = el.get_text(strip=True).replace(",", "")
+                    m = re.fullmatch(r"\d{2,5}\.?\d*", t)
+                    if m:
+                        v = float(t)
+                        # 지수값 범위 안 + 현재가와 다른 값만 후보
+                        if 100 < v < 60000 and abs(v - price) > 1e-9:
+                            cand.append(v)
+                # 등락폭만큼 떨어진 값을 전일종가로 우선 채택
+                if abs_change is not None:
+                    for v in cand:
+                        if abs(abs(price - v) - abs_change) < max(0.05, abs_change * 0.02):
+                            prev_close = v
+                            break
+            except Exception:
+                prev_close = None
+
+            if prev_close is not None:
+                if price > prev_close:
+                    sign = +1
+                elif price < prev_close:
+                    sign = -1
+                else:
+                    sign = 0
+
+            # 백업1: CSS 클래스(up/down)
+            if sign == 0 and box_html:
+                if "down" in box_html or "ico_down" in box_html:
+                    sign = -1
+                elif "up" in box_html or "ico_up" in box_html:
+                    sign = +1
+
+            # 백업2: 텍스트(상승/하락/▲/▼)
+            if sign == 0 and box_txt:
+                if any(s in box_txt for s in ["하락", "▼"]):
+                    sign = -1
+                elif any(s in box_txt for s in ["상승", "▲"]):
+                    sign = +1
+
+            if sign == 0:
+                # 부호 신뢰 불가 → 가짜 양수 금지. 값은 주되 부호 미정 기록.
+                result["_debug"][label] = (
+                    f"sign undetermined: prev={prev_close}, txt='{box_txt[:40]}'"
+                )
+
+            change = (abs_change * sign) if abs_change is not None else None
+            change_pct = (abs_pct * sign) if abs_pct is not None else None
+
+            return {
+                "price": price,
+                "change": change,
+                "change_pct": change_pct,
+                "sign": sign,          # 1/-1/0
+                "prev_close": prev_close,
+            }
         except Exception as e:
             result["_debug"][label] = f"err: {type(e).__name__}: {str(e)[:80]}"
             return None
 
-    result["kospi"]  = await fetch_naver_index("KOSPI",  "kospi")
-    result["kosdaq"] = await fetch_naver_index("KOSDAQ", "kosdaq")
-
-    # ── 2. NASDAQ / S&P500 : Yahoo Finance chart API
+    # ── 2. 모든 지수 공통: Yahoo Finance chart API (부호 SSOT = price - prev)
     async def fetch_yahoo(symbol, label):
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
@@ -2264,6 +2323,17 @@ async def index_snapshot():
         except Exception as e:
             result["_debug"][label] = f"err: {type(e).__name__}: {str(e)[:80]}"
             return None
+
+    # KOSPI / KOSDAQ : Yahoo 우선(부호 정확), 실패 시 Naver 백업
+    result["kospi"] = await fetch_yahoo("%5EKS11", "kospi")
+    if result["kospi"] is None:
+        result["_debug"]["kospi_src"] = "yahoo 실패 → naver 백업"
+        result["kospi"] = await fetch_naver_index_fallback("KOSPI", "kospi")
+
+    result["kosdaq"] = await fetch_yahoo("%5EKQ11", "kosdaq")
+    if result["kosdaq"] is None:
+        result["_debug"]["kosdaq_src"] = "yahoo 실패 → naver 백업"
+        result["kosdaq"] = await fetch_naver_index_fallback("KOSDAQ", "kosdaq")
 
     result["nasdaq"] = await fetch_yahoo("%5EIXIC", "nasdaq")
     result["sp500"]  = await fetch_yahoo("%5EGSPC", "sp500")
