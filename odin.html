@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>오딘의 드라우프니르 — ODIN'S DRAUPNIR v0.1</title>
+<!--
+  오딘의 드라우프니르 v0.1 (정적 HTML 단일 파일)
+  - Trinity 상위 자동 "판단" 대시보드 (자동주문 아님 / 알림+점수+진입계획+리스크)
+  - 외부 빌드 도구 없음. GitHub Pages에서 바로 열림.
+  - mockData는 <script> 안 const MOCK 한 곳에서만 읽음 → v0.2에서 그 키만 fetch로 교체.
+  - 데이터 없으면 "준비중" 원칙 (가짜 숫자 착시 금지 → DEMO 배지).
+  - RUNE TIME 실시간(2026). NORMAL/CASH 토글 작동.
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+:root{
+  --bg:#050608; --gold:#d6a84f; --gold-dim:rgba(214,168,79,.55);
+  --gold-faint:rgba(214,168,79,.12); --up:#22c55e; --down:#ef4444;
+  --card:#0d1117; --border:rgba(214,168,79,.35); --border-soft:rgba(214,168,79,.18);
+  --text:#e8e4d8; --text-dim:#8a8578; --panel:#0a0d12;
+  --display:'Cinzel','Trajan Pro',Georgia,serif;
+  --mono:'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace;
+  --body:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;}
+
+/* HEADER */
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;
+  border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(214,168,79,.06),transparent);}
+.hd-left{display:flex;align-items:center;gap:12px;min-width:0;}
+.hd h1{margin:0;font:700 17px/1 var(--display);letter-spacing:.16em;color:var(--gold);white-space:nowrap;}
+.hd .sub{margin:3px 0 0;font:400 9px var(--body);letter-spacing:.22em;color:var(--text-dim);}
+.hd-right{display:flex;align-items:center;gap:16px;}
+.live-wrap{display:flex;align-items:center;gap:6px;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--up);display:inline-block;animation:pulse 1.6s ease-in-out infinite;}
+.live-txt{font:600 10px var(--mono);color:var(--up);letter-spacing:.08em;}
+.mode-btn{cursor:pointer;font:700 10px var(--mono);letter-spacing:.1em;background:transparent;border-radius:7px;padding:6px 12px;}
+.runetime{text-align:right;}
+.runetime .lbl{font:400 9px var(--body);color:var(--text-dim);letter-spacing:.1em;}
+.runetime .clk{font:600 13px var(--mono);color:var(--gold);}
+.runetime .dt{font:400 10px var(--mono);color:var(--text-dim);}
+
+/* SHELL */
+.shell{display:grid;grid-template-columns:1fr;padding:16px;gap:16px;}
+.nav{display:flex;gap:6px;overflow-x:auto;padding:4px 0;}
+.nav::-webkit-scrollbar{height:0;}
+.nav button{cursor:pointer;text-align:left;white-space:nowrap;font:400 12px var(--body);
+  color:var(--text-dim);background:transparent;border:1px solid transparent;border-radius:8px;padding:9px 12px;}
+.nav button.active{font-weight:600;color:var(--gold);background:var(--gold-faint);border-color:var(--border);}
+.nav .creed{margin-top:auto;padding-top:14px;font:400 9px/1.6 var(--body);color:var(--text-dim);letter-spacing:.1em;}
+.nav .creed .ver{color:var(--gold-dim);}
+
+.grid{display:grid;grid-template-columns:1fr;gap:14px;}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border-soft);border-radius:14px;padding:16px 18px;
+  display:flex;flex-direction:column;gap:12px;min-width:0;}
+.card.glow{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-faint),0 0 24px rgba(214,168,79,.12);}
+.card.span2{grid-column:span 1;}
+.card-hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.card-hd h3{margin:0;font:600 13px/1.2 var(--display);letter-spacing:.14em;color:var(--gold);text-transform:uppercase;}
+.card-hd .csub{margin:3px 0 0;font:400 11px/1.2 var(--body);color:var(--text-dim);}
+
+.tag{font:500 9px var(--mono);letter-spacing:.1em;color:var(--text-dim);border:1px solid var(--border-soft);border-radius:5px;padding:2px 7px;}
+.pill{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;background:var(--gold-faint);border:1px solid var(--border-soft);}
+.pill .pl{font:400 10px var(--body);color:var(--text-dim);}
+.pill .pv{font:600 11px var(--mono);}
+
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-soft);}
+.kv .k{font:400 12px var(--body);color:var(--text-dim);}
+.kv .v{font:600 12px var(--mono);}
+
+.bar-row{display:grid;align-items:center;gap:8px;}
+.bar{height:6px;border-radius:3px;background:var(--gold-faint);overflow:hidden;}
+.bar > i{display:block;height:100%;border-radius:3px;}
+
+.stat{background:var(--panel);border:1px solid var(--border-soft);border-radius:8px;padding:8px 10px;}
+.stat .sl{font:400 10px var(--body);color:var(--text-dim);margin-bottom:3px;}
+.stat .sv{font:600 13px var(--mono);}
+
+.chk{font:500 10px var(--body);border-radius:999px;padding:3px 9px;}
+
+.tier{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;
+  border:1px solid var(--gold);background:var(--gold-faint);font:700 15px var(--display);color:var(--gold);}
+
+.ring-row{display:flex;gap:8px;align-items:center;justify-content:center;padding:6px 0;}
+.ring{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-soft);}
+.ring.on{border-color:var(--gold);background:radial-gradient(circle,rgba(214,168,79,.5),transparent 72%);
+  box-shadow:0 0 8px rgba(214,168,79,.5);}
+
+table{width:100%;border-collapse:collapse;min-width:420px;}
+th{text-align:left;font:500 10px var(--body);color:var(--text-dim);padding:0 8px 8px;letter-spacing:.06em;}
+td{padding:8px;}
+tbody tr{border-top:1px solid var(--border-soft);}
+.scroll-x{overflow-x:auto;}
+.scroll-x::-webkit-scrollbar{height:6px;}
+
+.placeholder{display:grid;place-items:center;min-height:240px;border:1px dashed var(--border);
+  border-radius:14px;background:var(--card);text-align:center;padding:24px;}
+.placeholder .pt{font:600 14px var(--display);letter-spacing:.12em;color:var(--gold);}
+.placeholder p{margin:10px 0 0;font:400 12px var(--body);color:var(--text-dim);}
+
+.ready{font:700 18px var(--display);letter-spacing:.08em;animation:glow 2s ease-in-out infinite;}
+
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes glow{0%,100%{text-shadow:0 0 6px rgba(214,168,79,.5);}50%{text-shadow:0 0 16px rgba(214,168,79,.9);}}
+
+@media (min-width:720px){ .grid{grid-template-columns:1fr 1fr;} .card.span2{grid-column:span 2;} }
+@media (min-width:1040px){
+  .shell{grid-template-columns:188px 1fr;}
+  .nav{flex-direction:column;overflow:visible;}
+  .grid{grid-template-columns:repeat(3,1fr);}
+  .card.span2{grid-column:span 2;}
+}
+@media (prefers-reduced-motion:reduce){ .live-dot,.ready{animation:none;} }
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="hd-left">
+    <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="16" fill="none" stroke="#d6a84f" stroke-width="1.4"/>
+      <circle cx="20" cy="20" r="11" fill="none" stroke="rgba(214,168,79,.55)" stroke-width="1"/>
+      <path d="M20 6 L20 34 M6 20 L34 20 M11 11 L29 29 M29 11 L11 29" stroke="rgba(214,168,79,.55)" stroke-width="0.7"/>
+      <circle cx="20" cy="20" r="3" fill="#d6a84f"/>
+    </svg>
+    <div>
+      <h1>ODIN'S DRAUPNIR</h1>
+      <p class="sub">오딘의 드라우프니르 · AUTOMATED JUDGMENT</p>
+    </div>
+  </div>
+  <div class="hd-right">
+    <div class="live-wrap"><span class="live-dot"></span><span class="live-txt">LIVE</span></div>
+    <button class="mode-btn" id="modeBtn"></button>
+    <div class="runetime">
+      <div class="lbl">RUNE TIME</div>
+      <div class="clk" id="clk">--:--:--</div>
+      <div class="dt" id="dt">----.--.--</div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="nav" id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ───────── 디자인 토큰 (JS 측 색상) ───────── */
+const C = {
+  gold:"#d6a84f", goldDim:"rgba(214,168,79,.55)", goldFaint:"rgba(214,168,79,.12)",
+  up:"#22c55e", down:"#ef4444", text:"#e8e4d8", textDim:"#8a8578",
+  border:"rgba(214,168,79,.35)", borderSoft:"rgba(214,168,79,.18)",
+};
+
+/* ───────── MOCK DATA (교체 지점 단일) ───────── */
+const MOCK = {
+  scan: { kospi:0.64, kosdaq:1.12, value:"2.87조", sectorStrength:"2.4 / 5",
+          mood:"BULLISH", theme:"2건 감지", news:"12건 수집" },
+  sectors: [
+    {name:"2차전지",score:87},{name:"반도체",score:82},{name:"AI / 로봇",score:78},
+    {name:"바이오",score:63},{name:"게임",score:58},{name:"자동차",score:55},
+    {name:"조선",score:48},{name:"금융",score:40},
+  ],
+  rune: { name:"삼성전자", code:"005930", total:86, tier:"S",
+    parts:[ {k:"거래량",v:18,max:20},{k:"추세",v:18,max:20},{k:"섹터",v:13,max:15},
+            {k:"재무",v:13,max:15},{k:"위치",v:12,max:15},{k:"수급",v:9,max:10},{k:"리스크",v:3,max:5} ] },
+  // v0.2 교체 지점: 고정 종목 아니라 Trinity Universe / KIS 스캔 결과로 연결
+  top: [
+    {r:1,name:"삼성전자",score:86},{r:2,name:"SK하이닉스",score:83},{r:3,name:"LG에너지솔루션",score:81},
+    {r:4,name:"네이버",score:78},{r:5,name:"카카오",score:76},{r:6,name:"현대차",score:74},
+    {r:7,name:"POSCO홀딩스",score:72},{r:8,name:"삼성SDI",score:70},
+  ],
+  gungnir: { name:"삼성전자", code:"005930", side:"LONG", status:"READY",
+    entry:78900, target:85500, rr:2.1, stop:76200, stopPct:-3.4,
+    checks:[ {k:"시장 ON",ok:true},{k:"섹터 ON",ok:true},{k:"룬 점수 80+",ok:true},
+             {k:"패턴 일치",ok:true},{k:"손절가 명확",ok:true},{k:"R/R 2.0+",ok:true} ] },
+  judge: { grade:"A+", label:"EXCELLENT", win:83.7, expect:4.02, risk:"LOW", memSimilar:23, memWin:78.3 },
+  vault: { day:4, cycle:9, multiple:"1.1845x", note:"9거래일 단위 성과 복기" },
+  risk: { daily:1.25, dailyLimit:-2.0, positions:3, maxPositions:10, cash:42, gauge:24, level:"SAFE",
+          newEntries:2, maxNewEntries:3 },
+  vavlog: [
+    {t:"10:30:15",name:"삼성전자",act:"매수",res:"보유중",pct:2.15},
+    {t:"09:45:22",name:"SK하이닉스",act:"매수",res:"보유중",pct:1.82},
+    {t:"09:20:10",name:"LG에너지솔루션",act:"매수",res:"보유중",pct:-0.45},
+    {t:"어제",name:"현대차",act:"매도",res:"익절",pct:3.21},
+    {t:"어제",name:"POSCO홀딩스",act:"매도",res:"익절",pct:2.87},
+  ],
+};
+
+/* ───────── 상태 ───────── */
+const state = { tab:"Dashboard", mode:"NORMAL" };
+const NAV = ["Dashboard","Market Scan","Rune Score","Gungnir Signal","Draupnir Vault","VAVLOG","Settings"];
+
+/* ───────── 헬퍼 ───────── */
+const pct = n => `${n>0?"+":""}${Number(n).toFixed(2)}%`;
+const won = n => `₩${Number(n).toLocaleString()}`;
+const ud  = n => (n>=0 ? C.up : C.down);
+const esc = s => String(s);
+
+/* ───────── 카드 빌더 ───────── */
+function cardHd(title, sub, right){
+  return `<div class="card-hd"><div><h3>${title}</h3>${sub?`<p class="csub">${sub}</p>`:""}</div>${right||""}</div>`;
+}
+
+function marketStatusCard(){
+  const cash = MOCK.risk.cash;
+  const isCash = state.mode==="CASH";
+  return `<section class="card">
+    ${cardHd("Market Status","시장 상태")}
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font:700 30px/1 var(--display);color:${C.up};letter-spacing:.04em;">BULL</div>
+      <span style="font-size:26px;">🐂</span>
+    </div>
+    <p style="margin:0;font:400 12px/1.4 var(--body);color:${C.textDim};">
+      ${isCash ? "현금 모드 — 신규 진입 보류" : "코스피 강세 흐름 감지"}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="pill"><span class="pl">모드</span><span class="pv" style="color:${isCash?C.down:C.up};">${state.mode}</span></span>
+      <span class="pill"><span class="pl">현금</span><span class="pv" style="color:${C.gold};">${cash}%</span></span>
+    </div>
+  </section>`;
+}
+
+function marketScanCard(){
+  const s = MOCK.scan;
+  const row = (k,v,tone)=>`<div class="kv"><span class="k">${k}</span><span class="v" style="color:${tone||C.text};">${v}</span></div>`;
+  return `<section class="card">
+    ${cardHd("Market Scan","Huginn · 생각 까마귀")}
+    <div>
+      ${row("KOSPI",pct(s.kospi),ud(s.kospi))}
+      ${row("KOSDAQ",pct(s.kosdaq),ud(s.kosdaq))}
+      ${row("거래대금",s.value)}
+      ${row("섹터 강도",s.sectorStrength,C.gold)}
+      ${row("시장 분위기",s.mood,C.up)}
+      ${row("특이 테마",s.theme,C.gold)}
+      ${row("뉴스 분석",s.news)}
+    </div>
+  </section>`;
+}
+
+function sectorStrengthCard(){
+  const rows = MOCK.sectors.map(s=>`
+    <div class="bar-row" style="grid-template-columns:78px 1fr 28px;">
+      <span style="font:400 11px var(--body);color:${C.text};">${s.name}</span>
+      <div class="bar"><i style="width:${s.score}%;background:linear-gradient(90deg,rgba(214,168,79,.45),${C.gold});"></i></div>
+      <span style="font:600 11px var(--mono);color:${C.gold};text-align:right;">${s.score}</span>
+    </div>`).join("");
+  return `<section class="card">
+    ${cardHd("Sector Strength","섹터 강도")}
+    <div style="display:flex;flex-direction:column;gap:9px;">${rows}</div>
+  </section>`;
+}
+
+function runeScoreCard(){
+  const r = MOCK.rune;
+  const parts = r.parts.map(p=>`
+    <div class="bar-row" style="grid-template-columns:52px 1fr 40px;">
+      <span style="font:400 11px var(--body);color:${C.textDim};">${p.k}</span>
+      <div class="bar" style="height:5px;"><i style="width:${(p.v/p.max)*100}%;background:${C.gold};"></i></div>
+      <span style="font:600 11px var(--mono);color:${C.text};text-align:right;">${p.v}/${p.max}</span>
+    </div>`).join("");
+  return `<section class="card">
+    ${cardHd("Rune Score","룬 점수 분석",`<span class="tier">${r.tier}</span>`)}
+    <div style="display:flex;align-items:baseline;gap:10px;">
+      <span style="font:700 40px/1 var(--display);color:${C.gold};">${r.total}</span>
+      <span style="font:400 14px var(--mono);color:${C.textDim};">/ 100</span>
+    </div>
+    <p style="margin:0;font:600 13px var(--body);color:${C.text};">${r.name}
+      <span style="color:${C.textDim};font-weight:400;font-family:var(--mono);font-size:11px;">(${r.code})</span></p>
+    <div style="display:flex;flex-direction:column;gap:7px;">${parts}</div>
+  </section>`;
+}
+
+function topRuneStocksCard(){
+  const rows = MOCK.top.map(s=>`
+    <div style="display:grid;grid-template-columns:22px 1fr 36px;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid ${C.borderSoft};">
+      <span style="font:600 12px var(--mono);color:${s.r<=3?C.gold:C.textDim};">${s.r}</span>
+      <span style="font:400 12px var(--body);color:${C.text};">${s.name}</span>
+      <span style="font:700 13px var(--mono);color:${s.score>=80?C.gold:C.text};text-align:right;">${s.score}</span>
+    </div>`).join("");
+  return `<section class="card">
+    ${cardHd("Top Rune Stocks","Trinity 스캔 · 룬 점수 상위",`<span class="tag">SCAN</span>`)}
+    <div style="display:flex;flex-direction:column;">${rows}</div>
+  </section>`;
+}
+
+function gungnirSignalCard(){
+  const g = MOCK.gungnir;
+  const blocked = state.mode==="CASH";
+  const stat = (l,v,tone)=>`<div class="stat"><div class="sl">${l}</div><div class="sv" style="color:${tone||C.text};">${v}</div></div>`;
+  const checks = g.checks.map(c=>`
+    <span class="chk" style="color:${c.ok?C.up:C.textDim};border:1px solid ${c.ok?"rgba(34,197,94,.4)":C.borderSoft};">
+      ${c.ok?"✓ ":"· "}${c.k}</span>`).join("");
+  return `<section class="card ${blocked?"":"glow"}">
+    ${cardHd("Gungnir Signal","궁니르 진입 · 청산 신호",
+      `<span style="font:700 11px var(--mono);letter-spacing:.1em;color:${C.up};border:1px solid ${C.up};border-radius:6px;padding:2px 8px;">${g.side}</span>`)}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <p style="margin:0;font:700 16px var(--body);color:${C.text};">${g.name}
+        <span style="font:400 11px var(--mono);color:${C.textDim};"> (${g.code})</span></p>
+      <span class="${blocked?"":"ready"}" style="font:700 18px var(--display);letter-spacing:.08em;color:${blocked?C.down:C.gold};">
+        ${blocked?"HOLD":"READY"}</span>
+    </div>
+    <p style="margin:0;font:400 11px var(--body);color:${C.textDim};">${blocked?"현금 모드 — 진입 차단":"진입 가능"}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${stat("예상 진입가",won(g.entry),C.text)}
+      ${stat(`목표가 (R/R ${g.rr})`,won(g.target),C.up)}
+      ${stat("손절가",`${won(g.stop)} (${g.stopPct}%)`,C.down)}
+      ${stat("신호 등급",`LONG · 룬 ${MOCK.rune.total}`,C.gold)}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">${checks}</div>
+  </section>`;
+}
+
+function judgeVerdictCard(){
+  const j = MOCK.judge;
+  const stat = (l,v,tone)=>`<div class="stat"><div class="sl">${l}</div><div class="sv" style="color:${tone||C.text};">${v}</div></div>`;
+  return `<section class="card">
+    ${cardHd("Judge Verdict","Muninn · 기억 기반 판정")}
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="display:grid;place-items:center;width:76px;height:76px;border-radius:50%;border:2px solid ${C.gold};background:radial-gradient(circle,rgba(214,168,79,.18),transparent 70%);">
+        <span style="font:700 26px var(--display);color:${C.gold};line-height:1;">${j.grade}</span>
+      </div>
+      <div>
+        <div style="font:600 12px var(--display);letter-spacing:.12em;color:${C.gold};">${j.label}</div>
+        <div style="font:400 11px var(--body);color:${C.textDim};margin-top:4px;">유사 패턴 ${j.memSimilar}건 · 승률 ${j.memWin}%</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      ${stat("승률 예측",`${j.win}%`,C.up)}
+      ${stat("기대 수익률",pct(j.expect),C.up)}
+      ${stat("리스크 레벨",j.risk,C.up)}
+    </div>
+  </section>`;
+}
+
+function draupnirVaultCard(){
+  const v = MOCK.vault;
+  let rings="";
+  for(let i=0;i<v.cycle;i++){ rings += `<span class="ring ${i<v.day?"on":""}" title="Day ${i+1}"></span>`; }
+  return `<section class="card glow">
+    ${cardHd("Draupnir Vault","복리의 시작은 보존이다",`<span style="font:400 10px var(--mono);color:${C.textDim};">${v.day} / ${v.cycle} DAYS</span>`)}
+    <p style="margin:0;font:400 11px/1.5 var(--body);color:${C.textDim};">9거래일마다 같은 무게의 고리가 떨어진다 — 원본 고리는 잃지 않는다.</p>
+    <div class="ring-row">${rings}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1px solid ${C.borderSoft};border-radius:8px;padding:8px 12px;">
+      <div>
+        <div style="font:400 10px var(--body);color:${C.textDim};">복리 배수 <span style="color:${C.gold};">(DEMO)</span></div>
+        <div style="font:700 16px var(--mono);color:${C.gold};">${v.multiple}</div>
+      </div>
+      <div style="font:400 10px var(--body);color:${C.textDim};text-align:right;max-width:130px;">${v.note}</div>
+    </div>
+  </section>`;
+}
+
+function riskManagementCard(){
+  const r = MOCK.risk;
+  const canTrade = r.daily>r.dailyLimit && r.positions<r.maxPositions && r.newEntries>0;
+  const row=(k,v,tone)=>`<div style="display:flex;justify-content:space-between;"><span style="font:400 11px var(--body);color:${C.textDim};">${k}</span><span style="font:600 12px var(--mono);color:${tone||C.text};">${v}</span></div>`;
+  const circ=2*Math.PI*26, off=circ*(1-r.gauge/100);
+  return `<section class="card">
+    ${cardHd("Risk Management","리스크 관리")}
+    <div style="display:flex;align-items:center;gap:16px;">
+      <svg width="68" height="68" viewBox="0 0 68 68" aria-label="리스크 ${r.gauge}%">
+        <circle cx="34" cy="34" r="26" fill="none" stroke="${C.goldFaint}" stroke-width="6"/>
+        <circle cx="34" cy="34" r="26" fill="none" stroke="${C.gold}" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 34 34)"/>
+        <text x="34" y="32" text-anchor="middle" fill="${C.textDim}" style="font:400 8px var(--body);">RISK</text>
+        <text x="34" y="44" text-anchor="middle" fill="${C.gold}" style="font:700 14px var(--mono);">${r.gauge}%</text>
+      </svg>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        ${row("일일 손익",pct(r.daily),ud(r.daily))}
+        ${row("최대 손실 제한",`${r.dailyLimit.toFixed(2)}%`,C.down)}
+        ${row("포지션 수",`${r.positions} / ${r.maxPositions}`)}
+        ${row("현금 보유율",`${r.cash}%`,C.gold)}
+        ${row("오늘 신규진입 가능",`${r.newEntries} / ${r.maxNewEntries}`, r.newEntries>0?C.gold:C.down)}
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid ${C.borderSoft};padding-top:10px;">
+      <span style="font:400 11px var(--body);color:${C.textDim};">오늘 거래 가능</span>
+      <span style="font:700 12px var(--mono);letter-spacing:.08em;color:${canTrade?C.up:C.down};">${canTrade?"YES · SAFE":"NO · STOP"}</span>
+    </div>
+  </section>`;
+}
+
+function vavlogCard(){
+  const rows = MOCK.vavlog.map(l=>`
+    <tr>
+      <td style="font:400 11px var(--mono);color:${C.textDim};">${l.t}</td>
+      <td style="font:400 12px var(--body);color:${C.text};">${l.name}</td>
+      <td style="font:600 11px var(--mono);color:${l.act==="매수"?C.up:C.gold};">${l.act}</td>
+      <td style="font:400 11px var(--body);color:${l.res==="손절"?C.down:C.text};">${l.res}</td>
+      <td style="font:600 12px var(--mono);color:${ud(l.pct)};">${pct(l.pct)}</td>
+    </tr>`).join("");
+  return `<section class="card span2">
+    ${cardHd("VAVLOG","최근 매매 로그")}
+    <div class="scroll-x">
+      <table>
+        <thead><tr><th>시간</th><th>종목</th><th>신호</th><th>결과</th><th>수익률</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </section>`;
+}
+
+/* ───────── 렌더 ───────── */
+function renderNav(){
+  const nav = document.getElementById("nav");
+  nav.innerHTML = NAV.map(n=>`<button data-tab="${n}" class="${n===state.tab?"active":""}">${n}</button>`).join("")
+    + `<div class="creed">KNOWLEDGE IS POWER<br>RUNE IS EDGE<br><span class="ver">v0.1 · DEMO DATA</span></div>`;
+  nav.querySelectorAll("button[data-tab]").forEach(b=>{
+    b.addEventListener("click",()=>{ state.tab=b.dataset.tab; renderNav(); renderMain(); });
+  });
+}
+
+function renderMain(){
+  const main = document.getElementById("main");
+  if(state.tab==="Dashboard"){
+    main.className=""; main.innerHTML = `<div class="grid">
+      ${marketStatusCard()}${marketScanCard()}${sectorStrengthCard()}
+      ${runeScoreCard()}${topRuneStocksCard()}${gungnirSignalCard()}
+      ${judgeVerdictCard()}${draupnirVaultCard()}${riskManagementCard()}
+      ${vavlogCard()}
+    </div>`;
+  } else {
+    main.innerHTML = `<div class="placeholder"><div>
+      <div class="pt">${state.tab}</div>
+      <p>준비중 — v0.1은 Dashboard 중심입니다.</p>
+    </div></div>`;
+  }
+}
+
+function renderModeBtn(){
+  const b = document.getElementById("modeBtn");
+  const cash = state.mode==="CASH";
+  b.textContent = state.mode;
+  b.style.color = cash ? C.down : C.gold;
+  b.style.border = `1px solid ${cash?C.down:C.gold}`;
+}
+
+/* ───────── RUNE TIME 실시간 ───────── */
+function tick(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,"0");
+  document.getElementById("clk").textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  document.getElementById("dt").textContent  = `${d.getFullYear()}.${p(d.getMonth()+1)}.${p(d.getDate())}`;
+}
+
+/* ───────── 부트 ───────── */
+document.getElementById("modeBtn").addEventListener("click",()=>{
+  state.mode = state.mode==="NORMAL" ? "CASH" : "NORMAL";
+  renderModeBtn(); renderMain();
+});
+renderNav(); renderMain(); renderModeBtn(); tick();
+setInterval(tick,1000);
+</script>
+</body>
+</html>
