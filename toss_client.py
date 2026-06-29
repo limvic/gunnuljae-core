@@ -222,6 +222,55 @@ def toss_myip():
     """이 서버(Railway)가 실제로 어떤 외부 IP로 나가는지 확인.
     여기 나오는 IP(들)를 토스 '허용 IP 관리'에 등록하면 된다.
     여러 echo 서비스로 교차 확인한다."""
+    seen = _detect_outbound_ips()
+    if not seen:
+        return {"status": "준비중", "reason": "IP echo 서비스 응답 없음 — 잠시 후 재시도"}
+    return {
+        "outbound_ips": seen,
+        "hint": "이 IP(들)를 토스 '허용 IP 관리 → IP 추가'에 등록하세요. (PC IP가 아니라 이 IP)",
+    }
+
+
+@toss_router.get("/ip_check")
+def toss_ip_check():
+    """파수꾼 — 현재 Railway outbound IP가 토스 허용목록과 일치하는지 확인.
+    TOSS_ALLOWED_IPS(쉼표구분 환경변수)와 비교. 다르면 텔레그램 경고(선택).
+    ⚠️ 토스 허용 IP '자동 등록'은 불가(공개 API 없음). 등록은 림빅이 콘솔에서 수동."""
+    current = _detect_outbound_ips()
+    if not current:
+        return {"status": "준비중", "reason": "IP 감지 실패 — 잠시 후 재시도"}
+    allowed_raw = os.environ.get("TOSS_ALLOWED_IPS", "")
+    allowed = [x.strip() for x in allowed_raw.split(",") if x.strip()]
+    unregistered = [ip for ip in current if ip not in allowed]
+
+    if not allowed:
+        return {
+            "status": "준비중",
+            "current_ips": current,
+            "reason": "TOSS_ALLOWED_IPS 환경변수 미설정 — 등록한 IP를 쉼표로 넣으세요",
+        }
+    if unregistered:
+        # 변경 감지 → 텔레그램 경고(있으면). 등록은 사람이 수동으로.
+        msg = (
+            "🔱 [Trinity] 토스 허용 IP 불일치 감지\n"
+            f"현재 Railway IP: {', '.join(current)}\n"
+            f"미등록 IP: {', '.join(unregistered)}\n"
+            "→ 토스 '허용 IP 관리'에 추가 + TOSS_ALLOWED_IPS 갱신 필요"
+        )
+        sent = _try_telegram(msg)
+        return {
+            "status": "changed",
+            "current_ips": current,
+            "unregistered_ips": unregistered,
+            "allowed_ips": allowed,
+            "telegram_sent": sent,
+            "action": "토스 허용 IP 관리에 unregistered_ips 추가 + TOSS_ALLOWED_IPS 환경변수 갱신",
+        }
+    return {"status": "ok", "current_ips": current, "allowed_ips": allowed}
+
+
+def _detect_outbound_ips() -> list:
+    """이 서버의 실제 outbound IP(들)를 echo 서비스로 교차 확인."""
     services = [
         "https://api.ipify.org",
         "https://checkip.amazonaws.com",
@@ -237,12 +286,25 @@ def toss_myip():
                     seen.append(ip)
         except Exception:
             continue
-    if not seen:
-        return {"status": "준비중", "reason": "IP echo 서비스 응답 없음 — 잠시 후 재시도"}
-    return {
-        "outbound_ips": seen,
-        "hint": "이 IP(들)를 토스 '허용 IP 관리 → IP 추가'에 등록하세요. (PC IP가 아니라 이 IP)",
-    }
+    return seen
+
+
+def _try_telegram(message: str) -> bool:
+    """텔레그램 경고 전송(선택). main_safe와 동일 환경변수 재사용.
+    토큰/챗ID 없으면 조용히 False. 절대 본체에 영향 주지 않는다."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TG_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID") or os.environ.get("TG_CHAT_ID")
+    if not token or not chat_id:
+        return False
+    try:
+        r = httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": message},
+            timeout=8,
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
 
 
 @toss_router.get("/health")
