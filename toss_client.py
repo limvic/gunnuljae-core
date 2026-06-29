@@ -193,6 +193,34 @@ def _normalize_positions(raw):
 toss_router = APIRouter(prefix="/toss", tags=["toss"])
 
 
+@toss_router.get("/myip")
+def toss_myip():
+    """이 서버(Railway)가 실제로 어떤 외부 IP로 나가는지 확인.
+    여기 나오는 IP(들)를 토스 '허용 IP 관리'에 등록하면 된다.
+    여러 echo 서비스로 교차 확인한다."""
+    services = [
+        "https://api.ipify.org",
+        "https://checkip.amazonaws.com",
+        "https://ifconfig.me/ip",
+    ]
+    seen = []
+    for url in services:
+        try:
+            r = httpx.get(url, timeout=8)
+            if r.status_code == 200:
+                ip = r.text.strip()
+                if ip and ip not in seen:
+                    seen.append(ip)
+        except Exception:
+            continue
+    if not seen:
+        return {"status": "준비중", "reason": "IP echo 서비스 응답 없음 — 잠시 후 재시도"}
+    return {
+        "outbound_ips": seen,
+        "hint": "이 IP(들)를 토스 '허용 IP 관리 → IP 추가'에 등록하세요. (PC IP가 아니라 이 IP)",
+    }
+
+
 @toss_router.get("/health")
 def toss_health():
     """키 존재 + 토큰 발급 + 스펙 접근까지만 확인. 실데이터(경로) 의존 없음."""
