@@ -20,6 +20,13 @@ try:
 except Exception as _vav_e:
     print(f"[vavlog] 라우터 로드 실패 — 스킵(본체는 정상): {_vav_e}")
 
+# 🔱 TOSS Broker (읽기 전용) — Trinity Core SSOT. 실패해도 본체 무중단.
+try:
+    from toss_client import toss_router
+    app.include_router(toss_router)
+except Exception as _toss_e:
+    print(f"[toss] 라우터 로드 실패 — 스킵(본체는 정상): {_toss_e}")
+
 KIS_APP_KEY    = os.environ.get("KIS_APP_KEY", "")
 KIS_APP_SECRET = os.environ.get("KIS_APP_SECRET", "")
 KIS_MODE       = os.environ.get("KIS_MODE", "mock")
