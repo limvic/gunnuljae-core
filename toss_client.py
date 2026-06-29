@@ -53,19 +53,9 @@ SPEC_PATH = "/openapi-docs/latest/openapi.json"
 #   확인 전까지 빈 문자열이면 해당 엔드포인트는 "준비중"을 반환한다 (가짜 숫자 금지).
 #   예시 후보일 뿐, 실제 값은 /toss/spec 출력으로 검증할 것. 추측해서 쓰지 말 것.
 # ─────────────────────────────────────────────────────────────────────────────
-ACCOUNTS_PATH = ""    # 예: "/v1/accounts" — 스펙에서 '계좌 목록' 경로 확인 후 입력
-POSITIONS_PATH = ""   # 예: "/v1/accounts/{accountSeq}/holdings" — 보유 조회 경로 확인 후 입력
-
-# 정규화 매핑 — 첫 raw 응답(/toss/positions)을 본 뒤 실제 키 이름으로 채운다.
-#   왼쪽 = Odin MOCK.holding 키, 오른쪽 = 토스 응답 키 (확인 전엔 None).
-POSITION_FIELD_MAP = {
-    "code": None,       # 종목코드 (예: 토스 응답의 어떤 필드?)
-    "name": None,       # 종목명
-    "qty": None,        # 보유수량
-    "avgPrice": None,   # 평균단가
-    "evalPnl": None,    # 평가손익(금액)
-    "evalPct": None,    # 평가손익(%)
-}
+# ✅ 토스 OpenAPI 스펙(v1.1.5)으로 확정. 추측 아님.
+ACCOUNTS_PATH = "/api/v1/accounts"     # 계좌 목록 → result[].accountSeq
+POSITIONS_PATH = "/api/v1/holdings"    # 보유 주식 → result.items[]  (X-Tossinvest-Account 헤더 필요)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 토큰 캐시 (메모리). client credentials 토큰은 만료가 있으므로 재사용한다.
@@ -162,29 +152,63 @@ def toss_get_accounts() -> dict:
 def toss_get_positions(account_seq: str | None = None) -> dict:
     if not POSITIONS_PATH:
         return {"status": "준비중", "reason": "POSITIONS_PATH 미설정 — /toss/spec 로 경로 확인 필요"}
-    seq = str(account_seq or os.environ.get("TOSS_ACCOUNT_SEQ", ""))
-    path = POSITIONS_PATH.replace("{accountSeq}", seq)
-    return _toss_get(path, account_seq=account_seq)
+    return _toss_get(POSITIONS_PATH, account_seq=account_seq)
+
+
+def _num(v):
+    """토스 decimal 문자열 → float. None/빈값은 None."""
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return v
 
 
 def _normalize_positions(raw):
-    """raw 토스 응답 → Odin holding 형태로 매핑.
-    POSITION_FIELD_MAP 이 채워지기 전엔 None 을 반환(=준비중)."""
-    if any(v is None for v in POSITION_FIELD_MAP.values()):
+    """raw 토스 /api/v1/holdings 응답 → Odin holding 형태로 매핑.
+    스펙(v1.1.5) 기준: raw = {"result": {"items": [...], "marketValue": {...}, ...}}
+    종목별 손익은 중첩 객체(profitLoss.amount / profitLoss.rate)."""
+    result = raw.get("result") if isinstance(raw, dict) else None
+    if not isinstance(result, dict):
         return None
-    # 응답에서 종목 배열의 위치를 모르므로, 첫 list 값을 종목 배열로 간주(확인 후 고정).
-    items = raw if isinstance(raw, list) else None
-    if items is None and isinstance(raw, dict):
-        for v in raw.values():
-            if isinstance(v, list):
-                items = v
-                break
-    if items is None:
+    items = result.get("items")
+    if not isinstance(items, list):
         return None
     out = []
     for it in items:
-        out.append({k: it.get(src) for k, src in POSITION_FIELD_MAP.items()})
+        pl = it.get("profitLoss") or {}
+        mv = it.get("marketValue") or {}
+        rate = _num(pl.get("rate"))
+        out.append({
+            "code": it.get("symbol"),
+            "name": it.get("name"),
+            "qty": _num(it.get("quantity")),
+            "avgPrice": _num(it.get("averagePurchasePrice")),
+            "lastPrice": _num(it.get("lastPrice")),
+            "evalAmount": _num(mv.get("amount")),          # 평가금액
+            "evalPnl": _num(pl.get("amount")),             # 평가손익(금액)
+            "evalPct": round(rate * 100, 2) if isinstance(rate, float) else None,  # 손익률 %
+            "currency": it.get("currency"),
+            "market": it.get("marketCountry"),
+        })
     return out
+
+
+def _account_summary(raw):
+    """계좌 전체 요약(총매입/평가/손익). Odin Portfolio 카드용."""
+    result = raw.get("result") if isinstance(raw, dict) else None
+    if not isinstance(result, dict):
+        return None
+    pl = result.get("profitLoss") or {}
+    mv = result.get("marketValue") or {}
+    rate = _num(pl.get("rate"))
+    return {
+        "purchaseKRW": _num((result.get("totalPurchaseAmount") or {}).get("krw")),
+        "marketValueKRW": _num((mv.get("amount") or {}).get("krw")),
+        "pnlKRW": _num((pl.get("amount") or {}).get("krw")),
+        "pnlPct": round(rate * 100, 2) if isinstance(rate, float) else None,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -277,13 +301,18 @@ def toss_positions(account_seq: str | None = Query(default=None)):
 
 @toss_router.get("/portfolio")
 def toss_portfolio(account_seq: str | None = Query(default=None)):
-    """Odin v0.3 Portfolio/Holding 카드용. 정규화 가능할 때만 holding 반환."""
+    """Odin v0.3 Portfolio/Holding 카드용. holding(종목별) + summary(계좌요약)."""
     try:
         raw = toss_get_positions(account_seq)
         norm = _normalize_positions(raw)
         if norm is None:
-            return {"status": "준비중", "reason": "POSITION_FIELD_MAP 매핑 전 — raw 확인 필요"}
-        return {"holding": norm, "ts": int(time.time())}
+            return {"status": "준비중", "reason": "보유 응답 구조 예상과 다름 — /toss/positions raw 확인"}
+        return {
+            "holding": norm,
+            "summary": _account_summary(raw),
+            "count": len(norm),
+            "ts": int(time.time()),
+        }
     except Exception as e:
         return {"status": "준비중", "error": str(e)}
 
