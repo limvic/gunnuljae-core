@@ -9,6 +9,7 @@ toss_client.py  —  Trinity × 토스증권 Open API (읽기 전용 / READ-ONLY
        TOSS_ACCOUNT_SEQ                     (선택 — 없으면 /toss/accounts로 먼저 확인)
   3. 추측 금지. 계좌/보유 엔드포인트의 정확한 경로·필드명은 토스 OpenAPI 스펙과
      실제 raw 응답으로 확인한 뒤 매핑한다. 모르는 값은 "준비중"으로 둔다.
+  4. HTTP는 main_safe.py와 동일하게 httpx 사용 (requests 의존성 추가 없음).
 
 검증된 사실 (공식 문서 https://developers.tossinvest.com/docs 기준):
   - Base URL                : https://openapi.tossinvest.com
@@ -17,7 +18,7 @@ toss_client.py  —  Trinity × 토스증권 Open API (읽기 전용 / READ-ONLY
   - 인증 헤더               : Authorization: Bearer {access_token}
   - 계좌/자산/주문 카테고리   : 추가로 X-Tossinvest-Account: {accountSeq}
 
-연결 방법 (main_safe.py 에 두 줄만 추가):
+연결 방법 (main_safe.py 에 이미 추가됨):
   from toss_client import toss_router
   app.include_router(toss_router)
 
@@ -29,12 +30,13 @@ toss_client.py  —  Trinity × 토스증권 Open API (읽기 전용 / READ-ONLY
   GET /toss/portfolio  Odin v0.3 Portfolio/Holding 카드용 (정규화된 형태, 미확정 시 "준비중")
   GET /toss/raw?path=… 발견한 경로를 직접 GET 패스스루 (GET-only = 주문 불가 안전장치)
 """
+from __future__ import annotations
 
 import os
 import time
 import logging
 
-import requests
+import httpx
 from fastapi import APIRouter, Query
 
 log = logging.getLogger("toss")
@@ -96,22 +98,22 @@ def get_toss_access_token(force: bool = False) -> str:
     cid, csec = _creds()
     url = TOSS_BASE + TOKEN_PATH
 
-    # 표준 client_credentials: form-encoded body.
+    # 표준 client_credentials: form-encoded body (httpx 가 Content-Type 자동 설정).
     # ⚠️ 만약 401/invalid_client 이 나오면 토스가 HTTP Basic 인증을 요구하는 것일 수 있다.
-    #    그 경우 아래 data 에서 client_id/secret 을 빼고
-    #    auth=(cid, csec) 를 requests.post 에 넘기는 방식으로 바꿀 것. (검증 후 확정)
+    #    그 경우 data 에서 client_id/secret 을 빼고
+    #    httpx.post(url, data={"grant_type": "client_credentials"}, auth=(cid, csec), ...)
+    #    형태로 바꿀 것. (검증 후 확정)
     data = {
         "grant_type": "client_credentials",
         "client_id": cid,
         "client_secret": csec,
     }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-    resp = requests.post(url, data=data, headers=headers, timeout=10)
+    resp = httpx.post(url, data=data, timeout=10)
     if resp.status_code != 200:
         # 본문은 남기되 키는 절대 남기지 않는다.
         log.warning("toss token failed: %s %s", resp.status_code, resp.text[:300])
-        raise RuntimeError(f"토큰 발급 실패: HTTP {resp.status_code}")
+        raise RuntimeError(f"토큰 발급 실패: HTTP {resp.status_code} {resp.text[:200]}")
 
     body = resp.json()
     token = body.get("access_token")
@@ -135,7 +137,7 @@ def _auth_headers(account_seq: str | None = None) -> dict:
 def _toss_get(path: str, account_seq: str | None = None, params: dict | None = None) -> dict:
     """인증된 GET. 읽기 전용. path 는 '/'로 시작하는 전체 경로."""
     url = TOSS_BASE + path
-    resp = requests.get(url, headers=_auth_headers(account_seq), params=params, timeout=10)
+    resp = httpx.get(url, headers=_auth_headers(account_seq), params=params, timeout=10)
     resp.raise_for_status()
     return resp.json()
 
@@ -143,9 +145,9 @@ def _toss_get(path: str, account_seq: str | None = None, params: dict | None = N
 # ─────────────────────────────────────────────────────────────────────────────
 # 읽기 전용 함수
 # ─────────────────────────────────────────────────────────────────────────────
-def toss_get_spec_paths() -> list[str]:
+def toss_get_spec_paths() -> list:
     """토스 OpenAPI 스펙에서 전체 경로 목록을 추출 (인증 불필요)."""
-    resp = requests.get(TOSS_BASE + SPEC_PATH, timeout=10)
+    resp = httpx.get(TOSS_BASE + SPEC_PATH, timeout=10)
     resp.raise_for_status()
     spec = resp.json()
     return sorted((spec.get("paths") or {}).keys())
@@ -160,11 +162,12 @@ def toss_get_accounts() -> dict:
 def toss_get_positions(account_seq: str | None = None) -> dict:
     if not POSITIONS_PATH:
         return {"status": "준비중", "reason": "POSITIONS_PATH 미설정 — /toss/spec 로 경로 확인 필요"}
-    path = POSITIONS_PATH.replace("{accountSeq}", str(account_seq or os.environ.get("TOSS_ACCOUNT_SEQ", "")))
+    seq = str(account_seq or os.environ.get("TOSS_ACCOUNT_SEQ", ""))
+    path = POSITIONS_PATH.replace("{accountSeq}", seq)
     return _toss_get(path, account_seq=account_seq)
 
 
-def _normalize_positions(raw) -> list[dict] | None:
+def _normalize_positions(raw):
     """raw 토스 응답 → Odin holding 형태로 매핑.
     POSITION_FIELD_MAP 이 채워지기 전엔 None 을 반환(=준비중)."""
     if any(v is None for v in POSITION_FIELD_MAP.values()):
@@ -188,6 +191,34 @@ def _normalize_positions(raw) -> list[dict] | None:
 # FastAPI 라우터 (전부 GET = 주문 불가)
 # ─────────────────────────────────────────────────────────────────────────────
 toss_router = APIRouter(prefix="/toss", tags=["toss"])
+
+
+@toss_router.get("/myip")
+def toss_myip():
+    """이 서버(Railway)가 실제로 어떤 외부 IP로 나가는지 확인.
+    여기 나오는 IP(들)를 토스 '허용 IP 관리'에 등록하면 된다.
+    여러 echo 서비스로 교차 확인한다."""
+    services = [
+        "https://api.ipify.org",
+        "https://checkip.amazonaws.com",
+        "https://ifconfig.me/ip",
+    ]
+    seen = []
+    for url in services:
+        try:
+            r = httpx.get(url, timeout=8)
+            if r.status_code == 200:
+                ip = r.text.strip()
+                if ip and ip not in seen:
+                    seen.append(ip)
+        except Exception:
+            continue
+    if not seen:
+        return {"status": "준비중", "reason": "IP echo 서비스 응답 없음 — 잠시 후 재시도"}
+    return {
+        "outbound_ips": seen,
+        "hint": "이 IP(들)를 토스 '허용 IP 관리 → IP 추가'에 등록하세요. (PC IP가 아니라 이 IP)",
+    }
 
 
 @toss_router.get("/health")
