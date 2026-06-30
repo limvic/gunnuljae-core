@@ -572,6 +572,45 @@ body{padding-bottom:74px;}
 .drm-cap{margin-top:8px;font:600 9px var(--mono);color:#d6a84f;letter-spacing:.1em;opacity:.95;white-space:nowrap;}
 .drm-cap .lbl{opacity:.72;}
 .drm-cap .demo{color:var(--text3,#5a6b82);font-weight:400;letter-spacing:0;}
+/* 🔱 DRAUPNIR 실전 운용 v1.0 — Cycle 카드 + 후보 8종목 */
+.dop-card{border:1px solid rgba(214,168,79,.22);border-radius:16px;background:linear-gradient(180deg,rgba(20,16,6,.55),rgba(8,8,10,.5));padding:15px 16px;margin-bottom:12px;}
+.dop-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;}
+.dop-hd .t{font:700 13px var(--mono,monospace);color:#d6a84f;letter-spacing:.06em;}
+.dop-badge{font:700 10px var(--mono,monospace);padding:3px 9px;border-radius:999px;letter-spacing:.05em;}
+.dop-badge.active{color:#22c55e;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);}
+.dop-badge.wait{color:#9aa7bd;border:1px solid rgba(154,167,189,.3);background:rgba(154,167,189,.06);}
+.dop-badge.complete{color:#d6a84f;border:1px solid rgba(214,168,79,.4);background:rgba(214,168,79,.1);}
+.dop-empty{text-align:center;color:var(--text2,#9aa7bd);font:400 12px var(--body,system-ui);padding:6px 0 12px;}
+.dop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.dop-cell{background:rgba(0,0,0,.25);border:1px solid rgba(214,168,79,.12);border-radius:11px;padding:9px 11px;}
+.dop-cell .k{font:400 10px var(--body,system-ui);color:var(--text2,#9aa7bd);margin-bottom:3px;}
+.dop-cell .v{font:700 15px var(--mono,monospace);color:#eee;}
+.dop-cell .v.gold{color:#d6a84f;}
+.dop-day{display:flex;align-items:center;gap:10px;justify-content:center;margin:4px 0 12px;}
+.dop-day .num{font:800 26px var(--mono,monospace);color:#d6a84f;min-width:72px;text-align:center;}
+.dop-day .num small{font-size:14px;color:var(--text2,#9aa7bd);font-weight:600;}
+.dop-btn{cursor:pointer;font:600 12px var(--body,system-ui);border-radius:10px;padding:8px 13px;white-space:nowrap;
+  color:#d6a84f;border:1px solid rgba(214,168,79,.38);background:rgba(214,168,79,.07);}
+.dop-btn:hover{background:rgba(214,168,79,.16);}
+.dop-btn.ghost{color:var(--text2,#9aa7bd);border-color:rgba(154,167,189,.25);background:transparent;}
+.dop-btn.go{color:#0a0a0a;background:#d6a84f;border-color:#d6a84f;font-weight:700;}
+.dop-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.dop-form{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;}
+.dop-form input{background:rgba(0,0,0,.3);border:1px solid rgba(214,168,79,.2);border-radius:9px;
+  color:#eee;font:400 12px var(--body,system-ui);padding:8px 9px;min-width:0;}
+.dop-form input::placeholder{color:#5a6b82;}
+.dop-form .i-name{flex:2 1 120px;} .dop-form .i-code{flex:1 1 80px;} .dop-form .i-sec{flex:1 1 80px;}
+.dop-form .i-rune{flex:0 1 64px;} .dop-form .i-judge{flex:0 1 64px;}
+.dop-list{display:flex;flex-direction:column;gap:6px;}
+.dop-item{display:flex;align-items:center;gap:9px;background:rgba(0,0,0,.22);border:1px solid rgba(214,168,79,.12);
+  border-radius:11px;padding:9px 11px;}
+.dop-item .nm{font:600 13px var(--body,system-ui);color:#eee;}
+.dop-item .meta{font:400 11px var(--mono,monospace);color:var(--text2,#9aa7bd);flex:1;}
+.dop-item .gr{font:700 11px var(--mono,monospace);color:#d6a84f;padding:2px 7px;border:1px solid rgba(214,168,79,.3);border-radius:7px;}
+.dop-item .del{cursor:pointer;color:#ef4444;font-size:16px;line-height:1;opacity:.7;padding:2px 4px;}
+.dop-item .del:hover{opacity:1;}
+.dop-count{font:400 11px var(--mono,monospace);color:var(--text2,#9aa7bd);}
+.dop-note{font:400 10px var(--body,system-ui);color:#5a6b82;margin-top:8px;text-align:center;}
 /* ━━ DRAUPNIR 악세사리 끝 ━━ */
 </style>
 </head>
@@ -816,6 +855,28 @@ body{padding-bottom:74px;}
      odin.html 본체는 절대 수정 안 함 — 독립 배포 그대로. -->
 <section id="secDraupnir">
   <div class="sec-head"><span class="sec-num" style="color:#d6a84f">🔱 드라우프니르</span><span class="sec-q">— Odin's Draupnir · 자동 판단 패널</span></div>
+
+  <!-- 실전 운용 v1.0: Cycle 카드 -->
+  <div class="dop-card" id="dopCycleCard">
+    <div class="dop-hd"><span class="t">🔱 DRAUPNIR CYCLE</span><span class="dop-badge wait" id="dopBadge">WAIT</span></div>
+    <div id="dopCycleBody"></div>
+  </div>
+
+  <!-- 실전 운용 v1.0: 후보 8종목 -->
+  <div class="dop-card" id="dopCandCard">
+    <div class="dop-hd"><span class="t">후보 8종목</span><span class="dop-count" id="dopCandCount">0 / 8</span></div>
+    <div class="dop-form">
+      <input class="i-name"  id="dcName"  placeholder="종목명">
+      <input class="i-code"  id="dcCode"  placeholder="코드" inputmode="numeric">
+      <input class="i-sec"   id="dcSec"   placeholder="섹터">
+      <input class="i-rune"  id="dcRune"  placeholder="룬" inputmode="numeric">
+      <input class="i-judge" id="dcJudge" placeholder="등급">
+      <button class="dop-btn" id="dcAdd">+ 추가</button>
+    </div>
+    <div class="dop-list" id="dopCandList"></div>
+    <div class="dop-note">드라우프니르는 8개를 넘지 않습니다 · 데이터는 이 브라우저에 저장 (localStorage)</div>
+  </div>
+
   <div class="dpx-bar">
     <span class="dpx-tip">HUB 안에 끼운 드라우프니르예요. 실측은 지수(코스피·코스닥)부터 — 나머지 카드는 v0.1 데모.</span>
     <a class="dpx-open" href="../odin.html" target="_blank" rel="noopener">↗ 전체화면으로 열기</a>
@@ -846,28 +907,130 @@ body{padding-bottom:74px;}
 (function(){
   var ring=document.getElementById('drmRing'), cap=document.getElementById('drmCap');
   if(!ring) return;
-  var lastDay=-1;
-  function build(day,cycle){
-    cycle=cycle||9; day=(day==null?0:day);
-    if(day===lastDay) return; lastDay=day;
+  var lastKey='';
+  // 전역 노출: Cycle 카드가 day 바꿀 때 직접 호출
+  window.drmRenderRing=function(day,cycle){
+    cycle=cycle||9; day=(day==null?0:day); if(day>cycle)day=cycle;
+    var key=day+'/'+cycle; if(key===lastKey) return; lastKey=key;
     var step=360/cycle, h='';
     for(var i=0;i<cycle;i++){ h+='<span class="dot'+(i<day?' on':'')+'" style="--a:'+(i*step)+'deg"></span>'; }
     ring.innerHTML=h;
     if(cap) cap.innerHTML='⚜ <span class="lbl">DRAUPNIR</span> '+day+' / '+cycle;
-    var ava=ring.parentElement; // Day9 완성 = 사이클 완료 → 1회 펄스 (살아있는 반지)
+    var ava=ring.parentElement; // Day9 완성 = 1회 펄스 (살아있는 반지)
     if(ava){ ava.classList.remove('complete'); if(day>=cycle && day>0){ void ava.offsetWidth; ava.classList.add('complete'); } }
-  }
-  build(0,9); // 초기엔 빈 고리 (가짜 숫자 표시 안 함)
-  function sync(){
-    try{
-      var f=document.getElementById('draupnirFrame');
-      var v=f&&f.contentWindow&&f.contentWindow.MOCK&&f.contentWindow.MOCK.vault;
-      if(v&&typeof v.day==='number'){ build(v.day, v.cycle); return true; }
-    }catch(e){}
+  };
+  window.drmRenderRing(0,9); // 초기 빈 고리 (가짜 숫자 표시 안 함)
+  // SSOT: ① 실전 사이클(localStorage) 우선 → ② 없으면 odin 화면(DOM) 폴백
+  function readCycle(){ try{ var c=JSON.parse(localStorage.getItem('trinity_draupnir_cycle')); if(c&&c.status==='ACTIVE'&&typeof c.day==='number') return c; }catch(e){} return null; }
+  function readOdinDom(){ try{
+      var doc=document.getElementById('draupnirFrame').contentWindow.document;
+      var all=doc.querySelectorAll('.ring-row .ring');
+      if(all.length) return { day:doc.querySelectorAll('.ring-row .ring.on').length, cycleLength:all.length };
+    }catch(e){} return null; }
+  window.drmSyncRing=function(){
+    var c=readCycle(); if(c){ window.drmRenderRing(c.day, c.cycleLength||9); return true; }
+    var o=readOdinDom(); if(o){ window.drmRenderRing(o.day, o.cycleLength); return true; }
     return false;
+  };
+  var k=0, s=setInterval(function(){ if(window.drmSyncRing()||++k>25) clearInterval(s); }, 700);
+  var ff=document.getElementById('draupnirFrame'); if(ff) ff.addEventListener('load', window.drmSyncRing);
+})();
+
+/* 🔱 DRAUPNIR 실전 운용 v1.0 — Cycle + 후보 8종목 (localStorage · 주문 기능 없음) */
+(function(){
+  var K_CYC='trinity_draupnir_cycle', K_CAND='trinity_draupnir_candidates', K_SEQ='trinity_draupnir_seq';
+  var MAX=8, LEN=9;
+  function load(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
+  function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function today(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function phaseLabel(day){ return day>=LEN ? '진입 판단' : '시장 관찰'; }
+  function esc(s){ return String(s==null?'':s).replace(/[<>&"]/g,function(c){return{'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];}); }
+
+  var badge=document.getElementById('dopBadge'), body=document.getElementById('dopCycleBody'),
+      candCount=document.getElementById('dopCandCount'), candList=document.getElementById('dopCandList');
+  if(!body) return;
+  function getCycle(){ return load(K_CYC,null); }
+  function getCands(){ return load(K_CAND,[]); }
+
+  function syncRing(){
+    var c=getCycle();
+    if(c && c.status==='ACTIVE'){ if(window.drmRenderRing) window.drmRenderRing(c.day, c.cycleLength||LEN); }
+    else if(window.drmSyncRing){ window.drmSyncRing(); } // 사이클 없으면 odin 데모 폴백
   }
-  var k=0, s=setInterval(function(){ if(sync()||++k>25) clearInterval(s); }, 700);
-  var ff=document.getElementById('draupnirFrame'); if(ff) ff.addEventListener('load', sync);
+
+  function renderCycle(){
+    var c=getCycle(), cs=getCands();
+    if(!c || c.status==='COMPLETE'){
+      var done=c&&c.status==='COMPLETE';
+      badge.className='dop-badge '+(done?'complete':'wait'); badge.textContent=done?'COMPLETE':'WAIT';
+      body.innerHTML='<div class="dop-empty">'+(done?'사이클 완료 — 복기 후 다시 시작':'진행 중인 사이클이 없습니다.<br>9거래일 관찰을 시작하세요.')+'</div>'
+        +'<div class="dop-btns" style="justify-content:center"><button class="dop-btn go" id="dopStart">+ 새 사이클 시작</button></div>';
+      document.getElementById('dopStart').onclick=startCycle; return;
+    }
+    badge.className='dop-badge active'; badge.textContent='ACTIVE';
+    var remain=Math.max(0,LEN-c.day), entered=cs.filter(function(x){return x.status==='ENTERED';}).length;
+    body.innerHTML=
+      '<div class="dop-day"><button class="dop-btn ghost" id="dayMinus">◀</button>'
+      +'<span class="num">'+c.day+'<small> / '+(c.cycleLength||LEN)+'</small></span>'
+      +'<button class="dop-btn" id="dayPlus">▶</button></div>'
+      +'<div class="dop-grid">'
+      +'<div class="dop-cell"><div class="k">Cycle</div><div class="v gold">'+esc(c.id)+'</div></div>'
+      +'<div class="dop-cell"><div class="k">Phase</div><div class="v">'+phaseLabel(c.day)+'</div></div>'
+      +'<div class="dop-cell"><div class="k">후보</div><div class="v">'+cs.length+' <small style="font-size:11px;color:#9aa7bd">/ '+MAX+'</small></div></div>'
+      +'<div class="dop-cell"><div class="k">진입</div><div class="v">'+entered+' <small style="font-size:11px;color:#9aa7bd">/ '+MAX+'</small></div></div>'
+      +'</div>'
+      +'<div class="dop-cell" style="margin-bottom:12px"><div class="k">시작 '+esc(c.startDate)+' · 다음 판단</div><div class="v" style="font-size:13px">'+(c.day>=LEN?'오늘 — 진입 결정 (Day 9)':('Day '+LEN+' 까지 '+remain+' 거래일'))+'</div></div>'
+      +'<div class="dop-btns"><button class="dop-btn ghost" id="dopEnd">사이클 종료</button></div>';
+    document.getElementById('dayMinus').onclick=function(){ changeDay(-1); };
+    document.getElementById('dayPlus').onclick=function(){ changeDay(1); };
+    document.getElementById('dopEnd').onclick=endCycle;
+  }
+
+  function renderCands(){
+    var cs=getCands(); candCount.textContent=cs.length+' / '+MAX;
+    if(!cs.length){ candList.innerHTML='<div class="dop-empty" style="padding:4px 0">후보가 없습니다 — 위에서 추가하세요.</div>'; return; }
+    candList.innerHTML=cs.map(function(x,i){
+      return '<div class="dop-item"><span class="nm">'+esc(x.name)+'</span>'
+        +'<span class="meta">'+esc(x.code||'')+(x.sector?' · '+esc(x.sector):'')+(x.runeScore?' · 룬'+esc(x.runeScore):'')+'</span>'
+        +(x.judgeGrade?'<span class="gr">'+esc(x.judgeGrade)+'</span>':'')
+        +'<span class="del" data-i="'+i+'">✕</span></div>';
+    }).join('');
+  }
+
+  function startCycle(){
+    var seq=(load(K_SEQ,0)||0)+1; save(K_SEQ,seq);
+    var c={ id:'DRAUPNIR-'+String(seq).padStart(3,'0'), startDate:today(), day:1, cycleLength:LEN, phase:'OBSERVE', status:'ACTIVE' };
+    save(K_CYC,c); save(K_CAND,[]); renderAll(); syncRing();
+    if(window.toast) toast('🔱 '+c.id+' 시작 — Day 1 / '+LEN);
+  }
+  function changeDay(d){
+    var c=getCycle(); if(!c||c.status!=='ACTIVE') return;
+    c.day=Math.min(LEN,Math.max(1,c.day+d)); c.phase=(c.day>=LEN?'DECIDE':'OBSERVE');
+    save(K_CYC,c); renderCycle(); syncRing();
+  }
+  function endCycle(){
+    var c=getCycle(); if(!c) return; c.status='COMPLETE'; save(K_CYC,c); renderAll(); syncRing();
+    if(window.toast) toast('사이클 종료 — 복기 후 새 사이클을 시작하세요');
+  }
+  function val(id){ var e=document.getElementById(id); return e? e.value.trim():''; }
+  function addCand(){
+    var cs=getCands();
+    if(cs.length>=MAX){ if(window.toast) toast('드라우프니르는 8개를 넘지 않습니다 🔱'); return; }
+    var name=val('dcName'); if(!name){ if(window.toast) toast('종목명을 입력하세요'); return; }
+    cs.push({ name:name, code:val('dcCode'), sector:val('dcSec'), runeScore:val('dcRune'), judgeGrade:val('dcJudge'), status:'WATCH' });
+    save(K_CAND,cs);
+    ['dcName','dcCode','dcSec','dcRune','dcJudge'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; });
+    renderCands(); renderCycle(); var nm=document.getElementById('dcName'); if(nm)nm.focus();
+  }
+
+  function renderAll(){ renderCycle(); renderCands(); }
+  document.getElementById('dcAdd').onclick=addCand;
+  var nmIn=document.getElementById('dcName'); if(nmIn) nmIn.addEventListener('keydown',function(e){ if(e.key==='Enter') addCand(); });
+  candList.addEventListener('click',function(e){
+    var d=e.target.closest && e.target.closest('.del'); if(!d) return;
+    var i=+d.getAttribute('data-i'); var cs=getCands(); cs.splice(i,1); save(K_CAND,cs); renderCands(); renderCycle();
+  });
+  renderAll();
 })();
 </script>
 <!-- ⬆⬆⬆ 🔱 DRAUPNIR 악세사리 END ⬆⬆⬆ -->
