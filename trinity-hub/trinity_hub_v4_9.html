@@ -611,6 +611,16 @@ body{padding-bottom:74px;}
 .dop-item .del:hover{opacity:1;}
 .dop-count{font:400 11px var(--mono,monospace);color:var(--text2,#9aa7bd);}
 .dop-note{font:400 10px var(--body,system-ui);color:#5a6b82;margin-top:8px;text-align:center;}
+.chip .drm-pick{color:#d6a84f;opacity:.7;}
+.chip .drm-pick:hover{opacity:1;text-shadow:0 0 8px rgba(214,168,79,.8);}
+.drm-pick{color:#d6a84f;opacity:.72;cursor:pointer;}
+.drm-pick:hover{opacity:1;text-shadow:0 0 8px rgba(214,168,79,.8);}
+.drm-pick-j{cursor:pointer;font:600 10px var(--mono,monospace);color:#d6a84f;border:1px solid rgba(214,168,79,.4);background:rgba(214,168,79,.08);border-radius:8px;padding:4px 9px;white-space:nowrap;}
+.drm-pick-j:hover{background:rgba(214,168,79,.18);}
+.hof-chip .hc-pick{margin-top:5px;font:600 9px var(--mono,monospace);color:#d6a84f;border:1px solid rgba(214,168,79,.35);border-radius:7px;padding:3px 0;text-align:center;cursor:pointer;}
+.hof-chip .hc-pick:hover{background:rgba(214,168,79,.15);}
+.hof-s .hs-pick{cursor:pointer;font:600 11px var(--mono,monospace);color:#d6a84f;border:1px solid rgba(214,168,79,.4);border-radius:8px;padding:4px 8px;background:rgba(214,168,79,.08);margin-left:8px;}
+.hof-s .hs-pick:hover{background:rgba(214,168,79,.18);}
 /* ━━ DRAUPNIR 악세사리 끝 ━━ */
 </style>
 </head>
@@ -1013,14 +1023,24 @@ body{padding-bottom:74px;}
     if(window.toast) toast('사이클 종료 — 복기 후 새 사이클을 시작하세요');
   }
   function val(id){ var e=document.getElementById(id); return e? e.value.trim():''; }
-  function addCand(){
+  // 공용 후보 추가 API — SCAN/JUDGE 버튼·수동입력 공통 (v1.1)
+  window.drmAddCandidate=function(o){
+    o=o||{};
+    var c=getCycle();
+    if(!c || c.status!=='ACTIVE'){ if(window.toast) toast('먼저 새 사이클을 시작하세요 🔱'); return false; }
+    if(!o.name && !o.code){ if(window.toast) toast('종목 정보가 없습니다'); return false; }
     var cs=getCands();
-    if(cs.length>=MAX){ if(window.toast) toast('드라우프니르는 8개를 넘지 않습니다 🔱'); return; }
-    var name=val('dcName'); if(!name){ if(window.toast) toast('종목명을 입력하세요'); return; }
-    cs.push({ name:name, code:val('dcCode'), sector:val('dcSec'), runeScore:val('dcRune'), judgeGrade:val('dcJudge'), status:'WATCH' });
-    save(K_CAND,cs);
-    ['dcName','dcCode','dcSec','dcRune','dcJudge'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; });
-    renderCands(); renderCycle(); var nm=document.getElementById('dcName'); if(nm)nm.focus();
+    if(cs.length>=MAX){ if(window.toast) toast('드라우프니르는 8개를 넘지 않습니다 🔱'); return false; }
+    var isDup=cs.some(function(x){ return (o.code&&x.code)? x.code===o.code : (x.name||'')===(o.name||''); });
+    if(isDup){ if(window.toast) toast('이미 후보에 있습니다'); return false; }
+    cs.push({ name:o.name||o.code, code:o.code||'', sector:o.sector||'', runeScore:o.runeScore||'', judgeGrade:o.judgeGrade||'', status:'WATCH' });
+    save(K_CAND,cs); renderCands(); renderCycle();
+    if(window.toast) toast('🔱 후보 추가: '+(o.name||o.code)+' ('+cs.length+'/'+MAX+')');
+    return true;
+  };
+  function addCand(){
+    var ok=window.drmAddCandidate({ name:val('dcName'), code:val('dcCode'), sector:val('dcSec'), runeScore:val('dcRune'), judgeGrade:val('dcJudge') });
+    if(ok){ ['dcName','dcCode','dcSec','dcRune','dcJudge'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; }); var nm=document.getElementById('dcName'); if(nm)nm.focus(); }
   }
 
   function renderAll(){ renderCycle(); renderCands(); }
@@ -1349,6 +1369,7 @@ function chipHTML(w, i){
         <span class="g ${w.grade?('g'+w.grade):'gq'}">${w.grade||'?'}</span>
         <span class="c-nm">${w.name}</span>
         ${/^\d{6}$/.test(w.name)?`<span class="x" title="이름 짓기" onclick="event.stopPropagation();renameChip(${i})">✏</span>`:''}
+        <span class="x drm-pick" title="드라우프니르 후보 담기" onclick="event.stopPropagation();window.drmAddCandidate({name:'${(w.name||'').replace(/['\\]/g,'')}',code:'${w.code}',judgeGrade:'${w.grade||''}'})">🔱</span>
         <span class="x" onclick="event.stopPropagation();rmWatch(${i})">✕</span>
       </div>
       ${(sp||rr)?`<div class="c-bot">${sp}${rr}</div>`:''}
@@ -1651,6 +1672,7 @@ function watchCardHTML(code, my){
       <button onclick="openTossStock('${code}')" title="토스">토스</button>
       <button onclick="openHantu()" title="한투">한투</button>
     </span>${rmBtn}
+    <span class="w-x drm-pick" title="드라우프니르 후보 담기" onclick="event.stopPropagation();window.drmAddCandidate({name:'${(nm||'').replace(/['\\]/g,'')}',code:'${code}',judgeGrade:'${grade||''}'})">🔱</span>
   </div>`;
 }
 function renderWatch(){
@@ -1968,7 +1990,8 @@ function renderHof(){
   }
   const chip=x=>`<div class="hof-chip" style="--tc:${mriColor(x.score)}" onclick="loadJudge('${x.code}')">
     <div class="hc-nm">${x.name}</div><div class="hc-sc">${x.score}</div>
-    <div class="hc-meta">최고 ${x.best} · ${hofDays(x.first,x.last)}일</div></div>`;
+    <div class="hc-meta">최고 ${x.best} · ${hofDays(x.first,x.last)}일</div>
+    <div class="hc-pick" onclick="event.stopPropagation();window.drmAddCandidate({name:'${(x.name||'').replace(/['\\]/g,'')}',code:'${x.code}',runeScore:'${x.score||''}',judgeGrade:'${x.grade||''}'})">🔱 담기</div></div>`;
   const S=active.filter(x=>x.score>=90), A=active.filter(x=>x.score>=80&&x.score<90), B=active.filter(x=>x.score>=70&&x.score<80), C=active.filter(x=>x.score>=60&&x.score<70);
   let html='';
   if(S.length){ const s=S[0];
@@ -1976,7 +1999,8 @@ function renderHof(){
       <div class="hs-crown">👑</div>
       <div><div class="hs-nm">${s.name}</div>
         <div class="hs-meta">S RANK · 최고 ${s.best} · ${hofDays(s.first,s.last)}일 유지</div></div>
-      <div class="hs-sc">${s.score}</div></div>`;
+      <div class="hs-sc">${s.score}</div>
+      <div class="hs-pick" onclick="event.stopPropagation();window.drmAddCandidate({name:'${(s.name||'').replace(/['\\]/g,'')}',code:'${s.code}',runeScore:'${s.score||''}',judgeGrade:'${s.grade||''}'})">🔱</div></div>`;
     if(S.length>1) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(95)}">S RANK</div><div class="hof-row">${S.slice(1).map(chip).join('')}</div></div>`;
   }
   if(A.length) html+=`<div class="hof-tier"><div class="hof-tier-lbl" style="color:${mriColor(85)}">A RANK</div><div class="hof-row">${A.map(chip).join('')}</div></div>`;
@@ -2065,7 +2089,9 @@ function renderJudge(d, m5){
   const modeBadge = (m && (m.recommended_mode||m.mode)) ? `<div class="jm-mode-badge">${(m.recommended_mode||m.mode).toUpperCase()} MODE</div>` : '';
 
   $('judgeCard').innerHTML = `
-    <div class="jm-eyebrow">JUDGE MRI · 1종목 집중 분석</div>
+    <div class="jm-eyebrow" style="display:flex;justify-content:space-between;align-items:center;gap:8px">JUDGE MRI · 1종목 집중 분석
+      <button class="drm-pick-j" onclick="window.drmAddCandidate({name:'${(name||'').replace(/['\\]/g,'')}',code:'${d.code}',runeScore:'${score!=null?score:''}',judgeGrade:'${grade||''}'})">🔱 후보 담기</button>
+    </div>
     <div class="j-top">
       <div>
         <div class="j-name">${name}</div>
