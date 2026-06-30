@@ -159,44 +159,9 @@ const C = {
 };
 
 /* ───────── MOCK DATA (교체 지점 단일) ───────── */
-const MOCK = {
-  scan: { kospi:0.64, kosdaq:1.12, value:"2.87조", sectorStrength:"2.4 / 5",
-          mood:"BULLISH", theme:"2건 감지", news:"12건 수집" },
-  sectors: [
-    {name:"2차전지",score:87},{name:"반도체",score:82},{name:"AI / 로봇",score:78},
-    {name:"바이오",score:63},{name:"게임",score:58},{name:"자동차",score:55},
-    {name:"조선",score:48},{name:"금융",score:40},
-  ],
-  rune: { name:"삼성전자", code:"005930", total:86, tier:"S",
-    parts:[ {k:"거래량",v:18,max:20},{k:"추세",v:18,max:20},{k:"섹터",v:13,max:15},
-            {k:"재무",v:13,max:15},{k:"위치",v:12,max:15},{k:"수급",v:9,max:10},{k:"리스크",v:3,max:5} ] },
-  // v0.2 교체 지점: 고정 종목 아니라 Trinity Universe / KIS 스캔 결과로 연결
-  top: [
-    {r:1,name:"삼성전자",score:86},{r:2,name:"SK하이닉스",score:83},{r:3,name:"LG에너지솔루션",score:81},
-    {r:4,name:"네이버",score:78},{r:5,name:"카카오",score:76},{r:6,name:"현대차",score:74},
-    {r:7,name:"POSCO홀딩스",score:72},{r:8,name:"삼성SDI",score:70},
-  ],
-  gungnir: { name:"삼성전자", code:"005930", side:"LONG", status:"READY",
-    entry:78900, target:85500, rr:2.1, stop:76200, stopPct:-3.4,
-    checks:[ {k:"시장 ON",ok:true},{k:"섹터 ON",ok:true},{k:"룬 점수 80+",ok:true},
-             {k:"패턴 일치",ok:true},{k:"손절가 명확",ok:true},{k:"R/R 2.0+",ok:true} ] },
-  // v0.2+ 실연결: KIS 잔고조회 → 종목코드 매칭 → qty / avgPrice / evalPnl / evalPct
-  holding: { qty:12, avgPrice:76500, evalPnl:28800, evalPct:3.1, weight:18 },
-  judge: { grade:"A+", label:"EXCELLENT", win:83.7, expect:4.02, risk:"LOW", memSimilar:23, memWin:78.3 },
-  vault: { day:4, cycle:9, multiple:"1.1845x", note:"9거래일 단위 성과 복기" },
-  risk: { daily:1.25, dailyLimit:-2.0, positions:3, maxPositions:10, cash:42, gauge:24, level:"SAFE",
-          newEntries:2, maxNewEntries:3 },
-  vavlog: [
-    {t:"10:30:15",name:"삼성전자",act:"매수",res:"보유중",pct:2.15},
-    {t:"09:45:22",name:"SK하이닉스",act:"매수",res:"보유중",pct:1.82},
-    {t:"09:20:10",name:"LG에너지솔루션",act:"매수",res:"보유중",pct:-0.45},
-    {t:"어제",name:"현대차",act:"매도",res:"익절",pct:3.21},
-    {t:"어제",name:"POSCO홀딩스",act:"매도",res:"익절",pct:2.87},
-  ],
-};
 
 /* ───────── 상태 ───────── */
-const state = { tab:"Dashboard", mode:"NORMAL", scanLive:null, scanError:false, vavlog:null, vavlogErr:false };
+const state = { tab:"Dashboard", mode:"NORMAL", scanLive:null, scanError:false, vavlog:null, vavlogErr:false, pick:null, judge:null, mri:null, judgeErr:false };
 const NAV = ["Dashboard","Market Scan","Rune Score","Gungnir Signal","Draupnir Vault","VAVLOG","Settings"];
 
 /* v0.2 실데이터 — 시장 보는 눈 (KOSPI/KOSDAQ/분위기만). 계좌·주문·수익률은 보류. */
@@ -243,6 +208,40 @@ async function loadVavlog(){
   }catch(e){ state.vavlog=null; state.vavlogErr=true; }
   renderMain();
 }
+
+/* ───────── Phase 3: 선택 종목 SSOT(드롭다운 → 후보1위 → TopRune1위) ───────── */
+const JUDGE_API = code => `https://fastapi-production-f631.up.railway.app/judge/${code}`;
+const MRI_API   = code => `https://fastapi-production-f631.up.railway.app/mri/${code}`;
+function pickOptions(){
+  const out=[], seen={};
+  const add=(code,name,src)=>{ if(code&&!seen[code]){ seen[code]=1; out.push({code,name:name||code,src}); } };
+  (lsGet('trinity_draupnir_candidates',[])||[]).forEach(x=>x&&add(x.code,x.name,'후보'));
+  Object.values(lsGet('trinity_hof',{})||{}).forEach(x=>x&&add(x.code,x.name,'HOF'));
+  (lsGet('trinity3_watch',[])||[]).forEach(w=>w&&add(w.code,w.name,'관심'));
+  return out;
+}
+function resolvePick(){
+  const opts=pickOptions();
+  const saved=lsGet('trinity_odin_pick',null);
+  if(saved && opts.some(o=>o.code===saved)) return saved;       // ① 직접 선택
+  const cands=lsGet('trinity_draupnir_candidates',[]);
+  if(Array.isArray(cands)&&cands.length&&cands[0].code) return cands[0].code;  // ② 후보 1위
+  if(opts.length) return opts[0].code;                          // ③ Top Rune 1위
+  return null;
+}
+async function loadJudgeMri(){
+  const code=resolvePick(); state.pick=code;
+  if(!code){ state.judge=null; state.mri=null; state.judgeErr=false; renderMain(); return; }
+  try{
+    const [jr,mr]=await Promise.all([
+      fetch(JUDGE_API(code),{cache:"no-store"}).then(r=>r.json()).catch(()=>null),
+      fetch(MRI_API(code),{cache:"no-store"}).then(r=>r.json()).catch(()=>null)
+    ]);
+    state.judge=jr; state.mri=(mr&&mr.ok)?mr:null; state.judgeErr=!jr;
+  }catch(e){ state.judge=null; state.mri=null; state.judgeErr=true; }
+  renderMain();
+}
+function setPick(code){ try{localStorage.setItem('trinity_odin_pick',JSON.stringify(code));}catch(e){} loadJudgeMri(); }
 function cardHd(title, sub, right){
   return `<div class="card-hd"><div><h3>${title}</h3>${sub?`<p class="csub">${sub}</p>`:""}</div>${right||""}</div>`;
 }
@@ -280,9 +279,7 @@ function marketStatusCard(){
 
 function marketScanCard(){
   const live = state.scanLive;
-  const s = MOCK.scan; // 지수 외 항목은 아직 DEMO
   const row = (k,v,tone,tag)=>`<div class="kv"><span class="k">${k}${tag||""}</span><span class="v" style="color:${tone||C.text};">${v}</span></div>`;
-  const demo = ` <span style="font:400 9px var(--mono);color:${C.textDim};opacity:.55;">demo</span>`;
 
   let kospiRow, kosdaqRow, moodRow, footer, liveTag;
   if(live){
@@ -316,35 +313,58 @@ function marketScanCard(){
 }
 
 function sectorStrengthCard(){
-  const rows = MOCK.sectors.map(s=>`
-    <div class="bar-row" style="grid-template-columns:78px 1fr 28px;">
-      <span style="font:400 11px var(--body);color:${C.text};">${s.name}</span>
-      <div class="bar"><i style="width:${s.score}%;background:linear-gradient(90deg,rgba(214,168,79,.45),${C.gold});"></i></div>
-      <span style="font:600 11px var(--mono);color:${C.gold};text-align:right;">${s.score}</span>
-    </div>`).join("");
+  const cands = lsGet('trinity_draupnir_candidates', []);
+  const cnt={};
+  (Array.isArray(cands)?cands:[]).forEach(x=>{ const s=(x&&x.sector||'').trim(); if(s) cnt[s]=(cnt[s]||0)+1; });
+  const arr=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  let body;
+  if(!arr.length){
+    body = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">집계 없음 — 후보에 섹터를 입력하면 분포가 표시됩니다</div>`;
+  } else {
+    const max=Math.max.apply(null,arr.map(e=>e[1]).concat([1]));
+    body = arr.map(([name,n])=>`
+      <div class="bar-row" style="grid-template-columns:78px 1fr 28px;">
+        <span style="font:400 11px var(--body);color:${C.text};">${esc(name)}</span>
+        <div class="bar"><i style="width:${(n/max)*100}%;background:linear-gradient(90deg,rgba(214,168,79,.45),${C.gold});"></i></div>
+        <span style="font:600 11px var(--mono);color:${C.gold};text-align:right;">${n}</span>
+      </div>`).join("");
+  }
   return `<section class="card">
-    ${cardHd("Sector Strength","섹터 강도")}
-    <div style="display:flex;flex-direction:column;gap:9px;">${rows}</div>
+    ${cardHd("Sector Strength","후보 섹터 분포 · 실측")}
+    <div style="display:flex;flex-direction:column;gap:9px;">${body}</div>
   </section>`;
 }
 
 function runeScoreCard(){
-  const r = MOCK.rune;
-  const parts = r.parts.map(p=>`
-    <div class="bar-row" style="grid-template-columns:52px 1fr 40px;">
-      <span style="font:400 11px var(--body);color:${C.textDim};">${p.k}</span>
-      <div class="bar" style="height:5px;"><i style="width:${(p.v/p.max)*100}%;background:${C.gold};"></i></div>
-      <span style="font:600 11px var(--mono);color:${C.text};text-align:right;">${p.v}/${p.max}</span>
-    </div>`).join("");
+  const m = state.mri, j = state.judge;
+  const name = (j&&j.name) || state.pick || "—";
+  const code = (j&&j.code) || state.pick || "";
+  const tier = m ? m.grade : "—";
+  let inner;
+  if(!state.pick){
+    inner = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">분석 종목이 없습니다 — 후보/관심 종목을 모으세요</div>`;
+  } else if(m===null){
+    inner = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">${state.judgeErr?"5축 분석 실패 — 잠시 후 자동 재시도":"5축 분석 중…"}</div>`;
+  } else {
+    const AX=[["volume","거래량"],["momentum","모멘텀"],["supply","수급"],["tech","기술"],["safety","안전"]];
+    const parts = AX.map(([k,lbl])=>{ const v=Number(m.axes[k]||0); return `
+      <div class="bar-row" style="grid-template-columns:52px 1fr 44px;">
+        <span style="font:400 11px var(--body);color:${C.textDim};">${lbl}</span>
+        <div class="bar" style="height:5px;"><i style="width:${v}%;background:${C.gold};"></i></div>
+        <span style="font:600 11px var(--mono);color:${C.text};text-align:right;">${v}/100</span>
+      </div>`; }).join("");
+    inner = `
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <span style="font:700 40px/1 var(--display);color:${C.gold};">${m.score}</span>
+        <span style="font:400 14px var(--mono);color:${C.textDim};">/ 100</span>
+      </div>
+      <p style="margin:0;font:600 13px var(--body);color:${C.text};">${esc(name)}
+        <span style="color:${C.textDim};font-weight:400;font-family:var(--mono);font-size:11px;">(${esc(code)})</span></p>
+      <div style="display:flex;flex-direction:column;gap:7px;">${parts}</div>`;
+  }
   return `<section class="card">
-    ${cardHd("Rune Score","룬 점수 분석",`<span class="tier">${r.tier}</span>`)}
-    <div style="display:flex;align-items:baseline;gap:10px;">
-      <span style="font:700 40px/1 var(--display);color:${C.gold};">${r.total}</span>
-      <span style="font:400 14px var(--mono);color:${C.textDim};">/ 100</span>
-    </div>
-    <p style="margin:0;font:600 13px var(--body);color:${C.text};">${r.name}
-      <span style="color:${C.textDim};font-weight:400;font-family:var(--mono);font-size:11px;">(${r.code})</span></p>
-    <div style="display:flex;flex-direction:column;gap:7px;">${parts}</div>
+    ${cardHd("Rune Score","MRI 5축 · 실측",`<span class="tier">${tier}</span>`)}
+    ${inner}
   </section>`;
 }
 
@@ -373,68 +393,83 @@ function topRuneStocksCard(){
 }
 
 function gungnirSignalCard(){
-  const g = MOCK.gungnir;
-  const h = MOCK.holding;
+  const j = state.judge, m = j && j.mri;
   const blocked = state.mode==="CASH";
   const stat = (l,v,tone)=>`<div class="stat"><div class="sl">${l}</div><div class="sv" style="color:${tone||C.text};">${v}</div></div>`;
-  const checks = g.checks.map(c=>`
-    <span class="chk" style="color:${c.ok?C.up:C.textDim};border:1px solid ${c.ok?"rgba(34,197,94,.4)":C.borderSoft};">
-      ${c.ok?"✓ ":"· "}${c.k}</span>`).join("");
-  const hcell = (l,v,tone)=>`<div><div style="font:400 10px var(--body);color:${C.textDim};margin-bottom:2px;">${l}</div><div style="font:600 13px var(--mono);color:${tone||C.text};">${v}</div></div>`;
-  const pnlSign = h.evalPnl>=0?"+":"-";
-  const holdingBlock = `
-    <div style="background:var(--panel);border:1px solid ${C.borderSoft};border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:9px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font:600 11px var(--display);letter-spacing:.1em;color:${C.gold};">현재 보유</span>
-        <span style="font:400 9px var(--mono);color:${C.textDim};opacity:.6;">DEMO</span>
+  let inner;
+  if(!state.pick){
+    inner = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">분석 종목이 없습니다 — 후보/관심 종목을 모으세요</div>`;
+  } else if(!j || !m){
+    inner = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">${state.judgeErr?"신호 불러오기 실패":"신호 불러오는 중…"}</div>`;
+  } else {
+    const ready = !blocked && m.tradeable;
+    const score = state.mri ? state.mri.score : null;
+    const moodOk = state.scanLive ? (deriveMood(state.scanLive).bull!==false) : false;
+    const gradeOk = ["S","A","B"].includes(m.grade);
+    const CH=[
+      {k:"시장 ON", ok:moodOk},
+      {k:"등급 B+", ok:gradeOk},
+      {k:"룬 80+", ok:(score!=null&&score>=80)},
+      {k:"손절 명확", ok:(m.stop!=null)},
+      {k:"R/R 2.0+", ok:(m.rr!=null&&Number(m.rr)>=2)},
+      {k:"진입 가능", ok:!!m.tradeable},
+    ];
+    const checks = CH.map(c=>`<span class="chk" style="color:${c.ok?C.up:C.textDim};border:1px solid ${c.ok?"rgba(34,197,94,.4)":C.borderSoft};">${c.ok?"✓ ":"· "}${c.k}</span>`).join("");
+    inner = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <p style="margin:0;font:700 16px var(--body);color:${C.text};">${esc(j.name||state.pick)}
+          <span style="font:400 11px var(--mono);color:${C.textDim};"> (${esc(j.code||"")})</span></p>
+        <span class="${blocked?"":(ready?"ready":"")}" style="font:700 18px var(--display);letter-spacing:.08em;color:${blocked?C.down:(ready?C.gold:C.textDim)};">
+          ${blocked?"HOLD":(ready?"READY":"WAIT")}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;">
-        ${hcell("보유 수량",`${h.qty}주`)}
-        ${hcell("평균 단가",won(h.avgPrice))}
-        ${hcell("평가 손익",`${pnlSign}${won(Math.abs(h.evalPnl)).slice(1)} · ${pct(h.evalPct)}`,ud(h.evalPnl))}
-        ${hcell("포지션 비중",`${h.weight}%`,C.gold)}
+      <p style="margin:0;font:400 11px var(--body);color:${C.textDim};">${blocked?"현금 모드 — 진입 차단":(ready?"진입 가능":"관찰 — 조건 미충족")}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${stat("현재가", j.price!=null?won(j.price):"--", C.text)}
+        ${stat(`목표가 (R/R ${m.rr??"--"})`, m.rr_target!=null?won(m.rr_target):"--", C.up)}
+        ${stat("손절가", m.stop!=null?(won(m.stop)+(m.risk_pct!=null?` (-${m.risk_pct}%)`:"")):"--", C.down)}
+        ${stat("신호 등급", `${m.grade||"—"}${score!=null?(" · 룬 "+score):""}`, C.gold)}
       </div>
-    </div>`;
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">${checks}</div>`;
+  }
   return `<section class="card ${blocked?"":"glow"}">
     ${cardHd("Gungnir Signal","궁니르 진입 · 청산 신호",
-      `<span style="font:700 11px var(--mono);letter-spacing:.1em;color:${C.up};border:1px solid ${C.up};border-radius:6px;padding:2px 8px;">${g.side}</span>`)}
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <p style="margin:0;font:700 16px var(--body);color:${C.text};">${g.name}
-        <span style="font:400 11px var(--mono);color:${C.textDim};"> (${g.code})</span></p>
-      <span class="${blocked?"":"ready"}" style="font:700 18px var(--display);letter-spacing:.08em;color:${blocked?C.down:C.gold};">
-        ${blocked?"HOLD":"READY"}</span>
-    </div>
-    <p style="margin:0;font:400 11px var(--body);color:${C.textDim};">${blocked?"현금 모드 — 진입 차단":"진입 가능"}</p>
-    ${holdingBlock}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      ${stat("예상 진입가",won(g.entry),C.text)}
-      ${stat(`목표가 (R/R ${g.rr})`,won(g.target),C.up)}
-      ${stat("손절가",`${won(g.stop)} (${g.stopPct}%)`,C.down)}
-      ${stat("신호 등급",`LONG · 룬 ${MOCK.rune.total}`,C.gold)}
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">${checks}</div>
+      `<span style="font:700 11px var(--mono);letter-spacing:.1em;color:${C.up};border:1px solid ${C.up};border-radius:6px;padding:2px 8px;">LONG</span>`)}
+    ${inner}
   </section>`;
 }
 
 function judgeVerdictCard(){
-  const j = MOCK.judge;
+  const j = state.judge, m = j && j.mri;
   const stat = (l,v,tone)=>`<div class="stat"><div class="sl">${l}</div><div class="sv" style="color:${tone||C.text};">${v}</div></div>`;
+  let inner;
+  if(!state.pick){
+    inner = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">분석 종목이 없습니다</div>`;
+  } else if(!j || !m){
+    inner = `<div style="text-align:center;color:${C.textDim};padding:16px 0;font:400 12px var(--body);">${state.judgeErr?"판정 불러오기 실패":"판정 불러오는 중…"}</div>`;
+  } else {
+    const grade=m.grade||"—", label=m.grade_label||"", action=m.action_label||(m.tradeable?"진입 후보":"관찰");
+    const rr=(m.rr!=null)?m.rr:"--", riskPct=(m.risk_pct!=null)?("-"+m.risk_pct+"%"):"--";
+    const verdict=m.verdict||"";
+    inner = `
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="display:grid;place-items:center;width:76px;height:76px;border-radius:50%;border:2px solid ${C.gold};background:radial-gradient(circle,rgba(214,168,79,.18),transparent 70%);">
+          <span style="font:700 26px var(--display);color:${C.gold};line-height:1;">${grade}</span>
+        </div>
+        <div>
+          <div style="font:600 12px var(--display);letter-spacing:.12em;color:${C.gold};">${esc(label)}</div>
+          <div style="font:400 11px var(--body);color:${C.textDim};margin-top:4px;">${esc(j.name||state.pick)} · ${esc(action)}</div>
+        </div>
+      </div>
+      ${verdict?`<p style="margin:0;font:400 11px/1.5 var(--body);color:${C.textDim};">${esc(verdict)}</p>`:""}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        ${stat("R/R", rr, C.up)}
+        ${stat("손절폭", riskPct, C.down)}
+        ${stat("진입 가능", m.tradeable?"YES":"NO", m.tradeable?C.up:C.textDim)}
+      </div>`;
+  }
   return `<section class="card">
-    ${cardHd("Judge Verdict","Muninn · 기억 기반 판정")}
-    <div style="display:flex;align-items:center;gap:16px;">
-      <div style="display:grid;place-items:center;width:76px;height:76px;border-radius:50%;border:2px solid ${C.gold};background:radial-gradient(circle,rgba(214,168,79,.18),transparent 70%);">
-        <span style="font:700 26px var(--display);color:${C.gold};line-height:1;">${j.grade}</span>
-      </div>
-      <div>
-        <div style="font:600 12px var(--display);letter-spacing:.12em;color:${C.gold};">${j.label}</div>
-        <div style="font:400 11px var(--body);color:${C.textDim};margin-top:4px;">유사 패턴 ${j.memSimilar}건 · 승률 ${j.memWin}%</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-      ${stat("승률 예측",`${j.win}%`,C.up)}
-      ${stat("기대 수익률",pct(j.expect),C.up)}
-      ${stat("리스크 레벨",j.risk,C.up)}
-    </div>
+    ${cardHd("Judge Verdict","Muninn · 실측 판정")}
+    ${inner}
   </section>`;
 }
 
@@ -537,21 +572,34 @@ function vavlogCard(){
 function renderNav(){
   const nav = document.getElementById("nav");
   nav.innerHTML = NAV.map(n=>`<button data-tab="${n}" class="${n===state.tab?"active":""}">${n}</button>`).join("")
-    + `<div class="creed">KNOWLEDGE IS POWER<br>RUNE IS EDGE<br><span class="ver">v0.2 · INDEX LIVE · 그 외 DEMO</span></div>`;
+    + `<div class="creed">KNOWLEDGE IS POWER<br>RUNE IS EDGE<br><span class="ver">v0.3 · REAL DATA · 계좌항목 보류</span></div>`;
   nav.querySelectorAll("button[data-tab]").forEach(b=>{
     b.addEventListener("click",()=>{ state.tab=b.dataset.tab; renderNav(); renderMain(); });
   });
+}
+
+function pickerBar(){
+  const opts=pickOptions(), cur=state.pick;
+  if(!opts.length) return "";
+  const sel=opts.map(o=>`<option value="${o.code}" ${o.code===cur?"selected":""}>${esc(o.name)} · ${o.src}</option>`).join("");
+  return `<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid ${C.borderSoft};border-radius:12px;padding:10px 14px;">
+    <span style="font:600 10px var(--mono);letter-spacing:.1em;color:${C.gold};white-space:nowrap;">🔱 분석 종목</span>
+    <select id="odinPick" style="flex:1;background:rgba(0,0,0,.3);border:1px solid ${C.borderSoft};border-radius:8px;color:${C.text};font:400 13px var(--body);padding:8px 10px;">${sel}</select>
+  </div>`;
 }
 
 function renderMain(){
   const main = document.getElementById("main");
   if(state.tab==="Dashboard"){
     main.className=""; main.innerHTML = `<div class="grid">
+      ${pickerBar()}
       ${marketStatusCard()}${marketScanCard()}${sectorStrengthCard()}
       ${runeScoreCard()}${topRuneStocksCard()}${gungnirSignalCard()}
       ${judgeVerdictCard()}${draupnirVaultCard()}${riskManagementCard()}
       ${vavlogCard()}
     </div>`;
+    const ps=document.getElementById("odinPick");
+    if(ps) ps.addEventListener("change",e=>setPick(e.target.value));
   } else {
     main.innerHTML = `<div class="placeholder"><div>
       <div class="pt">${state.tab}</div>
@@ -586,6 +634,7 @@ setInterval(tick,1000);
 fetchScan();                    // 부팅 시 지수 1회
 setInterval(fetchScan,60000);   // 60초마다 갱신
 loadVavlog(); setInterval(loadVavlog,60000);   // VAVLOG 실데이터
+loadJudgeMri(); setInterval(loadJudgeMri,60000);   // 선택종목 Judge/MRI 실데이터
 </script>
 </body>
 </html>
