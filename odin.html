@@ -226,7 +226,10 @@ function resolvePick(){
   if(saved && opts.some(o=>o.code===saved)) return saved;       // ① 직접 선택
   const cands=lsGet('trinity_draupnir_candidates',[]);
   if(Array.isArray(cands)&&cands.length&&cands[0].code) return cands[0].code;  // ② 후보 1위
-  if(opts.length) return opts[0].code;                          // ③ Top Rune 1위
+  // ③ Top Rune 1위 (HOF 점수 최고)
+  const scored=Object.values(lsGet('trinity_hof',{})||{}).filter(x=>x&&x.code&&x.score!=null).sort((a,b)=>b.score-a.score);
+  if(scored.length) return scored[0].code;
+  if(opts.length) return opts[0].code;                          // ④ 그 외 목록 첫
   return null;
 }
 async function loadJudgeMri(){
