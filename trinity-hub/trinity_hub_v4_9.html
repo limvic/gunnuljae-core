@@ -559,15 +559,29 @@ body{padding-bottom:74px;}
 .dpx-wrap{position:relative;border-radius:16px;overflow:hidden;border:1px solid rgba(214,168,79,.22);
   background:#050608;box-shadow:inset 0 0 0 1px rgba(214,168,79,.05);}
 .dpx-wrap iframe{width:100%;border:0;display:block;min-height:640px;background:#050608;}
+/* 🔱 아바타 둘레 = 드라우프니르 9고리 (Vault day/cycle 동기화) */
+.drm-ava{position:relative;width:96px;height:96px;display:grid;place-items:center;border-radius:50%;}
+.drm-ring{position:absolute;inset:0;pointer-events:none;}
+.drm-ring .dot{position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;
+  background:transparent;border:1.5px solid rgba(214,168,79,.30);box-shadow:inset 0 0 2px rgba(214,168,79,.22);
+  transform:translate(-50%,-50%) rotate(var(--a)) translateY(-58px);transition:.45s ease;}
+.drm-ring .dot.on{background:#d6a84f;border-color:#ffe7a8;
+  box-shadow:0 0 10px rgba(214,168,79,.95),0 0 4px #ffe7a8,inset 0 0 2px #fff6df;}
+.drm-ava.complete{animation:drmPulse 1.9s ease-out;}
+@keyframes drmPulse{0%{box-shadow:0 0 0 0 rgba(214,168,79,.55);}70%{box-shadow:0 0 0 16px rgba(214,168,79,0);}100%{box-shadow:0 0 0 0 rgba(214,168,79,0);}}
+.drm-cap{margin-top:8px;font:600 9px var(--mono);color:#d6a84f;letter-spacing:.1em;opacity:.95;white-space:nowrap;}
+.drm-cap .lbl{opacity:.72;}
+.drm-cap .demo{color:var(--text3,#5a6b82);font-weight:400;letter-spacing:0;}
 /* ━━ DRAUPNIR 악세사리 끝 ━━ */
 </style>
 </head>
 <body>
 <div class="utopia-shell">
   <aside class="side">
-    <div class="side-logo">🔱</div>
+    <div class="drm-ava"><div class="drm-ring" id="drmRing"></div><div class="side-logo">🔱</div></div>
     <div class="side-name">림빅</div>
     <div class="side-role">MASTER</div>
+    <div class="drm-cap" id="drmCap">⚜ <span class="lbl">DRAUPNIR</span> — / 9</div>
     <nav class="side-nav">
       <a href="#" class="active" onclick="scrollToSec('secScan');return false;">🏠 대시보드</a>
       <a href="#" onclick="scrollToSec('secScan');return false;">🔍 발견 SCAN</a>
@@ -808,7 +822,7 @@ body{padding-bottom:74px;}
   </div>
   <div class="dpx-wrap">
     <!-- 경로가 안 맞으면 src만 고치세요. HUB가 루트면 "odin.html", trinity-hub 폴더면 "../odin.html" -->
-    <iframe id="draupnirFrame" src="../odin.html" title="Odin's Draupnir" loading="lazy" scrolling="no"></iframe>
+    <iframe id="draupnirFrame" src="../odin.html" title="Odin's Draupnir" scrolling="no"></iframe>
   </div>
 </section>
 <script>
@@ -826,6 +840,34 @@ body{padding-bottom:74px;}
   f.addEventListener('load', function(){ fit(); setTimeout(fit,400); setTimeout(fit,1200); setTimeout(fit,2500); });
   window.addEventListener('resize', fit);
   var n=0, t=setInterval(function(){ fit(); if(++n>10) clearInterval(t); }, 1500); // 내부 비동기 렌더 안정화까지만
+})();
+
+/* 🔱 사이드바 아바타 둘레 = 드라우프니르 9고리. odin Vault(MOCK.vault)의 day/cycle을 그대로 미러 */
+(function(){
+  var ring=document.getElementById('drmRing'), cap=document.getElementById('drmCap');
+  if(!ring) return;
+  var lastDay=-1;
+  function build(day,cycle){
+    cycle=cycle||9; day=(day==null?0:day);
+    if(day===lastDay) return; lastDay=day;
+    var step=360/cycle, h='';
+    for(var i=0;i<cycle;i++){ h+='<span class="dot'+(i<day?' on':'')+'" style="--a:'+(i*step)+'deg"></span>'; }
+    ring.innerHTML=h;
+    if(cap) cap.innerHTML='⚜ <span class="lbl">DRAUPNIR</span> '+day+' / '+cycle;
+    var ava=ring.parentElement; // Day9 완성 = 사이클 완료 → 1회 펄스 (살아있는 반지)
+    if(ava){ ava.classList.remove('complete'); if(day>=cycle && day>0){ void ava.offsetWidth; ava.classList.add('complete'); } }
+  }
+  build(0,9); // 초기엔 빈 고리 (가짜 숫자 표시 안 함)
+  function sync(){
+    try{
+      var f=document.getElementById('draupnirFrame');
+      var v=f&&f.contentWindow&&f.contentWindow.MOCK&&f.contentWindow.MOCK.vault;
+      if(v&&typeof v.day==='number'){ build(v.day, v.cycle); return true; }
+    }catch(e){}
+    return false;
+  }
+  var k=0, s=setInterval(function(){ if(sync()||++k>25) clearInterval(s); }, 700);
+  var ff=document.getElementById('draupnirFrame'); if(ff) ff.addEventListener('load', sync);
 })();
 </script>
 <!-- ⬆⬆⬆ 🔱 DRAUPNIR 악세사리 END ⬆⬆⬆ -->
