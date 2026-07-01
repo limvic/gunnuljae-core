@@ -609,6 +609,16 @@ body{padding-bottom:74px;}
 .dop-item .gr{font:700 11px var(--mono,monospace);color:#d6a84f;padding:2px 7px;border:1px solid rgba(214,168,79,.3);border-radius:7px;}
 .dop-item .del{cursor:pointer;color:#ef4444;font-size:16px;line-height:1;opacity:.7;padding:2px 4px;}
 .dop-item .del:hover{opacity:1;}
+.dop-item .enter{cursor:pointer;font:600 11px var(--mono,monospace);color:#22c55e;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);border-radius:8px;padding:5px 10px;white-space:nowrap;}
+.dop-item .enter:hover{background:rgba(34,197,94,.18);}
+.dop-item .entered{font:600 10px var(--mono,monospace);color:var(--text3,#5a6b82);padding:5px 6px;white-space:nowrap;}
+.dop-item .den-snap{font:400 10px var(--mono,monospace);color:var(--text2,#9aa7bd);flex:1;}
+.dop-item .den-x{cursor:pointer;font:600 10px var(--mono,monospace);border-radius:7px;padding:5px 9px;white-space:nowrap;}
+.dop-item .den-x.win{color:#22c55e;border:1px solid rgba(34,197,94,.4);}
+.dop-item .den-x.win:hover{background:rgba(34,197,94,.14);}
+.dop-item .den-x.loss{color:#ef4444;border:1px solid rgba(239,68,68,.4);}
+.dop-item .den-x.loss:hover{background:rgba(239,68,68,.14);}
+.dop-item.den-closed{opacity:.62;}
 .dop-count{font:400 11px var(--mono,monospace);color:var(--text2,#9aa7bd);}
 .dop-note{font:400 10px var(--body,system-ui);color:#5a6b82;margin-top:8px;text-align:center;}
 .chip .drm-pick{color:#d6a84f;opacity:.7;}
@@ -887,6 +897,13 @@ body{padding-bottom:74px;}
     <div class="dop-note">드라우프니르는 8개를 넘지 않습니다 · 데이터는 이 브라우저에 저장 (localStorage)</div>
   </div>
 
+  <!-- 실전 운용 v1.3: 진입 기록 (학습 데이터) -->
+  <div class="dop-card" id="dopEntryCard">
+    <div class="dop-hd"><span class="t">🎯 진입 기록 · 학습 데이터</span><span class="dop-count" id="dopEntryCount">0건</span></div>
+    <div class="dop-list" id="dopEntryList"></div>
+    <div class="dop-note">진입 순간의 조건(Judge·Rune·R/R·Day·순위·섹터·시장)을 박제 → 청산 결과와 묶어 축적</div>
+  </div>
+
   <div class="dpx-bar">
     <span class="dpx-tip">HUB 안에 끼운 드라우프니르예요. 실측은 지수(코스피·코스닥)부터 — 나머지 카드는 v0.1 데모.</span>
     <a class="dpx-open" href="../odin.html" target="_blank" rel="noopener">↗ 전체화면으로 열기</a>
@@ -949,6 +966,9 @@ body{padding-bottom:74px;}
 /* 🔱 DRAUPNIR 실전 운용 v1.0 — Cycle + 후보 8종목 (localStorage · 주문 기능 없음) */
 (function(){
   var K_CYC='trinity_draupnir_cycle', K_CAND='trinity_draupnir_candidates', K_SEQ='trinity_draupnir_seq';
+  var K_ENTRY='trinity_draupnir_entries';
+  function getEntries(){ return load(K_ENTRY,[]); }
+  function saveEntries(a){ save(K_ENTRY,a); }
   var MAX=8, LEN=9;
   function load(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
   function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
@@ -1000,9 +1020,11 @@ body{padding-bottom:74px;}
     var cs=getCands(); candCount.textContent=cs.length+' / '+MAX;
     if(!cs.length){ candList.innerHTML='<div class="dop-empty" style="padding:4px 0">후보가 없습니다 — 위에서 추가하세요.</div>'; return; }
     candList.innerHTML=cs.map(function(x,i){
+      var entered = x.status==='ENTERED';
       return '<div class="dop-item"><span class="nm">'+esc(x.name)+'</span>'
         +'<span class="meta">'+esc(x.code||'')+(x.sector?' · '+esc(x.sector):'')+(x.runeScore?' · 룬'+esc(x.runeScore):'')+'</span>'
         +(x.judgeGrade?'<span class="gr">'+esc(x.judgeGrade)+'</span>':'')
+        +(entered?'<span class="entered">진입됨</span>':'<span class="enter" data-enter="'+i+'">진입</span>')
         +'<span class="del" data-i="'+i+'">✕</span></div>';
     }).join('');
   }
@@ -1043,12 +1065,74 @@ body{padding-bottom:74px;}
     if(ok){ ['dcName','dcCode','dcSec','dcRune','dcJudge'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; }); var nm=document.getElementById('dcName'); if(nm)nm.focus(); }
   }
 
-  function renderAll(){ renderCycle(); renderCands(); }
+  // ── v1.3 진입 스냅샷 박제 ──
+  async function enterCandidate(i){
+    var cs=getCands(), x=cs[i]; if(!x) return;
+    if(x.status==='ENTERED'){ if(window.toast) toast('이미 진입한 종목입니다'); return; }
+    var c=getCycle(); if(!c||c.status!=='ACTIVE'){ if(window.toast) toast('진행 중인 사이클이 없습니다 🔱'); return; }
+    var grade=x.judgeGrade||'', rune=x.runeScore||'', rr=null;
+    try{
+      if(x.code && typeof fetchJudge==='function'){
+        var d=await fetchJudge(x.code);
+        if(d&&d.mri){ grade=d.mri.grade||grade; if(d.mri.rr!=null) rr=d.mri.rr; }
+      }
+    }catch(e){}
+    var mkt=''; try{ if(typeof marketState==='function') mkt=marketState()[2]||''; }catch(e){}
+    var es=getEntries();
+    es.unshift({ id:Date.now(), cycleId:c.id, code:x.code||'', name:x.name||x.code,
+      entryDate:today(), day:c.day, rank:i+1, sector:x.sector||'',
+      grade:grade, rune:rune, rr:rr, market:mkt, status:'HOLDING', exit:null });
+    saveEntries(es);
+    x.status='ENTERED'; save(K_CAND,cs);
+    renderAll();
+    if(window.toast) toast('🎯 진입 박제: '+(x.name||x.code)+' · Day '+c.day+(grade?' · '+grade:'')+(rr!=null?' · R/R '+rr:''));
+  }
+  function closeEntry(id, reason){
+    var es=getEntries(), e=null;
+    for(var k=0;k<es.length;k++){ if(es[k].id===id){ e=es[k]; break; } }
+    if(!e) return;
+    var raw=prompt(reason+' 수익률(%) — 예: 3.2 또는 -1.5');
+    if(raw===null) return;
+    var p=parseFloat(raw); if(isNaN(p)) p=0;
+    e.exit={ date:today(), reason:reason, pnl_pct:p }; e.status='CLOSED';
+    saveEntries(es); renderEntries();
+    if(window.toast) toast('청산: '+e.name+' '+reason+' '+(p>=0?'+':'')+p+'%');
+  }
+  function renderEntries(){
+    var es=getEntries();
+    var cnt=document.getElementById('dopEntryCount'), list=document.getElementById('dopEntryList');
+    if(!list) return;
+    if(cnt) cnt.textContent=es.length+'건';
+    if(!es.length){ list.innerHTML='<div class="dop-empty" style="padding:4px 0">진입 기록이 없습니다 — 후보에서 「진입」을 누르면 그 순간이 박제됩니다.</div>'; return; }
+    list.innerHTML=es.map(function(e){
+      var snap='Day '+e.day+' 진입 · '+e.rank+'위'+(e.sector?' · '+esc(e.sector):'')+(e.market?' · '+esc(e.market):'');
+      var tag=(e.grade?esc(e.grade):'?')+(e.rune?' · 룬'+esc(e.rune):'')+(e.rr!=null?' · R/R '+esc(e.rr):'');
+      if(e.status==='CLOSED' && e.exit){
+        var p=e.exit.pnl_pct, col=(p>=0?'#22c55e':'#ef4444');
+        return '<div class="dop-item den-closed"><span class="nm">'+esc(e.name)+'</span>'
+          +'<span class="den-snap">'+tag+' · '+snap+' → '+esc(e.exit.reason)+'</span>'
+          +'<span class="gr" style="color:'+col+';border-color:'+col+'">'+(p>=0?'+':'')+p+'%</span></div>';
+      }
+      return '<div class="dop-item"><span class="nm">'+esc(e.name)+'</span>'
+        +'<span class="den-snap">'+tag+' · '+snap+'</span>'
+        +'<span class="den-x win" data-win="'+e.id+'">익절</span>'
+        +'<span class="den-x loss" data-loss="'+e.id+'">손절</span></div>';
+    }).join('');
+  }
+
+  function renderAll(){ renderCycle(); renderCands(); renderEntries(); }
   document.getElementById('dcAdd').onclick=addCand;
   var nmIn=document.getElementById('dcName'); if(nmIn) nmIn.addEventListener('keydown',function(e){ if(e.key==='Enter') addCand(); });
   candList.addEventListener('click',function(e){
-    var d=e.target.closest && e.target.closest('.del'); if(!d) return;
-    var i=+d.getAttribute('data-i'); var cs=getCands(); cs.splice(i,1); save(K_CAND,cs); renderCands(); renderCycle();
+    var del=e.target.closest&&e.target.closest('.del');
+    if(del){ var i=+del.getAttribute('data-i'); var cs=getCands(); cs.splice(i,1); save(K_CAND,cs); renderCands(); renderCycle(); return; }
+    var en=e.target.closest&&e.target.closest('.enter');
+    if(en){ enterCandidate(+en.getAttribute('data-enter')); return; }
+  });
+  var entryListEl=document.getElementById('dopEntryList');
+  if(entryListEl) entryListEl.addEventListener('click',function(e){
+    var w=e.target.closest&&e.target.closest('.den-x.win'); if(w){ closeEntry(+w.getAttribute('data-win'),'익절'); return; }
+    var l=e.target.closest&&e.target.closest('.den-x.loss'); if(l){ closeEntry(+l.getAttribute('data-loss'),'손절'); return; }
   });
   renderAll();
 })();
