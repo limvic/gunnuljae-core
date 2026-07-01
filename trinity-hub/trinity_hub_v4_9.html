@@ -619,6 +619,23 @@ body{padding-bottom:74px;}
 .dop-item .den-x.loss{color:#ef4444;border:1px solid rgba(239,68,68,.4);}
 .dop-item .den-x.loss:hover{background:rgba(239,68,68,.14);}
 .dop-item.den-closed{opacity:.62;}
+.den-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;}
+.den-modal-card{width:100%;max-width:420px;max-height:88vh;overflow:auto;background:#0e1016;border:1px solid rgba(214,168,79,.3);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:11px;box-shadow:0 12px 48px rgba(0,0,0,.6);}
+.den-modal-hd{display:flex;justify-content:space-between;align-items:center;font:700 15px var(--body,system-ui);color:#d6a84f;}
+.den-modal-x{cursor:pointer;color:#9aa7bd;font-size:18px;line-height:1;}
+.den-snap-box{background:rgba(214,168,79,.06);border:1px solid rgba(214,168,79,.16);border-radius:10px;padding:10px 12px;font:400 11px var(--mono,monospace);color:#9aa7bd;line-height:1.7;}
+.den-field{display:flex;flex-direction:column;gap:5px;}
+.den-field label{font:600 11px var(--mono,monospace);color:#9aa7bd;}
+.den-field label b{color:#ef4444;}
+.den-hint{font-weight:400;color:var(--text3,#5a6b82);}
+.den-field input{background:rgba(0,0,0,.3);border:1px solid rgba(214,168,79,.2);border-radius:8px;color:#eee;font:400 13px var(--body,system-ui);padding:9px 11px;}
+.den-field input:focus{outline:none;border-color:rgba(214,168,79,.5);}
+.den-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.den-tag{cursor:pointer;font:600 11px var(--mono,monospace);color:#9aa7bd;border:1px solid rgba(214,168,79,.2);border-radius:8px;padding:6px 11px;}
+.den-tag.on{color:#d6a84f;border-color:#d6a84f;background:rgba(214,168,79,.12);}
+.den-modal-ft{display:flex;gap:8px;margin-top:4px;}
+.den-modal-ft .dop-btn{flex:1;text-align:center;}
+.den-modal-ft .ghost{background:transparent;border:1px solid rgba(154,167,189,.3);color:#9aa7bd;}
 .dop-count{font:400 11px var(--mono,monospace);color:var(--text2,#9aa7bd);}
 .dop-note{font:400 10px var(--body,system-ui);color:#5a6b82;margin-top:8px;text-align:center;}
 .chip .drm-pick{color:#d6a84f;opacity:.7;}
@@ -904,6 +921,21 @@ body{padding-bottom:74px;}
     <div class="dop-note">진입 순간의 조건(Judge·Rune·R/R·Day·순위·섹터·시장)을 박제 → 청산 결과와 묶어 축적</div>
   </div>
 
+  <!-- v1.3.1 진입 모달 -->
+  <div class="den-modal" id="denModal" style="display:none;">
+    <div class="den-modal-card">
+      <div class="den-modal-hd"><span id="denmTitle">진입 기록</span><span class="den-modal-x" id="denmClose">✕</span></div>
+      <div class="den-snap-box" id="denmSnap"></div>
+      <div class="den-field"><label>진입가 <b>*</b></label><input id="denmPrice" inputmode="numeric" placeholder="예: 35400"></div>
+      <div class="den-field"><label>수량 <b>*</b></label><input id="denmQty" inputmode="numeric" placeholder="예: 100"></div>
+      <div class="den-field"><label>실제 손절가 <span class="den-hint">(비우면 Judge 제안값)</span></label><input id="denmStop" inputmode="numeric" placeholder="Judge 제안값 자동"></div>
+      <div class="den-field"><label>실제 목표가 <span class="den-hint">(비우면 Judge 제안값)</span></label><input id="denmTarget" inputmode="numeric" placeholder="Judge 제안값 자동"></div>
+      <div class="den-field"><label>진입 이유</label><div class="den-tags" id="denmTags"></div></div>
+      <div class="den-field"><label>메모 <span class="den-hint">(선택)</span></label><input id="denmMemo" placeholder="한 줄 메모"></div>
+      <div class="den-modal-ft"><button class="dop-btn ghost" id="denmCancel">취소</button><button class="dop-btn" id="denmSave">진입 확정</button></div>
+    </div>
+  </div>
+
   <div class="dpx-bar">
     <span class="dpx-tip">HUB 안에 끼운 드라우프니르예요. 실측은 지수(코스피·코스닥)부터 — 나머지 카드는 v0.1 데모.</span>
     <a class="dpx-open" href="../odin.html" target="_blank" rel="noopener">↗ 전체화면으로 열기</a>
@@ -1065,27 +1097,61 @@ body{padding-bottom:74px;}
     if(ok){ ['dcName','dcCode','dcSec','dcRune','dcJudge'].forEach(function(id){ var e=document.getElementById(id); if(e)e.value=''; }); var nm=document.getElementById('dcName'); if(nm)nm.focus(); }
   }
 
-  // ── v1.3 진입 스냅샷 박제 ──
-  async function enterCandidate(i){
+  // ── v1.3.1 진입 모달 (Judge 제안 + 실제 입력 분리 저장) ──
+  var REASONS=['Recovery','Momentum','Break','Candidate','재매수','기타'];
+  var _mIdx=-1, _mSnap=null, _mReason='Candidate';
+  function renderTags(){
+    var box=document.getElementById('denmTags'); if(!box) return;
+    box.innerHTML=REASONS.map(function(r){ return '<span class="den-tag'+(r===_mReason?' on':'')+'" data-reason="'+esc(r)+'">'+esc(r)+'</span>'; }).join('');
+  }
+  async function openEntryModal(i){
     var cs=getCands(), x=cs[i]; if(!x) return;
     if(x.status==='ENTERED'){ if(window.toast) toast('이미 진입한 종목입니다'); return; }
     var c=getCycle(); if(!c||c.status!=='ACTIVE'){ if(window.toast) toast('진행 중인 사이클이 없습니다 🔱'); return; }
-    var grade=x.judgeGrade||'', rune=x.runeScore||'', rr=null;
+    _mIdx=i; _mReason='Candidate';
+    var snap={ grade:x.judgeGrade||'', rune:x.runeScore||'', rr:null, stop:null, target:null, price:null };
     try{
       if(x.code && typeof fetchJudge==='function'){
         var d=await fetchJudge(x.code);
-        if(d&&d.mri){ grade=d.mri.grade||grade; if(d.mri.rr!=null) rr=d.mri.rr; }
+        if(d){ if(d.price!=null) snap.price=d.price;
+          if(d.mri){ snap.grade=d.mri.grade||snap.grade; if(d.mri.rr!=null)snap.rr=d.mri.rr; if(d.mri.stop!=null)snap.stop=d.mri.stop; if(d.mri.rr_target!=null)snap.target=d.mri.rr_target; } }
       }
     }catch(e){}
+    _mSnap=snap;
+    document.getElementById('denmTitle').textContent='🎯 진입 — '+(x.name||x.code);
+    document.getElementById('denmSnap').innerHTML='Judge 제안 · '+(snap.grade||'?')+(snap.rune?' · 룬'+esc(snap.rune):'')+(snap.rr!=null?' · R/R '+esc(snap.rr):'')
+      +'<br>손절 '+(snap.stop!=null?('₩'+won(snap.stop)):'—')+' · 목표 '+(snap.target!=null?('₩'+won(snap.target)):'—')+(snap.price!=null?' · 현재가 ₩'+won(snap.price):'');
+    document.getElementById('denmPrice').value = snap.price!=null?snap.price:'';
+    document.getElementById('denmQty').value='';
+    document.getElementById('denmStop').value = snap.stop!=null?snap.stop:'';
+    document.getElementById('denmTarget').value = snap.target!=null?snap.target:'';
+    document.getElementById('denmMemo').value='';
+    renderTags();
+    document.getElementById('denModal').style.display='flex';
+  }
+  function closeEntryModal(){ var m=document.getElementById('denModal'); if(m) m.style.display='none'; _mIdx=-1; _mSnap=null; }
+  function confirmEntry(){
+    if(_mIdx<0) return;
+    var price=parseFloat(document.getElementById('denmPrice').value);
+    var qty=parseFloat(document.getElementById('denmQty').value);
+    if(isNaN(price)||price<=0){ if(window.toast) toast('진입가를 입력하세요'); return; }
+    if(isNaN(qty)||qty<=0){ if(window.toast) toast('수량을 입력하세요'); return; }
+    var aStop=parseFloat(document.getElementById('denmStop').value); if(isNaN(aStop)) aStop=(_mSnap&&_mSnap.stop!=null)?_mSnap.stop:null;
+    var aTgt=parseFloat(document.getElementById('denmTarget').value);  if(isNaN(aTgt))  aTgt=(_mSnap&&_mSnap.target!=null)?_mSnap.target:null;
+    var memo=document.getElementById('denmMemo').value.trim();
+    var cs=getCands(), x=cs[_mIdx]; if(!x){ closeEntryModal(); return; }
+    var c=getCycle(); if(!c){ closeEntryModal(); return; }
     var mkt=''; try{ if(typeof marketState==='function') mkt=marketState()[2]||''; }catch(e){}
     var es=getEntries();
     es.unshift({ id:Date.now(), cycleId:c.id, code:x.code||'', name:x.name||x.code,
-      entryDate:today(), day:c.day, rank:i+1, sector:x.sector||'',
-      grade:grade, rune:rune, rr:rr, market:mkt, status:'HOLDING', exit:null });
+      entryDate:today(), day:c.day, rank:_mIdx+1, sector:x.sector||'', market:mkt,
+      judge:{ grade:_mSnap?_mSnap.grade:'', rune:_mSnap?_mSnap.rune:'', rr:_mSnap?_mSnap.rr:null, stop:_mSnap?_mSnap.stop:null, target:_mSnap?_mSnap.target:null, price:_mSnap?_mSnap.price:null },
+      actual:{ entryPrice:price, qty:qty, stop:aStop, target:aTgt, reason:_mReason, memo:memo },
+      status:'HOLDING', exit:null });
     saveEntries(es);
     x.status='ENTERED'; save(K_CAND,cs);
-    renderAll();
-    if(window.toast) toast('🎯 진입 박제: '+(x.name||x.code)+' · Day '+c.day+(grade?' · '+grade:'')+(rr!=null?' · R/R '+rr:''));
+    closeEntryModal(); renderAll();
+    if(window.toast) toast('🎯 진입 확정: '+(x.name||x.code)+' '+qty+'주 @ '+won(price)+' · '+_mReason);
   }
   function closeEntry(id, reason){
     var es=getEntries(), e=null;
@@ -1105,16 +1171,18 @@ body{padding-bottom:74px;}
     if(cnt) cnt.textContent=es.length+'건';
     if(!es.length){ list.innerHTML='<div class="dop-empty" style="padding:4px 0">진입 기록이 없습니다 — 후보에서 「진입」을 누르면 그 순간이 박제됩니다.</div>'; return; }
     list.innerHTML=es.map(function(e){
-      var snap='Day '+e.day+' 진입 · '+e.rank+'위'+(e.sector?' · '+esc(e.sector):'')+(e.market?' · '+esc(e.market):'');
-      var tag=(e.grade?esc(e.grade):'?')+(e.rune?' · 룬'+esc(e.rune):'')+(e.rr!=null?' · R/R '+esc(e.rr):'');
+      var J=e.judge||e, A=e.actual||null;
+      var snap='Day '+e.day+' · '+e.rank+'위'+(e.sector?' · '+esc(e.sector):'')+(e.market?' · '+esc(e.market):'');
+      var jtag=(J.grade?esc(J.grade):'?')+(J.rune?' · 룬'+esc(J.rune):'')+(J.rr!=null?' · R/R '+esc(J.rr):'');
+      var atag=A?(' · @'+won(A.entryPrice)+'×'+A.qty+(A.reason?' · '+esc(A.reason):'')):'';
       if(e.status==='CLOSED' && e.exit){
         var p=e.exit.pnl_pct, col=(p>=0?'#22c55e':'#ef4444');
         return '<div class="dop-item den-closed"><span class="nm">'+esc(e.name)+'</span>'
-          +'<span class="den-snap">'+tag+' · '+snap+' → '+esc(e.exit.reason)+'</span>'
+          +'<span class="den-snap">'+jtag+atag+' · '+snap+' → '+esc(e.exit.reason)+'</span>'
           +'<span class="gr" style="color:'+col+';border-color:'+col+'">'+(p>=0?'+':'')+p+'%</span></div>';
       }
       return '<div class="dop-item"><span class="nm">'+esc(e.name)+'</span>'
-        +'<span class="den-snap">'+tag+' · '+snap+'</span>'
+        +'<span class="den-snap">'+jtag+atag+' · '+snap+'</span>'
         +'<span class="den-x win" data-win="'+e.id+'">익절</span>'
         +'<span class="den-x loss" data-loss="'+e.id+'">손절</span></div>';
     }).join('');
@@ -1127,7 +1195,16 @@ body{padding-bottom:74px;}
     var del=e.target.closest&&e.target.closest('.del');
     if(del){ var i=+del.getAttribute('data-i'); var cs=getCands(); cs.splice(i,1); save(K_CAND,cs); renderCands(); renderCycle(); return; }
     var en=e.target.closest&&e.target.closest('.enter');
-    if(en){ enterCandidate(+en.getAttribute('data-enter')); return; }
+    if(en){ openEntryModal(+en.getAttribute('data-enter')); return; }
+  });
+  // 진입 모달 이벤트
+  var _sv=document.getElementById('denmSave'); if(_sv) _sv.onclick=confirmEntry;
+  var _cc=document.getElementById('denmCancel'); if(_cc) _cc.onclick=closeEntryModal;
+  var _cl=document.getElementById('denmClose'); if(_cl) _cl.onclick=closeEntryModal;
+  var _md=document.getElementById('denModal'); if(_md) _md.addEventListener('click',function(e){ if(e.target===_md) closeEntryModal(); });
+  var _tg=document.getElementById('denmTags'); if(_tg) _tg.addEventListener('click',function(e){
+    var t=e.target.closest&&e.target.closest('.den-tag'); if(!t) return;
+    _mReason=t.getAttribute('data-reason'); renderTags();
   });
   var entryListEl=document.getElementById('dopEntryList');
   if(entryListEl) entryListEl.addEventListener('click',function(e){
