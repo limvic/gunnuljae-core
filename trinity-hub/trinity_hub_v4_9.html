@@ -618,7 +618,16 @@ body{padding-bottom:74px;}
 .dop-item .den-x.win:hover{background:rgba(34,197,94,.14);}
 .dop-item .den-x.loss{color:#ef4444;border:1px solid rgba(239,68,68,.4);}
 .dop-item .den-x.loss:hover{background:rgba(239,68,68,.14);}
+.dop-item .den-x.close{color:#d6a84f;border:1px solid rgba(214,168,79,.4);}
+.dop-item .den-x.close:hover{background:rgba(214,168,79,.14);}
 .dop-item.den-closed{opacity:.62;}
+.rep-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
+.rep-cell{background:rgba(0,0,0,.22);border:1px solid rgba(214,168,79,.12);border-radius:9px;padding:9px 10px;}
+.rep-cell .l{font:400 10px var(--mono,monospace);color:var(--text3,#5a6b82);}
+.rep-cell .v{font:700 15px var(--body,system-ui);color:#eee;margin-top:3px;}
+.rep-sub{font:600 11px var(--mono,monospace);color:#9aa7bd;margin:8px 0 2px;}
+.rep-reason{font:400 11px var(--mono,monospace);color:#9aa7bd;padding:6px 0;border-top:1px solid rgba(214,168,79,.08);}
+.rep-reason b{color:#d6a84f;font-weight:600;}
 .den-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;}
 .den-modal-card{width:100%;max-width:420px;max-height:88vh;overflow:auto;background:#0e1016;border:1px solid rgba(214,168,79,.3);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:11px;box-shadow:0 12px 48px rgba(0,0,0,.6);}
 .den-modal-hd{display:flex;justify-content:space-between;align-items:center;font:700 15px var(--body,system-ui);color:#d6a84f;}
@@ -921,6 +930,12 @@ body{padding-bottom:74px;}
     <div class="dop-note">진입 순간의 조건(Judge·Rune·R/R·Day·순위·섹터·시장)을 박제 → 청산 결과와 묶어 축적</div>
   </div>
 
+  <!-- v1.4 사이클 리포트 -->
+  <div class="dop-card" id="dopReportCard">
+    <div class="dop-hd"><span class="t">📊 사이클 리포트</span><span class="dop-count" id="dopReportCycle">—</span></div>
+    <div id="dopReportBody"></div>
+  </div>
+
   <!-- v1.3.1 진입 모달 -->
   <div class="den-modal" id="denModal" style="display:none;">
     <div class="den-modal-card">
@@ -1153,16 +1168,23 @@ body{padding-bottom:74px;}
     closeEntryModal(); renderAll();
     if(window.toast) toast('🎯 진입 확정: '+(x.name||x.code)+' '+qty+'주 @ '+won(price)+' · '+_mReason);
   }
-  function closeEntry(id, reason){
+  function daysBetween(a,b){ try{ var d1=new Date(a), d2=new Date(b); var n=Math.round((d2-d1)/86400000); return isNaN(n)?0:Math.max(0,n); }catch(e){ return 0; } }
+  function closeEntry(id){
     var es=getEntries(), e=null;
     for(var k=0;k<es.length;k++){ if(es[k].id===id){ e=es[k]; break; } }
     if(!e) return;
-    var raw=prompt(reason+' 수익률(%) — 예: 3.2 또는 -1.5');
+    var A=e.actual||{}, entryP=A.entryPrice, qty=A.qty;
+    var raw=prompt('청산가 입력 — 예: 36200'+(entryP?'\n(진입 ₩'+won(entryP)+(qty?' × '+qty+'주':'')+')':''));
     if(raw===null) return;
-    var p=parseFloat(raw); if(isNaN(p)) p=0;
-    e.exit={ date:today(), reason:reason, pnl_pct:p }; e.status='CLOSED';
-    saveEntries(es); renderEntries();
-    if(window.toast) toast('청산: '+e.name+' '+reason+' '+(p>=0?'+':'')+p+'%');
+    var exitP=parseFloat(raw); if(isNaN(exitP)||exitP<=0){ if(window.toast) toast('청산가를 확인하세요'); return; }
+    var pnlPct=null, pnlAmt=null;
+    if(entryP>0){ pnlPct=+(((exitP-entryP)/entryP)*100).toFixed(2); if(qty>0) pnlAmt=Math.round((exitP-entryP)*qty); }
+    var reason=(pnlPct==null)?'청산':(pnlPct>0.05?'익절':(pnlPct<-0.05?'손절':'본절'));  // 손익 부호로 판정
+    var hold=daysBetween(e.entryDate, today());
+    e.exit={ exitPrice:exitP, exitDate:today(), exitReason:reason, pnlPct:pnlPct, pnlAmount:pnlAmt, holdDays:hold };
+    e.status='CLOSED';
+    saveEntries(es); renderEntries(); renderReport();
+    if(window.toast) toast('청산: '+e.name+' '+reason+(pnlPct!=null?' '+(pnlPct>=0?'+':'')+pnlPct+'%':'')+(pnlAmt!=null?' ('+(pnlAmt>=0?'+':'')+won(pnlAmt)+'원)':''));
   }
   function renderEntries(){
     var es=getEntries();
@@ -1176,19 +1198,70 @@ body{padding-bottom:74px;}
       var jtag=(J.grade?esc(J.grade):'?')+(J.rune?' · 룬'+esc(J.rune):'')+(J.rr!=null?' · R/R '+esc(J.rr):'');
       var atag=A?(' · @'+won(A.entryPrice)+'×'+A.qty+(A.reason?' · '+esc(A.reason):'')):'';
       if(e.status==='CLOSED' && e.exit){
-        var p=e.exit.pnl_pct, col=(p>=0?'#22c55e':'#ef4444');
+        var X=e.exit;
+        var p=(X.pnlPct!=null)?X.pnlPct:(X.pnl_pct!=null?X.pnl_pct:0);
+        var rsn=X.exitReason||X.reason||'청산';
+        var col=(p>=0?'#22c55e':'#ef4444');
+        var extra=(X.pnlAmount!=null?' '+(X.pnlAmount>=0?'+':'')+won(X.pnlAmount)+'원':'')+(X.holdDays!=null?' · '+X.holdDays+'일':'');
         return '<div class="dop-item den-closed"><span class="nm">'+esc(e.name)+'</span>'
-          +'<span class="den-snap">'+jtag+atag+' · '+snap+' → '+esc(e.exit.reason)+'</span>'
+          +'<span class="den-snap">'+jtag+atag+' · '+snap+' → '+esc(rsn)+extra+'</span>'
           +'<span class="gr" style="color:'+col+';border-color:'+col+'">'+(p>=0?'+':'')+p+'%</span></div>';
       }
       return '<div class="dop-item"><span class="nm">'+esc(e.name)+'</span>'
         +'<span class="den-snap">'+jtag+atag+' · '+snap+'</span>'
-        +'<span class="den-x win" data-win="'+e.id+'">익절</span>'
-        +'<span class="den-x loss" data-loss="'+e.id+'">손절</span></div>';
+        +'<span class="den-x close" data-close="'+e.id+'">청산</span></div>';
     }).join('');
   }
 
-  function renderAll(){ renderCycle(); renderCands(); renderEntries(); }
+  // ── v1.4 사이클 리포트 ──
+  function computeReport(cycleId){
+    var es=getEntries().filter(function(e){ return !cycleId || e.cycleId===cycleId; });
+    var closed=es.filter(function(e){ return e.status==='CLOSED' && e.exit; });
+    var win=0, loss=0, even=0, sum=0, hold=0;
+    closed.forEach(function(e){
+      var p=(e.exit.pnlPct!=null)?e.exit.pnlPct:(e.exit.pnl_pct||0);
+      if(p>0.05) win++; else if(p<-0.05) loss++; else even++;
+      sum+=p; hold+=(e.exit.holdDays!=null?e.exit.holdDays:0);
+    });
+    var byReason={};
+    closed.forEach(function(e){
+      var r=(e.actual&&e.actual.reason)||'기타';
+      if(!byReason[r]) byReason[r]={n:0,win:0,sum:0};
+      var p=(e.exit.pnlPct!=null)?e.exit.pnlPct:(e.exit.pnl_pct||0);
+      byReason[r].n++; byReason[r].sum+=p; if(p>0.05) byReason[r].win++;
+    });
+    return { entered:es.length, closed:closed.length, win:win, loss:loss, even:even,
+      winRate:(win+loss)>0?Math.round(win/(win+loss)*100):null,
+      avgPct:closed.length?+(sum/closed.length).toFixed(2):null,
+      avgHold:closed.length?Math.round(hold/closed.length):null, byReason:byReason };
+  }
+  function renderReport(){
+    var body=document.getElementById('dopReportBody'), lbl=document.getElementById('dopReportCycle');
+    if(!body) return;
+    var c=getCycle(); if(lbl) lbl.textContent=c?c.id:'—';
+    var R=computeReport(c?c.id:null), cands=getCands().length;
+    if(R.entered===0){ body.innerHTML='<div class="dop-empty" style="padding:4px 0">진입 기록이 없습니다 — 후보에서 진입하면 성과가 집계됩니다.</div>'; return; }
+    function cell(l,v){ return '<div class="rep-cell"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>'; }
+    function sign(p){ return p==null?'—':(p>=0?'+':'')+p+'%'; }
+    var g='<div class="rep-grid">'
+      +cell('후보', cands+'개')
+      +cell('진입', R.entered+'개')
+      +cell('청산', R.closed+'개')
+      +cell('익절/손절', R.win+' / '+R.loss+(R.even?' · 본'+R.even:''))
+      +cell('승률', R.winRate==null?'—':R.winRate+'%')
+      +cell('평균 수익률', sign(R.avgPct))
+      +cell('평균 보유', R.avgHold==null?'—':R.avgHold+'일')
+      +'</div>';
+    var rk=Object.keys(R.byReason);
+    if(rk.length){
+      g+='<div class="rep-sub">진입 이유별 성과</div>';
+      g+=rk.map(function(r){ var o=R.byReason[r]; var wr=o.n?Math.round(o.win/o.n*100):0; var av=o.n?+(o.sum/o.n).toFixed(2):0;
+        return '<div class="rep-reason"><b>'+esc(r)+'</b> · '+o.n+'건 · 승률 '+wr+'% · 평균 '+(av>=0?'+':'')+av+'%</div>'; }).join('');
+    }
+    body.innerHTML=g;
+  }
+
+  function renderAll(){ renderCycle(); renderCands(); renderEntries(); renderReport(); }
   document.getElementById('dcAdd').onclick=addCand;
   var nmIn=document.getElementById('dcName'); if(nmIn) nmIn.addEventListener('keydown',function(e){ if(e.key==='Enter') addCand(); });
   candList.addEventListener('click',function(e){
@@ -1208,8 +1281,7 @@ body{padding-bottom:74px;}
   });
   var entryListEl=document.getElementById('dopEntryList');
   if(entryListEl) entryListEl.addEventListener('click',function(e){
-    var w=e.target.closest&&e.target.closest('.den-x.win'); if(w){ closeEntry(+w.getAttribute('data-win'),'익절'); return; }
-    var l=e.target.closest&&e.target.closest('.den-x.loss'); if(l){ closeEntry(+l.getAttribute('data-loss'),'손절'); return; }
+    var cx=e.target.closest&&e.target.closest('.den-x.close'); if(cx){ closeEntry(+cx.getAttribute('data-close')); return; }
   });
   renderAll();
 })();
