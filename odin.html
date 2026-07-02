@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>오딘의 드라우프니르 — ODIN'S DRAUPNIR v0.1</title>
 <!--
-  오딘의 드라우프니르 v0.1 (정적 HTML 단일 파일)
+  오딘의 드라우프니르 v0.3.1 (정적 HTML 단일 파일 · 안정화 튜닝)
   - Trinity 상위 자동 "판단" 대시보드 (자동주문 아님 / 알림+점수+진입계획+리스크)
   - 외부 빌드 도구 없음. GitHub Pages에서 바로 열림.
-  - mockData는 <script> 안 const MOCK 한 곳에서만 읽음 → v0.2에서 그 키만 fetch로 교체.
-  - 데이터 없으면 "준비중" 원칙 (가짜 숫자 착시 금지 → DEMO 배지).
-  - RUNE TIME 실시간(2026). NORMAL/CASH 토글 작동.
+  - 실데이터: /index_snapshot · /vavlog · /judge · /mri + HUB 공유 localStorage. MOCK 완전 제거됨.
+  - 데이터 없으면 "준비중" 원칙 (가짜 숫자 착시 금지).
+  - RUNE TIME 실시간. NORMAL/CASH 토글 작동.
+  - v0.3.1: esc() 안전 이스케이프 적용 (HUB 동일) · MOCK 잔재 주석 정리.
 -->
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
@@ -158,8 +159,6 @@ const C = {
   border:"rgba(214,168,79,.35)", borderSoft:"rgba(214,168,79,.18)",
 };
 
-/* ───────── MOCK DATA (교체 지점 단일) ───────── */
-
 /* ───────── 상태 ───────── */
 const state = { tab:"Dashboard", mode:"NORMAL", scanLive:null, scanError:false, vavlog:null, vavlogErr:false, pick:null, judge:null, mri:null, judgeErr:false };
 const NAV = ["Dashboard","Market Scan","Rune Score","Gungnir Signal","Draupnir Vault","VAVLOG","Settings"];
@@ -171,7 +170,7 @@ const INDEX_API = "https://fastapi-production-f631.up.railway.app/index_snapshot
 const pct = n => `${n>0?"+":""}${Number(n).toFixed(2)}%`;
 const won = n => `₩${Number(n).toLocaleString()}`;
 const ud  = n => (n>=0 ? C.up : C.down);
-const esc = s => String(s);
+const esc = s => String(s==null?'':s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); // v0.3.1 안전 이스케이프 (HUB 동일)
 const fmtNum = n => Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 
 /* KOSPI·KOSDAQ change_pct 평균으로 시장 분위기 도출 (change_pct는 이미 부호 적용된 값) */
@@ -575,7 +574,7 @@ function vavlogCard(){
 function renderNav(){
   const nav = document.getElementById("nav");
   nav.innerHTML = NAV.map(n=>`<button data-tab="${n}" class="${n===state.tab?"active":""}">${n}</button>`).join("")
-    + `<div class="creed">KNOWLEDGE IS POWER<br>RUNE IS EDGE<br><span class="ver">v0.3 · REAL DATA · 계좌항목 보류</span></div>`;
+    + `<div class="creed">KNOWLEDGE IS POWER<br>RUNE IS EDGE<br><span class="ver">v0.3.1 · REAL DATA · 계좌항목 보류</span></div>`;
   nav.querySelectorAll("button[data-tab]").forEach(b=>{
     b.addEventListener("click",()=>{ state.tab=b.dataset.tab; renderNav(); renderMain(); });
   });
