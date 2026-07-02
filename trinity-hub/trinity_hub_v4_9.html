@@ -977,7 +977,8 @@ body{padding-bottom:74px;}
   var n=0, t=setInterval(function(){ fit(); if(++n>10) clearInterval(t); }, 1500); // 내부 비동기 렌더 안정화까지만
 })();
 
-/* 🔱 사이드바 아바타 둘레 = 드라우프니르 9고리. odin Vault(MOCK.vault)의 day/cycle을 그대로 미러 */
+/* 🔱 사이드바 아바타 둘레 = 드라우프니르 9고리.
+   v1.3.2: localStorage(trinity_draupnir_cycle) 단일 SSOT — odin DOM 폴백·폴링 제거 (구버전 MOCK 잔재 정리) */
 (function(){
   var ring=document.getElementById('drmRing'), cap=document.getElementById('drmCap');
   if(!ring) return;
@@ -994,26 +995,20 @@ body{padding-bottom:74px;}
     if(ava){ ava.classList.remove('complete'); if(day>=cycle && day>0){ void ava.offsetWidth; ava.classList.add('complete'); } }
   };
   window.drmRenderRing(0,9); // 초기 빈 고리 (가짜 숫자 표시 안 함)
-  // SSOT: ① 실전 사이클(localStorage) 우선 → ② 없으면 odin 화면(DOM) 폴백
+  // SSOT: 실전 사이클(localStorage) 단일 소스. 사이클 없으면 빈 고리 0/9 유지.
   function readCycle(){ try{ var c=JSON.parse(localStorage.getItem('trinity_draupnir_cycle')); if(c&&c.status==='ACTIVE'&&typeof c.day==='number') return c; }catch(e){} return null; }
-  function readOdinDom(){ try{
-      var doc=document.getElementById('draupnirFrame').contentWindow.document;
-      var all=doc.querySelectorAll('.ring-row .ring');
-      if(all.length) return { day:doc.querySelectorAll('.ring-row .ring.on').length, cycleLength:all.length };
-    }catch(e){} return null; }
   window.drmSyncRing=function(){
     var c=readCycle(); if(c){ window.drmRenderRing(c.day, c.cycleLength||9); return true; }
-    var o=readOdinDom(); if(o){ window.drmRenderRing(o.day, o.cycleLength); return true; }
-    return false;
+    window.drmRenderRing(0,9); return false;
   };
-  var k=0, s=setInterval(function(){ if(window.drmSyncRing()||++k>25) clearInterval(s); }, 700);
-  var ff=document.getElementById('draupnirFrame'); if(ff) ff.addEventListener('load', window.drmSyncRing);
 })();
 
-/* 🔱 DRAUPNIR 실전 운용 v1.0 — Cycle + 후보 8종목 (localStorage · 주문 기능 없음) */
+/* 🔱 DRAUPNIR 실전 운용 v1.3.2 — Cycle + 후보 8종목 (localStorage · 주문 기능 없음)
+   v1.3.2 안정화: 청산 시 /vavlog 복기 저장 연결 (실패 시 보존+재전송) · 리포트 후보수 표기 수정 · 종료 확인창 */
 (function(){
   var K_CYC='trinity_draupnir_cycle', K_CAND='trinity_draupnir_candidates', K_SEQ='trinity_draupnir_seq';
   var K_ENTRY='trinity_draupnir_entries';
+  var DR_VAVLOG_API='https://fastapi-production-f631.up.railway.app/vavlog';
   function getEntries(){ return load(K_ENTRY,[]); }
   function saveEntries(a){ save(K_ENTRY,a); }
   var MAX=8, LEN=9;
@@ -1032,7 +1027,7 @@ body{padding-bottom:74px;}
   function syncRing(){
     var c=getCycle();
     if(c && c.status==='ACTIVE'){ if(window.drmRenderRing) window.drmRenderRing(c.day, c.cycleLength||LEN); }
-    else if(window.drmSyncRing){ window.drmSyncRing(); } // 사이클 없으면 odin 데모 폴백
+    else if(window.drmSyncRing){ window.drmSyncRing(); } // 사이클 없으면 빈 고리 0/9 (v1.3.2 SSOT)
   }
 
   function renderCycle(){
@@ -1088,7 +1083,11 @@ body{padding-bottom:74px;}
     save(K_CYC,c); renderCycle(); syncRing();
   }
   function endCycle(){
-    var c=getCycle(); if(!c) return; c.status='COMPLETE'; save(K_CYC,c); renderAll(); syncRing();
+    var c=getCycle(); if(!c) return;
+    // v1.3.2 P4: 미청산 포지션 확인 (차단 아님 — 판단은 림빅)
+    var open=getEntries().filter(function(e){ return e.cycleId===c.id && e.status==='HOLDING'; }).length;
+    if(open>0 && !confirm('청산 안 된 포지션 '+open+'건이 있습니다. 그래도 종료할까요?')) return;
+    c.status='COMPLETE'; save(K_CYC,c); renderAll(); syncRing();
     if(window.toast) toast('사이클 종료 — 복기 후 새 사이클을 시작하세요');
   }
   function val(id){ var e=document.getElementById(id); return e? e.value.trim():''; }
@@ -1169,7 +1168,36 @@ body{padding-bottom:74px;}
     if(window.toast) toast('🎯 진입 확정: '+(x.name||x.code)+' '+qty+'주 @ '+won(price)+' · '+_mReason);
   }
   function daysBetween(a,b){ try{ var d1=new Date(a), d2=new Date(b); var n=Math.round((d2-d1)/86400000); return isNaN(n)?0:Math.max(0,n); }catch(e){ return 0; } }
-  function closeEntry(id){
+  // ── v1.3.2 P1: Draupnir 청산 → /vavlog 복기 저장 (자동주문 아님 · 기록만) ──
+  //    localStorage가 SSOT. POST 실패해도 기록은 보존, vavlogSyncPending 플래그만 남긴다.
+  function _entryToVavlogRec(e){
+    var A=e.actual||{}, J=e.judge||{}, X=e.exit||{};
+    return { code:e.code||'', name:e.name||'', buy_price:A.entryPrice??null, sell_price:X.exitPrice??null,
+      qty:A.qty??null, pnl_net:null, exit_reason:X.exitReason||'청산', emotion:null,
+      entry_date:e.entryDate||null, exit_date:X.exitDate||null,
+      planned_stop:(A.stop!=null?A.stop:(J.stop!=null?J.stop:null)),
+      entry_grade:J.grade||null, entry_rr:J.rr??null, entry_score:J.rune?Number(J.rune)||null:null,
+      entry_verdict:null, source:'draupnir' };
+  }
+  async function _postEntryVavlog(e){
+    try{
+      var r=await fetch(DR_VAVLOG_API,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(_entryToVavlogRec(e)),signal:AbortSignal.timeout(10000)});
+      var d=await r.json();
+      return !!(d&&d.ok);
+    }catch(err){ return false; }
+  }
+  async function _syncPendingVavlog(){  // 부팅 시 1회 — 미동기 청산 재전송
+    var es=getEntries(), dirty=false;
+    for(var i=0;i<es.length;i++){
+      var e=es[i];
+      if(e.status==='CLOSED'&&e.exit&&e.vavlogSyncPending){
+        if(await _postEntryVavlog(e)){ e.vavlogSyncPending=false; dirty=true; }
+      }
+    }
+    if(dirty){ saveEntries(es); renderEntries(); if(window.toast) toast('📒 미동기 청산 복기 저장 완료'); }
+  }
+  async function closeEntry(id){
     var es=getEntries(), e=null;
     for(var k=0;k<es.length;k++){ if(es[k].id===id){ e=es[k]; break; } }
     if(!e) return;
@@ -1183,8 +1211,14 @@ body{padding-bottom:74px;}
     var hold=daysBetween(e.entryDate, today());
     e.exit={ exitPrice:exitP, exitDate:today(), exitReason:reason, pnlPct:pnlPct, pnlAmount:pnlAmt, holdDays:hold };
     e.status='CLOSED';
+    e.vavlogSyncPending=true;                 // 전송 성공 확인 전까지 대기 표시
     saveEntries(es); renderEntries(); renderReport();
     if(window.toast) toast('청산: '+e.name+' '+reason+(pnlPct!=null?' '+(pnlPct>=0?'+':'')+pnlPct+'%':'')+(pnlAmt!=null?' ('+(pnlAmt>=0?'+':'')+won(pnlAmt)+'원)':''));
+    var ok=await _postEntryVavlog(e);         // 복기 저장 (Supabase)
+    var es2=getEntries();                     // 저장 사이 변경 대비 재로드
+    for(var m=0;m<es2.length;m++){ if(es2[m].id===id){ es2[m].vavlogSyncPending=!ok; break; } }
+    saveEntries(es2); renderEntries();
+    if(window.toast) toast(ok?'📒 복기 저장 완료 (VAVLOG)':'📒 복기 저장 대기 — 다음 접속 시 자동 재전송');
   }
   function renderEntries(){
     var es=getEntries();
@@ -1203,7 +1237,8 @@ body{padding-bottom:74px;}
         var rsn=X.exitReason||X.reason||'청산';
         var col=(p>=0?'#22c55e':'#ef4444');
         var extra=(X.pnlAmount!=null?' '+(X.pnlAmount>=0?'+':'')+won(X.pnlAmount)+'원':'')+(X.holdDays!=null?' · '+X.holdDays+'일':'');
-        return '<div class="dop-item den-closed"><span class="nm">'+esc(e.name)+'</span>'
+        var pend=e.vavlogSyncPending?' <span style="color:#eab308;font-size:10px">⟳ 복기저장 대기</span>':'';
+        return '<div class="dop-item den-closed"><span class="nm">'+esc(e.name)+pend+'</span>'
           +'<span class="den-snap">'+jtag+atag+' · '+snap+' → '+esc(rsn)+extra+'</span>'
           +'<span class="gr" style="color:'+col+';border-color:'+col+'">'+(p>=0?'+':'')+p+'%</span></div>';
       }
@@ -1239,12 +1274,14 @@ body{padding-bottom:74px;}
     var body=document.getElementById('dopReportBody'), lbl=document.getElementById('dopReportCycle');
     if(!body) return;
     var c=getCycle(); if(lbl) lbl.textContent=c?c.id:'—';
-    var R=computeReport(c?c.id:null), cands=getCands().length;
+    var R=computeReport(c?c.id:null);
+    // v1.3.2: 후보 수는 진행 중(ACTIVE) 사이클일 때만 현재값 — 과거 사이클엔 '—' (오표기 방지)
+    var candsTxt=(c&&c.status==='ACTIVE')?(getCands().length+'개'):'—';
     if(R.entered===0){ body.innerHTML='<div class="dop-empty" style="padding:4px 0">진입 기록이 없습니다 — 후보에서 진입하면 성과가 집계됩니다.</div>'; return; }
     function cell(l,v){ return '<div class="rep-cell"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>'; }
     function sign(p){ return p==null?'—':(p>=0?'+':'')+p+'%'; }
     var g='<div class="rep-grid">'
-      +cell('후보', cands+'개')
+      +cell('후보', candsTxt)
       +cell('진입', R.entered+'개')
       +cell('청산', R.closed+'개')
       +cell('익절/손절', R.win+' / '+R.loss+(R.even?' · 본'+R.even:''))
@@ -1284,6 +1321,8 @@ body{padding-bottom:74px;}
     var cx=e.target.closest&&e.target.closest('.den-x.close'); if(cx){ closeEntry(+cx.getAttribute('data-close')); return; }
   });
   renderAll();
+  syncRing();               // v1.3.2: 부팅 시 아바타링 즉시 동기화 (폴링 제거 대체)
+  _syncPendingVavlog();     // v1.3.2: 미동기 청산 복기 자동 재전송
 })();
 </script>
 <!-- ⬆⬆⬆ 🔱 DRAUPNIR 악세사리 END ⬆⬆⬆ -->
